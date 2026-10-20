@@ -166,7 +166,9 @@ def main():
             "sell_point": "次日开盘集合竞价卖出",
             "position": f"若开仓: 等权分 {len(verified)} 只, 每只约 {round(100/len(verified)) if verified else 0}% 仓位",
         },
-        "strategy": "次日开盘买入-再次日开盘卖出(隔夜动量)",
+        "strategy": "次日开盘买入-再次日开盘卖出({})".format(
+            "趋势内缩量回调+次日深低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)"
+        ),
         "regime": regime_info,
         "stats": {k: v for k, v in stats.items()},
         "picks": verified,
