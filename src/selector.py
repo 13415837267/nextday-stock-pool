@@ -1,24 +1,15 @@
 # -*- coding: utf-8 -*-
-"""选股条件与评分模块。
+"""选股条件与评分模块(多信号模式)。
 
-策略(尾盘次日开盘隔夜动量):
-  T日收盘后, 在全市场(主板+创业板)中筛选当日"温和放量上涨、均线多头"的个股,
-  按多因子评分取前N只作为次日计划候选池; T+1开盘竞价买入, T+2开盘竞价卖出。
+执行口径: T日收盘后出观察池 -> T+1开盘竞价按缺口过滤买入 -> T+2开盘竞价卖出。
+通过 config.yaml 的 selection.mode 切换信号模式:
 
-硬性过滤(可在 config.yaml 调整):
-  1. 非ST、非停牌、非北交所/科创板
-  2. 收盘价 2~80 元
-  3. 当日成交额 >= 2亿
-  4. 换手率 2%~20%
-  5. 当日涨幅 1%~7%(温和上涨, 不追高位加速)
-  6. 收盘未封死涨停(留有溢价空间), 非一字板
-  7. 上市满120个交易日
-  8. 量比 1.2~5.0(温和放量)
-  9. 均线多头: 收盘 > MA5 > MA10 > MA20, 且 MA5 向上
- 10. 20日乖离率 <= 15%, 20日累计涨幅 <= 30%
+  dip       趋势内缩量回调 + 次日深低开竞价承接(主力模式):
+            T日选"中期趋势向上个股的缩量阴线回调"为观察池,
+            T+1竞价仅买入缺口 <= buy_gap_below% 的深低开票, 博恐慌盘后的当日反抽。
+  momentum  隔夜动量(备用): 温和放量上涨+均线多头, 博次日惯性。
 
-评分 = z(量比)*0.35 + z(3日动量)*0.25 + z(20日动量)*0.20
-       + z(成交额)*0.10 + z(-乖离率)*0.10, 取分高者。
+通用硬过滤: 非ST、非停牌、主板+创业板、价格区间、成交额下限、换手区间、上市满N日。
 """
 from __future__ import annotations
 
@@ -44,6 +35,7 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     panel["ma10"] = ca.transform(lambda s: s.rolling(10).mean())
     panel["ma20"] = ca.transform(lambda s: s.rolling(20).mean())
     panel["ma5_prev"] = g["ma5"].transform(lambda s: s.shift(1))
+    panel["ma20_prev"] = g["ma20"].transform(lambda s: s.shift(1))
     panel["vol_ma5_prev"] = g["vol"].transform(lambda s: s.shift(1).rolling(5).mean())
     panel["vol_ratio"] = panel["vol"] / panel["vol_ma5_prev"]
     panel["mom3"] = ca.transform(lambda s: s.pct_change(3)) * 100
@@ -95,66 +87,137 @@ def select_stocks(
 ) -> tuple[list[dict], dict]:
     """对某交易日横截面执行过滤+评分, 返回(候选池列表, 统计信息)。"""
     uni_cfg, sel_cfg = cfg["universe"], cfg["selection"]
-    weights = sel_cfg["weights"]
     top_n = top_n or sel_cfg["top_n"]
+    mode = sel_cfg.get("mode", "momentum")
 
     df = day_df.copy()
     df["board"] = df["ts_code"].map(board_of)
-    stats = {"universe": int(len(df))}
-    n0 = len(df)
+    stats = {"universe": int(len(df)), "mode": mode}
 
-    # ---- 基础过滤(横截面字段) ----
+    # ---- 通用基础过滤(横截面字段) ----
     df = df[(df["is_paused"] == 0) & (df["is_st"] == 0)]
     df = df[df["board"].isin(uni_cfg["boards"])]
     stats["non_st_board"] = int(len(df))
 
     df = df[df["close"].between(uni_cfg["price_min"], uni_cfg["price_max"])]
     df = df[df["amount"] >= uni_cfg["amount_min_yi"] * 1e8]
-    df = df[df["turnover_rate"].between(uni_cfg["turnover_min"], uni_cfg["turnover_max"])]
+    df = df[df["turnover_rate"] >= uni_cfg["turnover_min"]]
     stats["liquidity"] = int(len(df))
 
-    df = df[df["pct"].between(sel_cfg["pct_min"], sel_cfg["pct_max"])]
-    df = df[df["close"] < df["high_limit"] - 1e-9]          # 未封死涨停
-    df = df[df["low"] < df["high"]]                          # 非一字板
-    stats["price_action"] = int(len(df))
-
-    # ---- 指标过滤(历史字段) ----
     df = df[df["bars"] >= uni_cfg["listed_min_bars"]]
-    df = df[df["vol_ratio"].between(sel_cfg["vol_ratio_min"], sel_cfg["vol_ratio_max"])]
-    stats["volume_ok"] = int(len(df))
 
-    ma_ok = (df["close_adj"] > df["ma5"]) & (df["ma5"] > df["ma10"]) & (df["ma10"] > df["ma20"])
-    if sel_cfg.get("ma5_slope_up", True):
-        ma_ok &= df["ma5"] > df["ma5_prev"]
-    df = df[ma_ok]
-    df = df[df["bias20"] <= sel_cfg["bias20_max"]]
-    df = df[(df["mom20"] > 0) & (df["mom20"] <= sel_cfg["mom20_max"])]
-    stats["trend_ok"] = int(len(df))
+    # ---- 各模式量价条件与评分 ----
+    if mode == "momentum":
+        # 隔夜动量: 温和放量上涨, 均线多头
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg["pct_min"], sel_cfg["pct_max"])]
+        df = df[df["close"] < df["high_limit"] - 1e-9]      # 未封死涨停
+        df = df[df["low"] < df["high"]]                     # 非一字板
+        df = df[df["vol_ratio"].between(sel_cfg["vol_ratio_min"], sel_cfg["vol_ratio_max"])]
+        stats["price_action"] = int(len(df))
 
-    if df.empty:
-        return [], stats
+        ma_ok = (df["close_adj"] > df["ma5"]) & (df["ma5"] > df["ma10"]) & (df["ma10"] > df["ma20"])
+        if sel_cfg.get("ma5_slope_up", True):
+            ma_ok &= df["ma5"] > df["ma5_prev"]
+        df = df[ma_ok]
+        df = df[df["bias20"] <= sel_cfg["bias20_max"]]
+        df = df[(df["mom20"] > 0) & (df["mom20"] <= sel_cfg["mom20_max"])]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
 
-    # ---- 多因子评分 ----
-    score = (
-        weights["vol_ratio"] * _zs(df["vol_ratio"])
-        + weights["mom3"] * _zs(df["mom3"])
-        + weights["mom20"] * _zs(df["mom20"])
-        + weights["amount"] * _zs(np.log1p(df["amount"]))
-        + weights["neg_bias20"] * _zs(-df["bias20"])
-    )
+        w = sel_cfg["weights"]
+        score = (
+            w["vol_ratio"] * _zs(df["vol_ratio"])
+            + w["mom3"] * _zs(df["mom3"])
+            + w["mom20"] * _zs(df["mom20"])
+            + w["amount"] * _zs(np.log1p(df["amount"]))
+            + w["neg_bias20"] * _zs(-df["bias20"])
+        )
+
+    elif mode == "reversal":
+        # 趋势内回调低吸: 中期趋势向上, 当日缩量阴线回调, 博次日反抽
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg["rev_pct_min"], sel_cfg["rev_pct_max"])]
+        df = df[df["close"] < df["open"]]                   # 阴线
+        df = df[df["close"] > df["low_limit"]]              # 收盘未跌停
+        df = df[df["low"] < df["high"]]                     # 非一字
+        df = df[df["vol_ratio"] <= sel_cfg["rev_vol_ratio_max"]]  # 缩量回调
+        stats["price_action"] = int(len(df))
+
+        trend = (
+            (df["close_adj"] > df["ma20"])
+            & (df["mom20"] > 0) & (df["mom20"] <= sel_cfg["mom20_max"])
+            & (df["bias20"] <= sel_cfg["bias20_max"])
+        )
+        if sel_cfg.get("ma20_slope_up", True):
+            trend &= df["ma20"] > df["ma20_prev"]
+        df = df[trend]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+
+        w = sel_cfg["rev_weights"]
+        score = (
+            w["mom20"] * _zs(df["mom20"])                    # 前期趋势越强越好
+            + w["neg_bias20"] * _zs(-df["bias20"])           # 乖离越低越安全
+            + w["amount"] * _zs(np.log1p(df["amount"]))      # 流动性
+        )
+
+    elif mode == "limitup":
+        # 低位首板承接: 低位首板涨停(收盘封死, 非一字), 博次日溢价
+        df = df[df["turnover_rate"] <= sel_cfg["lu_turnover_max"]]
+        df = df[df["close"] >= df["high_limit"] - 1e-9]     # 收盘封死涨停
+        df = df[df["low"] < df["high"]]                     # 非一字板
+        stats["price_action"] = int(len(df))
+
+        df = df[df["mom20"] <= sel_cfg["lu_mom20_max"]]     # 低位(前期涨幅不大)
+        df = df[df["mom20"] > sel_cfg.get("lu_mom20_min", -20.0)]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+
+        w = sel_cfg["lu_weights"]
+        score = (
+            w["neg_turnover"] * _zs(-df["turnover_rate"])    # 换手越低封板越实
+            + w["neg_amount"] * _zs(-np.log1p(df["amount"]))  # 体量适中偏小
+            + w["neg_mom20"] * _zs(-df["mom20"])             # 位置越低越安全
+        )
+
+    else:
+        raise ValueError(f"未知选股模式: {mode}")
+
     df = df.assign(score=score).sort_values("score", ascending=False)
     stats["scored"] = int(len(df))
 
     picks = []
     for _, r in df.head(top_n).iterrows():
         code = r["ts_code"]
-        reasons = [
-            f"涨幅{r['pct']:.1f}%",
-            f"量比{r['vol_ratio']:.1f}",
-            "均线多头",
-            f"换手{r['turnover_rate']:.1f}%",
-            f"20日动量{r['mom20']:.0f}%",
-        ]
+        if mode == "momentum":
+            reasons = [
+                f"涨幅{r['pct']:.1f}%",
+                f"量比{r['vol_ratio']:.1f}",
+                "均线多头",
+                f"换手{r['turnover_rate']:.1f}%",
+                f"20日动量{r['mom20']:.0f}%",
+            ]
+        elif mode == "dip":
+            reasons = [
+                f"回调{r['pct']:.1f}%",
+                f"量比{r['vol_ratio']:.2f}(缩量)",
+                f"20日动量{r['mom20']:.0f}%",
+                f"乖离{r['bias20']:.1f}%",
+                f"换手{r['turnover_rate']:.1f}%",
+                "次日竞价深低开承接",
+            ]
+        else:
+            reasons = [
+                f"涨停{r['pct']:.1f}%",
+                f"换手{r['turnover_rate']:.1f}%",
+                f"成交额{r['amount']/1e8:.1f}亿",
+                f"20日动量{r['mom20']:.0f}%",
+                "低位首板",
+            ]
         picks.append({
             "code": code,
             "name": (names or {}).get(code, code),

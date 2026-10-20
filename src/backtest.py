@@ -5,12 +5,17 @@
   - T日收盘后按 selector 选出候选池(次日计划)
   - T+1 开盘竞价买入(等权分配当日总资金的 1/N)
     * T+1 停牌/无成交/开盘一字涨停/开盘涨幅 >= skip_open_gain% -> 放弃该票
+    * 可选: 开盘跌幅 <= -skip_open_loss%(低开过深, 反转失败概率高) -> 放弃该票
   - T+2 开盘竞价卖出
     * T+2 停牌 -> 顺延至后续交易日开盘卖出(最多5日, 否则按最后收盘价)
     * T+2 开盘跌停且开启保守模式 -> 按当日收盘价卖出
   - 成本: 佣金万2.5(双边) + 印花税万5(卖出) + 滑点千1(双边)
   - 资金全部复利滚动, 卖出资金当日开盘即可再投入
   - 大盘风控触发时次一交易日空仓(不买入)
+
+接口:
+  - prepare_context(cfg, days): 构建行情面板/指标/风控上下文(耗时主体, 可复用)
+  - run_backtest(cfg, days, ctx): 执行逐日模拟与绩效汇总; 传入 ctx 可跳过重复构建
 """
 from __future__ import annotations
 
@@ -40,7 +45,8 @@ def fetch_panel(client: ZZClient, dates: list[str], log_every: int = 50) -> pd.D
     return pd.concat(frames, ignore_index=True)
 
 
-def run_backtest(cfg: dict, days: int | None = None) -> dict:
+def prepare_context(cfg: dict, days: int | None = None) -> dict:
+    """构建回测所需上下文(行情面板/指标/风控/逐票索引), 供多次模拟复用。"""
     bt_cfg = cfg["backtest"]
     n_days = days or bt_cfg["trading_days"]
     warmup = bt_cfg["warmup_days"]
@@ -68,6 +74,16 @@ def run_backtest(cfg: dict, days: int | None = None) -> dict:
         names = dict(zip(sb["ts_code"], sb["name"]))
     except Exception:
         pass
+    return {"main_dates": main_dates, "by_date": by_date, "reg": reg,
+            "per_code": per_code, "names": names}
+
+
+def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) -> dict:
+    if ctx is None:
+        ctx = prepare_context(cfg, days)
+    main_dates, by_date = ctx["main_dates"], ctx["by_date"]
+    reg, per_code, names = ctx["reg"], ctx["per_code"], ctx["names"]
+    bt_cfg = cfg["backtest"]
 
     ex = cfg["execution"]
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
@@ -98,6 +114,9 @@ def run_backtest(cfg: dict, days: int | None = None) -> dict:
             gap = row["open_adj"] / float(prev_close.iloc[0]) - 1 if len(prev_close) else 0
             if gap * 100 >= ex["skip_open_gain"]:
                 trades.append(_trade(p, "skip", d, note=f"开盘高开{gap*100:.1f}%"))
+                continue
+            if ex.get("skip_open_loss", 0) and gap * 100 <= -abs(ex["skip_open_loss"]):
+                trades.append(_trade(p, "skip", d, note=f"开盘低开{gap*100:.1f}%"))
                 continue
             buy_eff = row["open_adj"] * (1 + slip)
             units = alloc / (buy_eff * (1 + comm))
@@ -195,7 +214,7 @@ def run_backtest(cfg: dict, days: int | None = None) -> dict:
     dd = nav / nav.cummax() - 1
     mdd = float(dd.min())
     sharpe = float(ret.mean() / ret.std() * np.sqrt(252)) if ret.std() else 0.0
-    real = [t for t in trades if t["note"] != "skip"]
+    real = [t for t in trades if t["ret_pct"] is not None]
     wins = [t for t in real if t["ret_pct"] > 0]
     losses = [t for t in real if t["ret_pct"] <= 0]
     gross_win = sum(t["ret_pct"] for t in wins)
@@ -221,7 +240,7 @@ def run_backtest(cfg: dict, days: int | None = None) -> dict:
             "平均单笔收益%": round(np.mean([t["ret_pct"] for t in real]), 3) if real else 0,
             "盈亏比": round(gross_win / gross_loss, 2) if gross_loss else None,
             "空仓天数": empty_days,
-            "跳过买入次数": sum(1 for t in trades if t["note"] == "skip"),
+            "跳过买入次数": sum(1 for t in trades if t["ret_pct"] is None),
             "总费用(元)": round(fee_total, 0),
             "同期市场等权基准%": round(float(bench_norm.iloc[-1] / bt_cfg["initial_capital"] - 1) * 100, 2) if len(bench_norm) else None,
         },

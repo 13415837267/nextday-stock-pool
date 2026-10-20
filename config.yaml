@@ -25,22 +25,32 @@ universe:
   listed_min_bars: 120       # 上市满最少交易日(过滤次新股)
 
 selection:
-  top_n: 5                   # 每日候选数量(等权买入)
-  pct_min: 1.0               # T日涨幅下限(%): 温和上涨
-  pct_max: 7.0               # T日涨幅上限(%): 不追高位加速
-  vol_ratio_min: 1.2         # 量比下限 = 当日量/前5日均量
-  vol_ratio_max: 5.0         # 量比上限: 排除极端放量出货
-  ma_rule: close_gt_ma5_gt_ma10_gt_ma20   # 均线多头排列
+  mode: dip                  # 信号模式: dip(趋势内缩量回调+次日深低开承接, 主力) / momentum(隔夜动量, 备用)
+  top_n: 20                  # 每日观察池数量(展示用; 实际买入仅取竞价缺口达标的票)
+  # ---- 通用 ----
+  bias20_max: 10.0           # 20日乖离率上限(%)
+  # ---- dip 模式(趋势内缩量回调, 次日深低开承接) ----
+  dip_pct_min: -9.0          # 回调日涨幅下限(%)
+  dip_pct_max: -1.0          # 回调日涨幅上限(%): 明显阴线回调
+  dip_vol_ratio_max: 1.5     # 回调日量比上限(缩量回调, 非放量出货)
+  dip_mom20_min: 5.0         # 20日涨幅下限(%): 有前期趋势
+  dip_mom20_max: 25.0        # 20日涨幅上限(%): 非高位加速
+  dip_weights:               # 观察池评分权重(仅影响展示排序, 执行以竞价缺口为准)
+    mom20: 0.40              # 前期趋势强度
+    neg_bias20: 0.30         # 乖离越低越安全
+    neg_amount: 0.30         # 体量适中偏小弹性大
+  # ---- momentum 模式参数(备用) ----
+  pct_min: 1.0               # T日涨幅下限(%)
+  pct_max: 7.0               # T日涨幅上限(%)
+  vol_ratio_min: 1.2         # 量比下限
+  vol_ratio_max: 5.0         # 量比上限
   ma5_slope_up: true         # MA5向上
-  bias20_max: 15.0           # 20日乖离率上限(%), 防过度乖离
-  mom20_max: 30.0            # 20日累计涨幅上限(%)
-  # 评分权重(横截面zscore加权)
-  weights:
-    vol_ratio: 0.35          # 温和放量
-    mom3: 0.25               # 3日动量
-    mom20: 0.20              # 20日动量
-    amount: 0.10             # 流动性
-    neg_bias20: 0.10         # 乖离惩罚(越低越好)
+  weights:                   # momentum 评分权重
+    vol_ratio: 0.35
+    mom3: 0.25
+    mom20: 0.20
+    amount: 0.10
+    neg_bias20: 0.10
 
 regime:                      # 大盘风控: 触发则次日空仓(压回撤核心)
   enabled: true
@@ -49,6 +59,7 @@ regime:                      # 大盘风控: 触发则次日空仓(压回撤核�
   warmup_days: 30            # 计算风控指标所需历史天数
 
 execution:                   # 实盘执行口径(回测与实盘一致)
+  buy_gap_below: -3.0        # 仅买 T+1 开盘缺口 <= 该值(%)的候选(深低开承接); 0=不过滤
   skip_open_gain: 9.0        # T+1开盘涨幅>=9%(近一字)放弃买入(%)
   sell_limit_down_fallback: true   # T+2开盘跌停 -> 保守按当日收盘卖出
   commission_rate: 0.00025   # 佣金万2.5(双边)
