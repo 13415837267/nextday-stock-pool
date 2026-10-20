@@ -1,0 +1,79 @@
+# 定期/手动回测: 用最新参数重跑实盘口径复利回测
+name: 策略回测
+
+on:
+  schedule:
+    - cron: "30 1 1 * *"     # 每月1日 北京时间 09:30
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "回测交易日数(默认取 config.yaml)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install "git+https://github.com/zzquant/zzshare.git"
+
+      - name: 运行回测
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
+        run: |
+          if [ -n "${{ github.event.inputs.days }}" ]; then
+            python -m src.backtest --days ${{ github.event.inputs.days }}
+          else
+            python -m src.backtest
+          fi
+
+      - name: 提交回测报告(中文留痕)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A output CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "回测结果无变化, 跳过提交"
+          else
+            git commit -m "回测更新: $(TZ=Asia/Shanghai date +%F) 实盘口径复利回测报告"
+            git push
+          fi
+
+      - name: 组装 Pages 站点
+        run: |
+          mkdir -p deploy/data
+          cp site/index.html deploy/
+          cp output/*.json deploy/data/ 2>/dev/null || true
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: deploy
+
+      - name: 部署 GitHub Pages
+        uses: actions/deploy-pages@v4

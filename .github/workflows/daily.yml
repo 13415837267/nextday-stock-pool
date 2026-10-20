@@ -1,0 +1,69 @@
+# 每个交易日收盘后自动选股并更新 GitHub Pages
+name: 每日选股更新
+
+on:
+  schedule:
+    - cron: "30 7 * * 1-5"   # 北京时间周一至周五 15:30 (收盘后半小时)
+  workflow_dispatch: {}      # 支持手动触发
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install "git+https://github.com/zzquant/zzshare.git"
+
+      - name: 运行每日选股
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}   # 可选, 提升访问频率
+        run: python -m src.daily_run
+
+      - name: 提交更新记录(中文留痕)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A output CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "无数据变更, 跳过提交"
+          else
+            git commit -m "数据更新: $(TZ=Asia/Shanghai date +%F) 收盘选股与次日候选池"
+            git push
+          fi
+
+      - name: 组装 Pages 站点
+        run: |
+          mkdir -p deploy/data
+          cp site/index.html deploy/
+          cp output/*.json deploy/data/ 2>/dev/null || true
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: deploy
+
+      - name: 部署 GitHub Pages
+        uses: actions/deploy-pages@v4

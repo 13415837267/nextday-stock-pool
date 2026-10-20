@@ -1,0 +1,90 @@
+{
+ "update_time": "2026-10-20 15:36:04",
+ "signal_date": "2026-10-20",
+ "plan": {
+  "buy_date": "",
+  "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
+  "sell_date": "",
+  "sell_point": "次日开盘集合竞价卖出",
+  "position": "若开仓: 等权分 5 只, 每只约 20% 仓位"
+ },
+ "strategy": "次日开盘买入-再次日开盘卖出(隔夜动量)",
+ "regime": {
+  "ok": false,
+  "breadth": 0.213,
+  "mkt_above_ma": false,
+  "note": "大盘风控触发: 次日建议空仓观望"
+ },
+ "stats": {
+  "universe": 5575,
+  "non_st_board": 4418,
+  "liquidity": 756,
+  "price_action": 360,
+  "volume_ok": 117,
+  "trend_ok": 18,
+  "scored": 18
+ },
+ "picks": [
+  {
+   "code": "002376.SZ",
+   "name": "新北洋",
+   "close": 7.32,
+   "pct": 5.63,
+   "amount_yi": 8.94,
+   "turnover_rate": 15.36,
+   "vol_ratio": 3.96,
+   "mom20": 13.3,
+   "score": 0.875,
+   "reasons": "涨幅5.6%、量比4.0、均线多头、换手15.4%、20日动量13%"
+  },
+  {
+   "code": "603239.SH",
+   "name": "浙江仙通",
+   "close": 15.52,
+   "pct": 6.3,
+   "amount_yi": 2.88,
+   "turnover_rate": 6.99,
+   "vol_ratio": 2.92,
+   "mom20": 15.1,
+   "score": 0.745,
+   "reasons": "涨幅6.3%、量比2.9、均线多头、换手7.0%、20日动量15%"
+  },
+  {
+   "code": "000860.SZ",
+   "name": "顺鑫农业",
+   "close": 11.18,
+   "pct": 1.91,
+   "amount_yi": 5.05,
+   "turnover_rate": 6.06,
+   "vol_ratio": 3.19,
+   "mom20": 6.5,
+   "score": 0.46,
+   "reasons": "涨幅1.9%、量比3.2、均线多头、换手6.1%、20日动量6%"
+  },
+  {
+   "code": "001211.SZ",
+   "name": "双枪科技",
+   "close": 29.75,
+   "pct": 3.51,
+   "amount_yi": 4.31,
+   "turnover_rate": 15.71,
+   "vol_ratio": 1.7,
+   "mom20": 28.5,
+   "score": 0.331,
+   "reasons": "涨幅3.5%、量比1.7、均线多头、换手15.7%、20日动量29%"
+  },
+  {
+   "code": "600603.SH",
+   "name": "广汇物流",
+   "close": 5.33,
+   "pct": 2.11,
+   "amount_yi": 2.32,
+   "turnover_rate": 3.79,
+   "vol_ratio": 3.54,
+   "mom20": 6.6,
+   "score": 0.304,
+   "reasons": "涨幅2.1%、量比3.5、均线多头、换手3.8%、20日动量7%"
+  }
+ ],
+ "disclaimer": "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
+}

@@ -1,0 +1,214 @@
+# -*- coding: utf-8 -*-
+"""每日运行入口(供 GitHub Actions 每日收盘后调用)。
+
+流程:
+  1. 确定最新有完整数据的交易日 T
+  2. 抓取近 regime.warmup_days 个交易日全市场日线 -> 计算指标与大盘风控
+  3. 在 T 日横截面上执行选股, 得到"次日(T+1)计划候选池"
+  4. 对最终候选逐票核查上市天数(过滤次新股)
+  5. 结算 T-2 日发布池的实盘战绩(T-1开盘买入, T开盘卖出)
+  6. 输出 output/latest.json / output/history.json, 并在 CHANGELOG.md 追加记录
+"""
+from __future__ import annotations
+
+import json
+import time
+from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
+
+from .config import ROOT, load_config
+from .data_api import ZZClient
+from .selector import build_indicators, regime_series, select_stocks, split_by_date
+from .backtest import fetch_panel
+
+DISCLAIMER = "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
+
+
+def _fmt(d: str) -> str:
+    return f"{d[:4]}-{d[4:6]}-{d[6:]}"
+
+
+def main():
+    cfg = load_config()
+    client = ZZClient(cfg)
+    t0 = time.time()
+
+    # ---- 1. 最新完整交易日 ----
+    cal = client.trade_days(days=cfg["regime"].get("warmup_days", 30) + 45)
+    signal_date = None
+    day_df = None
+    for d in reversed(cal[-8:]):
+        df = client.market_day(d)
+        if len(df) >= 3000:
+            signal_date = d
+            day_df = df
+            break
+    if signal_date is None:
+        raise RuntimeError("近8个交易日均无完整行情数据, 终止")
+    pos = cal.index(signal_date)
+    print(f"信号日(最新完整交易日): {_fmt(signal_date)}")
+
+    # ---- 2. 近期面板与指标 ----
+    warm = max(cfg["regime"].get("warmup_days", 30), 25)
+    panel_dates = cal[max(0, pos - warm + 1): pos + 1]
+    panel = fetch_panel(client, panel_dates)
+    panel = build_indicators(panel)
+    by_date = split_by_date(panel)
+    reg = regime_series(panel, cfg)
+    names_df = client.stock_names()
+    names = dict(zip(names_df["ts_code"], names_df["name"]))
+
+    # ---- 3. 选股(多取缓冲用于次新核查) ----
+    # 注意: 日常面板仅warmup天, 无法用bars判断上市天数, 此处关闭该硬过滤,
+    #       改由第4步逐票拉取扩展历史核查(回测路径不受影响)。
+    sel_cfg = cfg["selection"]
+    cfg_sel = json.loads(json.dumps(cfg))
+    cfg_sel["universe"]["listed_min_bars"] = 0
+    ranked, stats = select_stocks(signal_date, by_date[signal_date], cfg_sel,
+                                  names, top_n=sel_cfg["top_n"] + 8)
+    # ---- 4. 次新股/上市天数核查 ----
+    start_far = (pd.Timestamp(signal_date) - pd.Timedelta(days=540)).strftime("%Y%m%d")
+    verified = []
+    for p in ranked:
+        if len(verified) >= sel_cfg["top_n"]:
+            break
+        hist = client.stock_history(p["code"], start_far, signal_date)
+        bars = len(hist)
+        if bars < cfg["universe"]["listed_min_bars"]:
+            print(f"  剔除次新/数据不足: {p['code']} {p['name']} ({bars}根K线)")
+            continue
+        verified.append(p)
+
+    # ---- 5. 结算 T-2 发布池 ----
+    out_dir = ROOT / "output"
+    out_dir.mkdir(exist_ok=True)
+    hist_path = out_dir / "history.json"
+    if hist_path.exists():
+        _data = json.loads(hist_path.read_text(encoding="utf-8"))
+        history = _data.get("records", []) if isinstance(_data, dict) else _data
+    else:
+        history = []
+    ex = cfg["execution"]
+
+    def row_of(d: str, code: str):
+        sub = by_date.get(d)
+        if sub is None:
+            return None
+        r = sub[sub["ts_code"] == code]
+        return r.iloc[0] if len(r) else None
+
+    for rec in history:
+        if rec.get("status") == "已结算":
+            continue
+        pdate = rec["publish_date"]
+        if pdate not in cal:
+            continue
+        ip = cal.index(pdate)
+        buy_d = cal[ip + 1] if ip + 1 < len(cal) else None
+        sell_d = cal[ip + 2] if ip + 2 < len(cal) else None
+        if not sell_d or sell_d > signal_date:
+            continue  # 卖出日数据尚未产生
+        rets, skipped = [], []
+        for p in rec.get("picks", []):
+            rb = row_of(buy_d, p["code"]) if buy_d else None
+            rs = row_of(sell_d, p["code"])
+            rp = row_of(pdate, p["code"])
+            gap = (rb["open_adj"] / rp["close_adj"] - 1) * 100 \
+                if (rb is not None and rp is not None and rp["close_adj"] > 0) else 999
+            if rb is None or rb["is_paused"] == 1 or rb["vol"] <= 0 or rb["open"] >= rb["high_limit"] - 1e-9 \
+               or gap >= ex["skip_open_gain"]:
+                skipped.append(p["code"])
+                continue
+            if rs is None or rs["is_paused"] == 1 or rs["vol"] <= 0:
+                continue  # 卖出日停牌: 留待后续结算
+            gap_fee = (1 - ex["slippage"]) * (1 - ex["commission_rate"] - ex["stamp_tax"]) \
+                      / ((1 + ex["slippage"]) * (1 + ex["commission_rate"]))
+            r = (rs["open_adj"] / rb["open_adj"]) * gap_fee - 1
+            rets.append(float(r))
+        if rets:
+            rec["realized"] = {
+                "buy_date": _fmt(buy_d), "sell_date": _fmt(sell_d),
+                "n_traded": len(rets), "n_skipped": len(skipped),
+                "avg_ret_pct": round(sum(rets) / len(rets) * 100, 2),
+                "win": sum(1 for r in rets if r > 0),
+            }
+        rec["status"] = "已结算" if rets else "无成交"
+        rec["skipped_codes"] = skipped
+
+    # ---- 6. 写出候选池与历史(空仓时也展示观察池, 并明确标注风控状态) ----
+    reg_row = reg.loc[signal_date] if signal_date in reg.index else None
+    regime_info = {
+        "ok": bool(reg_row["trade_ok"]) if reg_row is not None else True,
+        "breadth": round(float(reg_row["breadth"]), 3) if reg_row is not None else None,
+        "mkt_above_ma": bool(reg_row["mkt_idx"] >= reg_row["mkt_ma"]) if reg_row is not None else None,
+        "note": "宽度/市场指数达标, 可正常开仓" if (reg_row is not None and reg_row["trade_ok"])
+                else "大盘风控触发: 次日建议空仓观望" if reg_row is not None else "",
+    }
+    buy_d = cal[pos + 1] if pos + 1 < len(cal) else None
+    sell_d = cal[pos + 2] if pos + 2 < len(cal) else None
+
+    latest = {
+        "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "signal_date": _fmt(signal_date),
+        "plan": {
+            "buy_date": _fmt(buy_d) if buy_d else "",
+            "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
+            "sell_date": _fmt(sell_d) if sell_d else "",
+            "sell_point": "次日开盘集合竞价卖出",
+            "position": f"若开仓: 等权分 {len(verified)} 只, 每只约 {round(100/len(verified)) if verified else 0}% 仓位",
+        },
+        "strategy": "次日开盘买入-再次日开盘卖出(隔夜动量)",
+        "regime": regime_info,
+        "stats": {k: v for k, v in stats.items()},
+        "picks": verified,
+        "disclaimer": DISCLAIMER,
+    }
+    (out_dir / "latest.json").write_text(
+        json.dumps(latest, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    new_rec = {
+        "publish_date": _fmt(signal_date),
+        "buy_date": _fmt(buy_d) if buy_d else "",
+        "sell_date": _fmt(sell_d) if sell_d else "",
+        "regime_ok": regime_info["ok"],
+        "picks": [{"code": p["code"], "name": p["name"], "close": p["close"],
+                   "pct": p["pct"], "reasons": p["reasons"]} for p in verified],
+        "status": "待结算",
+    }
+    history = [r for r in history if r["publish_date"] != new_rec["publish_date"]]
+    history.insert(0, new_rec)
+    keep = cfg["pages"].get("history_keep_days", 60)
+    # 汇总仅统计风控通过(实际可开仓)的已结算池; 空仓期观察池不计入胜率
+    done = [r for r in history
+            if r.get("status") == "已结算" and r.get("realized") and r.get("regime_ok", True) is not False]
+    win_n = sum(1 for r in done if r["realized"]["avg_ret_pct"] > 0)
+    summary = {
+        "n_done": len(done),
+        "win_rate": round(win_n / len(done) * 100, 1) if done else None,
+        "avg_ret": round(sum(r["realized"]["avg_ret_pct"] for r in done) / len(done), 2) if done else None,
+    }
+    hist_path.write_text(json.dumps({"summary": summary, "records": history[:keep]},
+                                    ensure_ascii=False, indent=1), encoding="utf-8")
+
+    # ---- 7. CHANGELOG 追加运行记录 ----
+    cl = ROOT / "CHANGELOG.md"
+    line = (f"- {datetime.now().strftime('%Y-%m-%d %H:%M')} 自动运行: 信号日 {_fmt(signal_date)}, "
+            f"候选 {len(verified)} 只, 风控{'通过' if regime_info['ok'] else '触发空仓'}, "
+            f"耗时 {time.time()-t0:.0f}s\n")
+    text = cl.read_text(encoding="utf-8") if cl.exists() else "# 更新日志\n\n## 自动运行记录\n"
+    marker = "## 自动运行记录\n"
+    if marker in text:
+        text = text.replace(marker, marker + line, 1)
+    else:
+        text += "\n## 自动运行记录\n" + line
+    cl.write_text(text, encoding="utf-8")
+
+    print(f"候选池({len(verified)}只): " + ", ".join(f"{p['code']} {p['name']}" for p in verified))
+    print(f"风控: {regime_info['note']}")
+    print(f"完成, 耗时 {time.time()-t0:.0f}s")
+
+
+if __name__ == "__main__":
+    main()

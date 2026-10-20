@@ -1,0 +1,65 @@
+# =====================================================================
+# A股次日候选池系统 - 策略参数配置
+# 交易模式: T日收盘后出池 -> T+1开盘竞价买入 -> T+2开盘竞价卖出
+# =====================================================================
+
+data:
+  # zzshare 数据源(免费公开)。匿名可用但限速较低；如需提速可在仓库
+  # Secrets 中配置 ZZSHARE_TOKEN (官网 https://quant.zizizaizai.com 免费获取)
+  token_env: ZZSHARE_TOKEN
+  min_interval_sec: 0.45     # 两次请求最小间隔(秒)
+  max_retries: 5             # 请求失败重试次数
+  cache_dir: data/cache      # 本地缓存目录(不入库)
+
+universe:
+  boards:                    # 允许参与的板块
+    - 主板
+    - 创业板
+  exclude_bj: true           # 排除北交所
+  exclude_star: true         # 排除科创板(688)
+  price_min: 2.0             # 收盘价下限(元)
+  price_max: 80.0            # 收盘价上限(元)
+  amount_min_yi: 2.0         # 当日成交额下限(亿元)
+  turnover_min: 2.0          # 换手率下限(%)
+  turnover_max: 20.0         # 换手率上限(%)
+  listed_min_bars: 120       # 上市满最少交易日(过滤次新股)
+
+selection:
+  top_n: 5                   # 每日候选数量(等权买入)
+  pct_min: 1.0               # T日涨幅下限(%): 温和上涨
+  pct_max: 7.0               # T日涨幅上限(%): 不追高位加速
+  vol_ratio_min: 1.2         # 量比下限 = 当日量/前5日均量
+  vol_ratio_max: 5.0         # 量比上限: 排除极端放量出货
+  ma_rule: close_gt_ma5_gt_ma10_gt_ma20   # 均线多头排列
+  ma5_slope_up: true         # MA5向上
+  bias20_max: 15.0           # 20日乖离率上限(%), 防过度乖离
+  mom20_max: 30.0            # 20日累计涨幅上限(%)
+  # 评分权重(横截面zscore加权)
+  weights:
+    vol_ratio: 0.35          # 温和放量
+    mom3: 0.25               # 3日动量
+    mom20: 0.20              # 20日动量
+    amount: 0.10             # 流动性
+    neg_bias20: 0.10         # 乖离惩罚(越低越好)
+
+regime:                      # 大盘风控: 触发则次日空仓(压回撤核心)
+  enabled: true
+  breadth_min: 0.35          # 全市场站上MA20个股占比 < 35% -> 空仓
+  market_ma: 20              # 市场等权指数 < 其MA20 -> 空仓
+  warmup_days: 30            # 计算风控指标所需历史天数
+
+execution:                   # 实盘执行口径(回测与实盘一致)
+  skip_open_gain: 9.0        # T+1开盘涨幅>=9%(近一字)放弃买入(%)
+  sell_limit_down_fallback: true   # T+2开盘跌停 -> 保守按当日收盘卖出
+  commission_rate: 0.00025   # 佣金万2.5(双边)
+  stamp_tax: 0.0005          # 印花税(卖出)
+  slippage: 0.001            # 滑点(双边各千1)
+
+backtest:
+  trading_days: 500          # 回测窗口(交易日)
+  warmup_days: 160           # 指标预热与上市天数校验窗口
+  initial_capital: 1000000.0 # 初始资金(元), 复利滚动
+
+pages:
+  title: "A股次日候选池系统"
+  history_keep_days: 60      # Pages 展示的历史战绩天数

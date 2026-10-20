@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股次日候选池系统</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #21262d; --text: #e6edf3;
+    --muted: #8b949e; --gold: #d4a017; --red: #f85149; --green: #3fb950;
+    --blue: #58a6ff; --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: "PingFang SC","Microsoft YaHei",-apple-system,sans-serif; line-height: 1.6; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 24px; }
+  h1 { font-size: 26px; color: var(--gold); }
+  h1 small { font-size: 13px; color: var(--muted); font-weight: normal; margin-left: 12px; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .badges { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--border); }
+  .badge.ok { color: var(--green); border-color: var(--green); }
+  .badge.stop { color: var(--red); border-color: var(--red); }
+  h2 { font-size: 18px; margin: 28px 0 12px; padding-left: 10px; border-left: 3px solid var(--gold); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .card .k { color: var(--muted); font-size: 12px; }
+  .card .v { font-size: 20px; font-weight: 600; margin-top: 4px; }
+  .card .v.up { color: var(--red); } .card .v.down { color: var(--green); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--panel); border-radius: 8px; overflow: hidden; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { background: #1c2128; color: var(--muted); font-weight: 500; }
+  tr:hover td { background: #1a2029; }
+  .up { color: var(--red); } .down { color: var(--green); }
+  .muted { color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .plan-item b { color: var(--gold); }
+  ul.rules { padding-left: 20px; color: var(--muted); font-size: 13px; }
+  ul.rules li { margin: 4px 0; }
+  .disclaimer { margin-top: 40px; padding: 14px; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); font-size: 12px; }
+  a { color: var(--blue); text-decoration: none; }
+  .loading { color: var(--muted); padding: 20px 0; }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .dot { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin: 0 4px 2px 0; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>A股次日候选池系统 <small>尾盘动量 · 次日开盘买入 · 再次日开盘卖出</small></h1>
+    <div class="meta" id="meta">加载中...</div>
+    <div class="badges" id="badges"></div>
+  </header>
+
+  <h2>一、次日执行计划</h2>
+  <div class="panel plan-grid" id="plan"><div class="loading">加载中...</div></div>
+
+  <h2>二、计划候选池</h2>
+  <div id="pool"><div class="loading">加载中...</div></div>
+
+  <h2>三、回测绩效</h2>
+  <div class="cards" id="bt-cards"></div>
+  <div class="panel" style="margin-top:12px" id="bt-chart"></div>
+  <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
+
+  <h2>四、历史战绩（发布池实盘口径结算）</h2>
+  <div class="cards" id="hist-cards"></div>
+  <div style="margin-top:12px" id="hist-table"></div>
+
+  <h2>五、策略规则</h2>
+  <div class="panel">
+    <b>执行时点</b>
+    <ul class="rules">
+      <li>T日收盘后：系统运行选股，发布「次日计划候选池」</li>
+      <li>T+1日开盘集合竞价：等权买入候选池（每只约20%资金）</li>
+      <li>T+2日开盘集合竞价：全部卖出，资金复利滚动</li>
+      <li>风控触发时（市场宽度&lt;35% 或市场等权指数低于MA20）：次日空仓</li>
+    </ul>
+    <b>选股条件（T日收盘）</b>
+    <ul class="rules">
+      <li>范围：沪深主板+创业板，非ST、非停牌、上市满120个交易日</li>
+      <li>价格 2~80 元；成交额 ≥ 2亿；换手率 2%~20%</li>
+      <li>当日涨幅 1%~7%（温和上涨）；收盘未封死涨停、非一字板</li>
+      <li>量比 1.2~5.0（温和放量）；收盘 &gt; MA5 &gt; MA10 &gt; MA20 且 MA5 向上</li>
+      <li>20日乖离率 ≤ 15%；20日累计涨幅 0~30%</li>
+      <li>评分 = 0.35·z(量比) + 0.25·z(3日动量) + 0.20·z(20日动量) + 0.10·z(成交额) + 0.10·z(-乖离)，取前5名</li>
+    </ul>
+    <b>交易保护</b>
+    <ul class="rules">
+      <li>T+1开盘一字涨停或高开≥9%：放弃买入</li>
+      <li>T+2开盘跌停：保守按当日收盘价成交估算</li>
+      <li>成本：佣金万2.5（双边）+ 印花税万5（卖出）+ 滑点千1（双边）</li>
+    </ul>
+  </div>
+
+  <div class="disclaimer" id="disclaimer"></div>
+
+  <footer>
+    数据来源：<a href="https://github.com/zzquant/zzshare" target="_blank">zzshare（免费公开数据接口）</a>
+    · 自动化：<a href="https://docs.github.com/actions" target="_blank">GitHub Actions</a> 每个交易日收盘后更新
+    · 本站为量化研究演示，不构成投资建议
+  </footer>
+</div>
+
+<script>
+const fmtDate = s => s || "-";
+const pctCls = v => v > 0 ? "up" : (v < 0 ? "down" : "");
+const pctStr = v => (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+
+async function jget(url) {
+  const r = await fetch(url + "?t=" + Date.now());
+  if (!r.ok) throw new Error(url + " " + r.status);
+  return r.json();
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+
+async function loadLatest() {
+  const d = await jget("./data/latest.json");
+  document.getElementById("meta").textContent =
+    `信号日 ${fmtDate(d.signal_date)} · 更新于 ${d.update_time} · ${d.strategy}`;
+  const badges = [];
+  const ok = d.regime && d.regime.ok;
+  badges.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日空仓"}</span>`);
+  if (d.regime && d.regime.breadth != null)
+    badges.push(`<span class="badge">市场宽度 ${d.regime.breadth}</span>`);
+  badges.push(`<span class="badge">候选 ${d.picks.length} 只</span>`);
+  document.getElementById("badges").innerHTML = badges.join("");
+
+  const p = d.plan || {};
+  document.getElementById("plan").innerHTML = `
+    <div class="plan-item"><b>买入日</b>：${fmtDate(p.buy_date)}<br><span class="muted">${esc(p.buy_point)}</span></div>
+    <div class="plan-item"><b>卖出日</b>：${fmtDate(p.sell_date)}<br><span class="muted">${esc(p.sell_point)}</span></div>
+    <div class="plan-item"><b>仓位建议</b>：<br><span class="muted">${esc(p.position)}</span></div>`;
+
+  let html = `<table><tr><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
+  d.picks.forEach(x => {
+    html += `<tr><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${x.close}</td>
+      <td class="${pctCls(x.pct)}">${pctStr(x.pct)}</td><td>${x.vol_ratio}</td><td>${x.turnover_rate}%</td>
+      <td>${x.amount_yi}</td><td class="${pctCls(x.mom20)}">${pctStr(x.mom20)}</td>
+      <td><b>${x.score}</b></td><td class="muted">${esc(x.reasons)}</td></tr>`;
+  });
+  document.getElementById("pool").innerHTML = html + "</table>";
+  document.getElementById("disclaimer").textContent = d.disclaimer || "";
+}
+
+async function loadBacktest() {
+  const cards = document.getElementById("bt-cards");
+  try {
+    const d = await jget("./data/backtest.json");
+    const m = d.metrics || {};
+    const order = ["总收益率%", "年化收益率%", "最大回撤%", "夏普比率", "卡玛比率", "胜率%", "交易次数", "平均单笔收益%"];
+    cards.innerHTML = order.map(k => {
+      const v = m[k]; if (v == null) return "";
+      const neg = String(k).includes("回撤") && v < 0;
+      const cls = String(k).includes("收益") && !String(k).includes("回撤") ? (v >= 0 ? "up" : "down") : (neg ? "down" : "");
+      return `<div class="card"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
+    }).join("");
+    drawChart(d.equity || [], d.benchmark || []);
+    const mo = d.monthly || [];
+    if (mo.length) {
+      const rows = mo.slice(-12).reverse().map(x =>
+        `<tr><td>${x.month}</td><td class="${pctCls(x.ret_pct)}">${pctStr(x.ret_pct)}</td></tr>`).join("");
+      document.getElementById("bt-chart").insertAdjacentHTML("beforeend",
+        `<div style="margin-top:14px"><b style="font-size:13px">月度收益（近12月）</b>
+         <table style="margin-top:6px"><tr><th>月份</th><th>收益</th></tr>${rows}</table></div>`);
+    }
+  } catch (e) {
+    cards.innerHTML = `<div class="card"><div class="k">回测报告</div><div class="v" style="font-size:14px;color:var(--muted)">尚未运行（可在 Actions 中手动触发「回测」）</div></div>`;
+  }
+}
+
+function drawChart(eq, bench) {
+  if (!eq.length) return;
+  const el = document.getElementById("bt-chart");
+  const W = 1120, H = 320, P = { l: 70, r: 16, t: 14, b: 26 };
+  const all = eq.concat(bench).map(p => p.nav);
+  let lo = Math.min(...all), hi = Math.max(...all);
+  const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+  const xs = i => P.l + i * (W - P.l - P.r) / Math.max(eq.length - 1, 1);
+  const ys = v => P.t + (hi - v) * (H - P.t - P.b) / (hi - lo);
+  const line = arr => arr.map((p, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)},${ys(p.nav).toFixed(1)}`).join("");
+  const bline = bench.length ? line(bench) : "";
+  let grid = "", labels = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + (hi - lo) * i / 4, y = ys(v);
+    grid += `<line x1="${P.l}" y1="${y}" x2="${W - P.r}" y2="${y}" stroke="#21262d"/>`;
+    labels += `<text x="${P.l - 8}" y="${y + 4}" fill="#8b949e" font-size="11" text-anchor="end">${(v / 10000).toFixed(0)}万</text>`;
+  }
+  const xticks = [0, Math.floor(eq.length / 2), eq.length - 1]
+    .map(i => `<text x="${xs(i)}" y="${H - 6}" fill="#8b949e" font-size="11" text-anchor="middle">${eq[i].d}</text>`).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%">
+    ${grid}${labels}${xticks}
+    ${bline ? `<path d="${bline}" fill="none" stroke="#6e7681" stroke-width="1.4"/>` : ""}
+    <path d="${line(eq)}" fill="none" stroke="#d4a017" stroke-width="2"/>
+  </svg><div class="muted" style="font-size:12px;margin-top:4px">区间 ${eq[0].d} ~ ${eq[eq.length - 1].d} · 初始资金100万 · 每日收盘估值</div>`;
+}
+
+async function loadHistory() {
+  const hc = document.getElementById("hist-cards"), ht = document.getElementById("hist-table");
+  try {
+    const d = await jget("./data/history.json");
+    const s = d.summary || {};
+    hc.innerHTML = `
+      <div class="card"><div class="k">已结算期数</div><div class="v">${s.n_done ?? "-"}</div></div>
+      <div class="card"><div class="k">胜率(按期)</div><div class="v">${s.win_rate != null ? s.win_rate + "%" : "-"}</div></div>
+      <div class="card"><div class="k">平均单期收益</div><div class="v ${pctCls(s.avg_ret)}">${s.avg_ret != null ? pctStr(s.avg_ret) : "-"}</div></div>`;
+    let html = `<table><tr><th>发布日</th><th>买入日</th><th>卖出日</th><th>候选</th><th>成交/跳过</th><th>当期收益</th><th>状态</th></tr>`;
+    (d.records || []).forEach(r => {
+      const re = r.realized;
+      html += `<tr><td>${fmtDate(r.publish_date)}</td><td>${fmtDate(r.buy_date)}</td><td>${fmtDate(r.sell_date)}</td>
+        <td>${(r.picks || []).map(p => esc(p.name || p.code)).join("、")}</td>
+        <td class="muted">${re ? re.n_traded + "/" + re.n_skipped : "-"}</td>
+        <td class="${re ? pctCls(re.avg_ret_pct) : ""}">${re ? pctStr(re.avg_ret_pct) : "-"}</td>
+        <td class="muted">${esc(r.status || "")}${r.regime_ok === false ? "·空仓" : ""}</td></tr>`;
+    });
+    ht.innerHTML = html + "</table>";
+  } catch (e) { ht.innerHTML = `<div class="loading">暂无历史记录</div>`; }
+}
+
+loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class="loading">候选池加载失败: ${esc(e.message)}</div>`);
+loadBacktest();
+loadHistory();
+</script>
+</body>
+</html>
