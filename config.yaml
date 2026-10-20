@@ -18,7 +18,7 @@ universe:
   exclude_bj: true           # 排除北交所
   exclude_star: true         # 排除科创板(688)
   price_min: 2.0             # 收盘价下限(元)
-  price_max: 80.0            # 收盘价上限(元)
+  price_max: 150.0           # 收盘价上限(元)
   amount_min_yi: 2.0         # 当日成交额下限(亿元)
   turnover_min: 2.0          # 换手率下限(%)
   turnover_max: 20.0         # 换手率上限(%)
@@ -26,13 +26,13 @@ universe:
 
 selection:
   mode: dip                  # 信号模式: dip(趋势内缩量回调+次日深低开承接, 主力) / momentum(隔夜动量, 备用)
-  top_n: 20                  # 每日观察池数量(展示用; 实际买入仅取竞价缺口达标的票)
+  top_n: 50                  # 每日观察池数量(展示用; 实际买入仅取竞价缺口达标的票)
   # ---- 通用 ----
   bias20_max: 10.0           # 20日乖离率上限(%)
   # ---- dip 模式(趋势内缩量回调, 次日深低开承接) ----
   dip_pct_min: -9.0          # 回调日涨幅下限(%)
-  dip_pct_max: -1.0          # 回调日涨幅上限(%): 明显阴线回调
-  dip_vol_ratio_max: 1.5     # 回调日量比上限(缩量回调, 非放量出货)
+  dip_pct_max: -1.5          # 回调日涨幅上限(%): 明显阴线回调
+  dip_vol_ratio_max: 2.0     # 回调日量比上限(缩量回调, 非放量出货)
   dip_mom20_min: 5.0         # 20日涨幅下限(%): 有前期趋势
   dip_mom20_max: 25.0        # 20日涨幅上限(%): 非高位加速
   dip_weights:               # 观察池评分权重(仅影响展示排序, 执行以竞价缺口为准)
@@ -59,7 +59,8 @@ regime:                      # 大盘风控: 触发则次日空仓(压回撤核�
   warmup_days: 30            # 计算风控指标所需历史天数
 
 execution:                   # 实盘执行口径(回测与实盘一致)
-  buy_gap_below: -3.0        # 仅买 T+1 开盘缺口 <= 该值(%)的候选(深低开承接); 0=不过滤
+  buy_gap_below: -2.5        # 仅买 T+1 开盘缺口 <= 该值(%)的候选(深低开承接); 0=不过滤
+  skip_open_loss: 9.0        # T+1开盘跌幅<=-9%(低开过深, 反转失败概率高)放弃买入(%); 0=不过滤
   skip_open_gain: 9.0        # T+1开盘涨幅>=9%(近一字)放弃买入(%)
   sell_limit_down_fallback: true   # T+2开盘跌停 -> 保守按当日收盘卖出
   commission_rate: 0.00025   # 佣金万2.5(双边)

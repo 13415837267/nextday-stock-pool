@@ -107,8 +107,35 @@ def select_stocks(
     df = df[df["bars"] >= uni_cfg["listed_min_bars"]]
 
     # ---- 各模式量价条件与评分 ----
-    if mode == "momentum":
-        # 隔夜动量: 温和放量上涨, 均线多头
+    if mode == "dip":
+        # 趋势内缩量回调: T日选出观察池; T+1竞价仅对缺口<=buy_gap_below的深低开票执行买入
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg["dip_pct_min"], sel_cfg["dip_pct_max"])]
+        df = df[df["close"] < df["open"]]                   # 阴线回调
+        df = df[df["close"] > df["low_limit"]]              # 收盘未跌停
+        df = df[df["low"] < df["high"]]                     # 非一字
+        df = df[df["vol_ratio"] <= sel_cfg["dip_vol_ratio_max"]]  # 缩量回调(非放量出货)
+        stats["price_action"] = int(len(df))
+
+        trend = (
+            (df["mom20"] >= sel_cfg["dip_mom20_min"])
+            & (df["mom20"] <= sel_cfg["dip_mom20_max"])     # 有前期趋势但非高位加速
+            & (df["bias20"] <= sel_cfg["bias20_max"])       # 乖离不过热
+        )
+        df = df[trend]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+
+        w = sel_cfg["dip_weights"]
+        score = (
+            w["mom20"] * _zs(df["mom20"])                    # 前期趋势越强越好
+            + w["neg_bias20"] * _zs(-df["bias20"])           # 乖离越低越安全
+            + w["neg_amount"] * _zs(-np.log1p(df["amount"])) # 体量适中偏小弹性大
+        )
+
+    elif mode == "momentum":
+        # 隔夜动量(备用): 温和放量上涨, 均线多头
         df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
         df = df[df["pct"].between(sel_cfg["pct_min"], sel_cfg["pct_max"])]
         df = df[df["close"] < df["high_limit"] - 1e-9]      # 未封死涨停
@@ -121,7 +148,7 @@ def select_stocks(
             ma_ok &= df["ma5"] > df["ma5_prev"]
         df = df[ma_ok]
         df = df[df["bias20"] <= sel_cfg["bias20_max"]]
-        df = df[(df["mom20"] > 0) & (df["mom20"] <= sel_cfg["mom20_max"])]
+        df = df[(df["mom20"] > 0) & (df["mom20"] <= sel_cfg.get("mom20_max", 25.0))]
         stats["trend_ok"] = int(len(df))
         if df.empty:
             return [], stats
@@ -133,55 +160,6 @@ def select_stocks(
             + w["mom20"] * _zs(df["mom20"])
             + w["amount"] * _zs(np.log1p(df["amount"]))
             + w["neg_bias20"] * _zs(-df["bias20"])
-        )
-
-    elif mode == "reversal":
-        # 趋势内回调低吸: 中期趋势向上, 当日缩量阴线回调, 博次日反抽
-        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
-        df = df[df["pct"].between(sel_cfg["rev_pct_min"], sel_cfg["rev_pct_max"])]
-        df = df[df["close"] < df["open"]]                   # 阴线
-        df = df[df["close"] > df["low_limit"]]              # 收盘未跌停
-        df = df[df["low"] < df["high"]]                     # 非一字
-        df = df[df["vol_ratio"] <= sel_cfg["rev_vol_ratio_max"]]  # 缩量回调
-        stats["price_action"] = int(len(df))
-
-        trend = (
-            (df["close_adj"] > df["ma20"])
-            & (df["mom20"] > 0) & (df["mom20"] <= sel_cfg["mom20_max"])
-            & (df["bias20"] <= sel_cfg["bias20_max"])
-        )
-        if sel_cfg.get("ma20_slope_up", True):
-            trend &= df["ma20"] > df["ma20_prev"]
-        df = df[trend]
-        stats["trend_ok"] = int(len(df))
-        if df.empty:
-            return [], stats
-
-        w = sel_cfg["rev_weights"]
-        score = (
-            w["mom20"] * _zs(df["mom20"])                    # 前期趋势越强越好
-            + w["neg_bias20"] * _zs(-df["bias20"])           # 乖离越低越安全
-            + w["amount"] * _zs(np.log1p(df["amount"]))      # 流动性
-        )
-
-    elif mode == "limitup":
-        # 低位首板承接: 低位首板涨停(收盘封死, 非一字), 博次日溢价
-        df = df[df["turnover_rate"] <= sel_cfg["lu_turnover_max"]]
-        df = df[df["close"] >= df["high_limit"] - 1e-9]     # 收盘封死涨停
-        df = df[df["low"] < df["high"]]                     # 非一字板
-        stats["price_action"] = int(len(df))
-
-        df = df[df["mom20"] <= sel_cfg["lu_mom20_max"]]     # 低位(前期涨幅不大)
-        df = df[df["mom20"] > sel_cfg.get("lu_mom20_min", -20.0)]
-        stats["trend_ok"] = int(len(df))
-        if df.empty:
-            return [], stats
-
-        w = sel_cfg["lu_weights"]
-        score = (
-            w["neg_turnover"] * _zs(-df["turnover_rate"])    # 换手越低封板越实
-            + w["neg_amount"] * _zs(-np.log1p(df["amount"]))  # 体量适中偏小
-            + w["neg_mom20"] * _zs(-df["mom20"])             # 位置越低越安全
         )
 
     else:
@@ -201,7 +179,7 @@ def select_stocks(
                 f"换手{r['turnover_rate']:.1f}%",
                 f"20日动量{r['mom20']:.0f}%",
             ]
-        elif mode == "dip":
+        else:  # dip
             reasons = [
                 f"回调{r['pct']:.1f}%",
                 f"量比{r['vol_ratio']:.2f}(缩量)",
@@ -209,14 +187,6 @@ def select_stocks(
                 f"乖离{r['bias20']:.1f}%",
                 f"换手{r['turnover_rate']:.1f}%",
                 "次日竞价深低开承接",
-            ]
-        else:
-            reasons = [
-                f"涨停{r['pct']:.1f}%",
-                f"换手{r['turnover_rate']:.1f}%",
-                f"成交额{r['amount']/1e8:.1f}亿",
-                f"20日动量{r['mom20']:.0f}%",
-                "低位首板",
             ]
         picks.append({
             "code": code,

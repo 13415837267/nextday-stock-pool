@@ -4,6 +4,7 @@
 执行规则(与实盘完全一致):
   - T日收盘后按 selector 选出候选池(次日计划)
   - T+1 开盘竞价买入(等权分配当日总资金的 1/N)
+    * 可选: 仅买开盘缺口 <= buy_gap_below% 的深低开票(dip 承接过滤; 0=不过滤)
     * T+1 停牌/无成交/开盘一字涨停/开盘涨幅 >= skip_open_gain% -> 放弃该票
     * 可选: 开盘跌幅 <= -skip_open_loss%(低开过深, 反转失败概率高) -> 放弃该票
   - T+2 开盘竞价卖出
@@ -117,6 +118,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 continue
             if ex.get("skip_open_loss", 0) and gap * 100 <= -abs(ex["skip_open_loss"]):
                 trades.append(_trade(p, "skip", d, note=f"开盘低开{gap*100:.1f}%"))
+                continue
+            # dip 承接过滤: 仅买缺口 <= buy_gap_below% 的深低开票(0=不过滤)
+            floor = ex.get("buy_gap_below", 0)
+            if floor and gap * 100 > floor:
+                trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{floor}%"))
                 continue
             buy_eff = row["open_adj"] * (1 + slip)
             units = alloc / (buy_eff * (1 + comm))

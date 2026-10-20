@@ -121,6 +121,13 @@ def main():
                or gap >= ex["skip_open_gain"]:
                 skipped.append(p["code"])
                 continue
+            if ex.get("skip_open_loss", 0) and gap <= -abs(ex["skip_open_loss"]):
+                skipped.append(p["code"])
+                continue
+            floor = ex.get("buy_gap_below", 0)
+            if floor and gap > floor:
+                skipped.append(p["code"])
+                continue
             if rs is None or rs["is_paused"] == 1 or rs["vol"] <= 0:
                 continue  # 卖出日停牌: 留待后续结算
             gap_fee = (1 - ex["slippage"]) * (1 - ex["commission_rate"] - ex["stamp_tax"]) \
