@@ -3,7 +3,9 @@
 
 执行规则(与实盘完全一致):
   - T日收盘后按 selector 选出候选池(次日计划)
-  - T+1 开盘竞价买入(等权分配当日总资金的 1/N)
+  - T+1 开盘竞价买入: 先按竞价缺口等条件筛出实际可买名单(保持评分排序),
+    每笔买入占组合总资产 alloc_frac_pct%(与达标数量解耦, 防恐慌晨逆向选择),
+    按评分排序每日最多买入 max_buy_per_day 只(0=不限)
     * 可选: 仅买开盘缺口 <= buy_gap_below% 的深低开票(dip 承接过滤; 0=不过滤)
     * T+1 停牌/无成交/开盘一字涨停/开盘涨幅 >= skip_open_gain% -> 放弃该票
     * 可选: 开盘跌幅 <= -skip_open_loss%(低开过深, 反转失败概率高) -> 放弃该票
@@ -100,7 +102,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         nonlocal cash, fee_total
         if not picks:
             return
-        alloc = cash / len(picks)
+        # 第一遍: 先按竞价条件筛出实际可买名单(保持评分排序, 与实盘一致)
+        qualified = []
         for p in picks:
             sub = per_code.get(p["code"])
             row = sub.loc[d] if sub is not None and d in sub.index else None
@@ -124,6 +127,26 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if floor and gap * 100 > floor:
                 trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{floor}%"))
                 continue
+            qualified.append({**p, "_row": row, "_gap": gap})
+        if not qualified:
+            return
+        # 第二遍: 每笔固定占组合总资产 frac%(与达标数量解耦, 防恐慌晨逆向选择),
+        # 按评分排序最多买 max_buy_per_day 只
+        max_n = int(ex.get("max_buy_per_day", 0))
+        if max_n > 0:
+            qualified = qualified[:max_n]
+        frac = ex.get("alloc_frac_pct", 5.0) / 100.0
+        equity = cash + sum(
+            h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
+            for h in holding if d in per_code[h["code"]].index
+        )
+        for p in qualified:
+            if cash <= 0:
+                break
+            row = p.pop("_row")
+            alloc = min(frac * equity, cash)
+            if alloc < frac * equity * 0.3:  # 剩余资金不足单笔最低规模(30%)则放弃
+                break
             buy_eff = row["open_adj"] * (1 + slip)
             units = alloc / (buy_eff * (1 + comm))
             fee = alloc * comm

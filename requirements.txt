@@ -1,4 +1,5 @@
-zzshare>=0.4.12
+# zzshare 未发布到 PyPI, 从 GitHub 源码安装
+git+https://github.com/zzquant/zzshare.git
 pandas>=2.0
 numpy>=1.24
 PyYAML>=6.0
