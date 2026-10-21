@@ -160,6 +160,32 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "buy_px_raw": float(row["open"]),
             })
         # 未成交部分留在现金中, 复利滚动
+        # T+1 日内止损(可选): 买入当日尾盘浮亏超阈值 -> 按当日收盘价卖出
+        # (决策与成交均用收盘时点信息, 实盘对应14:50尾盘判断执行, 无前视)
+        stop = ex.get("intraday_stop_loss", 0)
+        if stop:
+            kept = []
+            for h in holding:
+                if h["buy_date"] != d:
+                    kept.append(h)
+                    continue
+                row2 = per_code[h["code"]].loc[d]
+                close_eff = float(row2["close_adj"]) * (1 - slip)
+                proceeds = h["units"] * close_eff * (1 - stamp) * (1 - comm)
+                rr = proceeds / (h["units"] * h["buy_eff"] * (1 + comm)) - 1
+                if rr * 100 <= -abs(stop):
+                    fee = h["units"] * close_eff * (stamp + comm)
+                    fee_total += fee
+                    cash += proceeds
+                    trades.append({
+                        "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
+                        "buy_date": d, "buy_px": h["buy_px_raw"],
+                        "sell_date": d, "sell_px": float(row2["close"]),
+                        "ret_pct": round(rr * 100, 2), "note": "T+1尾盘止损",
+                    })
+                else:
+                    kept.append(h)
+            holding[:] = kept
 
     def do_sell(d: str):
         nonlocal cash, fee_total
