@@ -1,5 +1,5 @@
 {
- "update_time": "2026-10-21 21:04:13",
+ "update_time": "2026-10-21 21:36:22",
  "signal_date": "2026-10-21",
  "plan": {
   "buy_date": "",
@@ -13,7 +13,10 @@
   "ok": false,
   "breadth": 0.2,
   "mkt_above_ma": false,
-  "note": "大盘风控触发: 次日建议空仓观望"
+  "block_days": 10,
+  "max_block_days": 5,
+  "reenter_frac": 0.25,
+  "note": "大盘风控连续第10日, 超过5日上限: 次日按25%小仓位参与候选池"
  },
  "stats": {
   "universe": 5576,
