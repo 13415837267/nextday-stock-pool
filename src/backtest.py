@@ -160,10 +160,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "buy_px_raw": float(row["open"]),
             })
         # 未成交部分留在现金中, 复利滚动
-        # T+1 日内止损(可选): 买入当日尾盘浮亏超阈值 -> 按当日收盘价卖出
-        # (决策与成交均用收盘时点信息, 实盘对应14:50尾盘判断执行, 无前视)
+        # T+1 尾盘止损/止盈(可选): 买入当日尾盘(14:50)浮亏超止损阈值或浮盈达止盈阈值
+        # -> 按当日收盘价卖出(决策与成交均用收盘时点信息, 无前视; 实盘14:50判断执行)
         stop = ex.get("intraday_stop_loss", 0)
-        if stop:
+        tp = ex.get("intraday_take_profit", 0)
+        if stop or tp:
             kept = []
             for h in holding:
                 if h["buy_date"] != d:
@@ -173,15 +174,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 close_eff = float(row2["close_adj"]) * (1 - slip)
                 proceeds = h["units"] * close_eff * (1 - stamp) * (1 - comm)
                 rr = proceeds / (h["units"] * h["buy_eff"] * (1 + comm)) - 1
-                if rr * 100 <= -abs(stop):
+                hit_stop = stop and rr * 100 <= -abs(stop)
+                hit_tp = tp and rr * 100 >= abs(tp)
+                if hit_stop or hit_tp:
                     fee = h["units"] * close_eff * (stamp + comm)
                     fee_total += fee
                     cash += proceeds
+                    note = "T+1尾盘止盈" if hit_tp else "T+1尾盘止损"
                     trades.append({
                         "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
                         "buy_date": d, "buy_px": h["buy_px_raw"],
                         "sell_date": d, "sell_px": float(row2["close"]),
-                        "ret_pct": round(rr * 100, 2), "note": "T+1尾盘止损",
+                        "ret_pct": round(rr * 100, 2), "note": note,
                     })
                 else:
                     kept.append(h)
