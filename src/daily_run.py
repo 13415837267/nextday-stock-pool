@@ -30,6 +30,22 @@ def _fmt(d: str) -> str:
     return f"{d[:4]}-{d[4:6]}-{d[6:]}"
 
 
+def _position_note(ex: dict) -> str:
+    """按执行配置生成仓位说明(与回测口径一致)。"""
+    frac = float(ex.get("alloc_frac_pct", 5.0))
+    maxn = int(ex.get("max_buy_per_day", 0))
+    gap = float(ex.get("buy_gap_below", 0) or 0)
+    if maxn == 1:
+        pos = f"若开仓: 买入评分第1名 1 只, 约 {frac:g}% 总资产仓位"
+    elif maxn > 1:
+        pos = f"若开仓: 按评分买入最多 {maxn} 只, 每笔约 {frac:g}% 总资产"
+    else:
+        pos = f"若开仓: 达标票每笔约 {frac:g}% 总资产"
+    if gap:
+        pos += f"; 仅买开盘缺口 <= {gap:g}% 的深低开票"
+    return pos
+
+
 def main():
     cfg = load_config()
     client = ZZClient(cfg)
@@ -111,7 +127,10 @@ def main():
         if not sell_d or sell_d > signal_date:
             continue  # 卖出日数据尚未产生
         rets, skipped = [], []
+        maxn = int(ex.get("max_buy_per_day", 0))
         for p in rec.get("picks", []):
+            if maxn > 0 and len(rets) >= maxn:
+                break  # 与回测口径一致: 竞价过滤后仅按评分买入前 maxn 只
             rb = row_of(buy_d, p["code"]) if buy_d else None
             rs = row_of(sell_d, p["code"])
             rp = row_of(pdate, p["code"])
@@ -164,7 +183,7 @@ def main():
             "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
             "sell_date": _fmt(sell_d) if sell_d else "",
             "sell_point": "次日开盘集合竞价卖出",
-            "position": f"若开仓: 等权分 {len(verified)} 只, 每只约 {round(100/len(verified)) if verified else 0}% 仓位",
+            "position": _position_note(ex),
         },
         "strategy": "次日开盘买入-再次日开盘卖出({})".format(
             "趋势内缩量回调+次日深低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)"

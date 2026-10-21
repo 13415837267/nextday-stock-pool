@@ -9,7 +9,8 @@ data:
   token_env: ZZSHARE_TOKEN
   min_interval_sec: 0.45     # 两次请求最小间隔(秒)
   max_retries: 5             # 请求失败重试次数
-  cache_dir: data/cache      # 本地缓存目录(不入库)
+  panel_dir: data/panel      # 行情持久层(每交易日一个csv.gz, 随仓库版本化, 增量更新)
+  cache_dir: data/cache      # 运行时临时缓存(不入库; 旧pkl命中时自动迁移至panel_dir)
 
 universe:
   boards:                    # 允许参与的板块
@@ -63,8 +64,8 @@ execution:                   # 实盘执行口径(回测与实盘一致)
   skip_open_loss: 9.0        # T+1开盘跌幅<=-9%(低开过深, 反转失败概率高)放弃买入(%); 0=不过滤
   skip_open_gain: 9.0        # T+1开盘涨幅>=9%(近一字)放弃买入(%)
   sell_limit_down_fallback: true   # T+2开盘跌停 -> 保守按当日收盘卖出
-  alloc_frac_pct: 5.0        # 每笔买入占组合总资产比例(%): 与达标数量解耦, 防恐慌晨逆向选择
-  max_buy_per_day: 25        # 每日最多买入只数(按评分排序取前N): 分散单票风险
+  alloc_frac_pct: 10.0       # 每笔买入占组合总资产比例(%): 与达标数量解耦, 防恐慌晨逆向选择
+  max_buy_per_day: 10        # 每日最多买入只数(按评分排序取前N; 1=仅买评分top1, 但回测为负期望, 见CHANGELOG)
   commission_rate: 0.00025   # 佣金万2.5(双边)
   stamp_tax: 0.0005          # 印花税(卖出)
   slippage: 0.001            # 滑点(双边各千1)

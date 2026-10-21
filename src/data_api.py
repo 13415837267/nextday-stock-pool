@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import load_config
+from .config import ROOT, load_config
 
 # zzshare fields='all' 返回列 -> 统一列名
 _RENAME = {
@@ -38,7 +38,13 @@ _STOCK_PAGE = 1000       # 单股单次上限
 
 
 class ZZClient:
-    """zzshare DataApi 薄封装: 节流 + 重试 + 本地缓存。"""
+    """zzshare DataApi 薄封装: 节流 + 重试 + 仓库级持久缓存。
+
+    持久缓存设计(data/panel/):
+      - 每个交易日一个 csv.gz 文件(全市场快照), 随仓库版本化保存
+      - 首次全量下载后, 后续运行仅需增量抓取缺失交易日
+      - 兼容旧 pkl 缓存: 命中时自动转存为 csv.gz(本地迁移零成本)
+    """
 
     def __init__(self, cfg: dict | None = None):
         self.cfg = cfg or load_config()["data"]
@@ -50,6 +56,8 @@ class ZZClient:
         self._max_retries = int(self.cfg.get("max_retries", 5))
         self.cache_dir = Path(self.cfg.get("cache_dir", "data/cache"))
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.panel_dir = ROOT / self.cfg.get("panel_dir", "data/panel")
+        self.panel_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
     def _throttle(self):
@@ -104,11 +112,49 @@ class ZZClient:
             cal = int(cal * 1.5)
         return out[-need:] if len(out) > need else out
 
+    # ------------------------------------------------------------------
+    _PANEL_DTYPES = {"trade_date": str, "is_paused": "int8", "is_st": "int8"}
+    # 数值列合理精度(消除 float 长尾, 显著提升 parquet 压缩率):
+    # 价格/涨跌幅/换手 4 位小数足够; 复权因子 8 位有效; 成交额/量取整到分/股
+    _ROUND = {
+        "open": 4, "high": 4, "low": 4, "close": 4, "pre_close": 4,
+        "pct": 4, "turnover_rate": 4, "factor": 8, "amount": 2, "vol": 2,
+    }
+
+    def _load_panel(self, date: str) -> pd.DataFrame | None:
+        """读取持久缓存(data/panel/{date}.csv.gz); 不存在返回 None。"""
+        path = self.panel_dir / f"{date}.csv.gz"
+        if not path.exists():
+            return None
+        return pd.read_csv(path, compression="gzip", dtype=self._PANEL_DTYPES)
+
+    def _save_panel(self, date: str, df: pd.DataFrame):
+        """写入持久缓存(每交易日一个 csv.gz, 随仓库版本化)。"""
+        df = df.copy()
+        for c, nd in self._ROUND.items():  # 统一精度, 提升压缩率
+            if c in df.columns:
+                df[c] = df[c].round(nd)
+        self.panel_dir.mkdir(parents=True, exist_ok=True)
+        self.panel_dir.joinpath(f"{date}.csv.gz").unlink(missing_ok=True)
+        df.to_csv(self.panel_dir / f"{date}.csv.gz",
+                  index=False, compression="gzip")
+
     def market_day(self, date: str, use_cache: bool = True) -> pd.DataFrame:
-        """全市场某交易日快照(fields=all, 自动分页, 本地缓存)。date: YYYYMMDD"""
-        cache = self.cache_dir / f"market_{date}.pkl"
-        if use_cache and cache.exists():
-            return pd.read_pickle(cache)
+        """全市场某交易日快照(fields=all, 自动分页, 持久缓存)。
+
+        缓存优先级: data/panel/{date}.csv.gz(仓库持久层, 随 git 版本化)
+                  -> data/cache/market_{date}.pkl(旧缓存, 命中自动迁移)
+                  -> 接口请求
+        """
+        if use_cache:
+            cached = self._load_panel(date)
+            if cached is not None:
+                return cached
+            legacy = self.cache_dir / f"market_{date}.pkl"
+            if legacy.exists():
+                df = pd.read_pickle(legacy)
+                self._save_panel(date, df)  # 旧缓存迁移为 csv.gz
+                return df
         frames, offset = [], 0
         while True:
             part = self._call(
@@ -124,8 +170,8 @@ class ZZClient:
                 break
         df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
         df = df.drop_duplicates(subset=["ts_code"]).reset_index(drop=True)
-        if use_cache:
-            df.to_pickle(cache)
+        if use_cache and len(df):
+            self._save_panel(date, df)  # 空数据(未来日期/非交易日)不落盘
         return df
 
     def stock_history(self, ts_code: str, start: str, end: str) -> pd.DataFrame:

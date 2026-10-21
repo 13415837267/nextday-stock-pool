@@ -38,14 +38,16 @@ from .selector import build_indicators, regime_series, select_stocks, split_by_d
 
 # ----------------------------------------------------------------------
 def fetch_panel(client: ZZClient, dates: list[str], log_every: int = 50) -> pd.DataFrame:
-    """按交易日抓取全市场日线并合并为长表(带缓存)。"""
+    """按交易日抓取全市场日线并合并为长表(带缓存)。空数据日(未来日期)自动跳过。"""
     frames = []
     t0 = time.time()
     for i, d in enumerate(dates, 1):
-        frames.append(client.market_day(d))
+        df = client.market_day(d)
+        if len(df):
+            frames.append(df)
         if i % log_every == 0:
             print(f"  已抓取 {i}/{len(dates)} 个交易日, 累计 {time.time()-t0:.0f}s", flush=True)
-    return pd.concat(frames, ignore_index=True)
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
 def prepare_context(cfg: dict, days: int | None = None) -> dict:
@@ -60,12 +62,13 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
     if len(all_days) < n_days + warmup:
         raise RuntimeError(f"交易日不足: 需要{n_days + warmup}日, 仅获取{len(all_days)}日")
     panel_dates = all_days[-(n_days + warmup):]
-    main_dates = panel_dates[warmup:]
     panel = fetch_panel(client, panel_dates)
     print(f"[2/4] 计算指标(共{len(panel):,}行)...")
     panel = build_indicators(panel)
     by_date = split_by_date(panel)
     reg = regime_series(panel, cfg)
+    # 主窗口仅保留实际有行情的日期(剔除日历中的未来日/无数据日)
+    main_dates = [d for d in panel_dates[warmup:] if d in by_date]
 
     per_code: dict[str, pd.DataFrame] = {}
     for code, sub in panel.groupby("ts_code", sort=False):
