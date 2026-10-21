@@ -215,25 +215,35 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 卖出时点(事前既定规则, 两种均合规): true=T+2开盘竞价卖(默认);
             # false=T+2收盘卖(持有整个T+2交易日, 按收盘价成交)
             sell_px_adj = open_adj if ex.get("sell_at_open", True) else close_adj
+            sold_at_close = sell_px_adj is close_adj
             if ex.get("sell_at_open", True) and ex.get("sell_limit_down_fallback", True) \
                     and float(row["open"]) <= float(row["low_limit"]) + 1e-9:
                 sell_px_adj = close_adj
+                sold_at_close = True
                 note = (note + " 开盘跌停按收盘").strip()
+            # 条件延迟卖出(可选): T+2开盘相对买入成交价涨幅超阈值(强势高开)时,
+            # 延迟至当日收盘卖出让利润奔跑; 卖出所得收盘后回笼, 次日开盘方可投入
+            if (not sold_at_close) and ex.get("hold_if_open_gain", 0) > 0 \
+                    and open_adj / h["buy_eff"] - 1 > ex.get("hold_if_open_gain") / 100:
+                sell_px_adj = close_adj
+                sold_at_close = True
+                note = (note + " 高开强延卖").strip()
             sell_eff = sell_px_adj * (1 - slip)
             proceeds = h["units"] * sell_eff * (1 - stamp) * (1 - comm)
             fee = h["units"] * sell_eff * (stamp + comm)
             fee_total += fee
-            # T+2开盘卖: 资金当日开盘即回笼可再投入; T+2收盘卖: 资金收盘后回笼,
-            # 次一交易日开盘才可用于买入(防止虚假资金复用)
-            if ex.get("sell_at_open", True):
+            # T+2开盘卖: 资金当日开盘即回笼可再投入; 收盘卖(整日/跌停回退/高开延卖):
+            # 资金收盘后回笼, 次一交易日开盘才可用于买入(防止虚假资金复用)
+            if not sold_at_close:
                 cash += proceeds
             else:
                 pending_cash += proceeds
-            r = proceeds / (h["units"] * h["buy_eff"] * (1 + comm)) - 1
+            denom = h["units"] * h["buy_eff"] * (1 + comm)
+            r = proceeds / denom - 1 if denom and denom > 0 else 0.0
             trades.append({
                 "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
                 "buy_date": h["buy_date"], "buy_px": h["buy_px_raw"],
-                "sell_date": sell_d, "sell_px": float(row["open" if ex.get("sell_at_open", True) else "close"]),
+                "sell_date": sell_d, "sell_px": float(row["close" if sold_at_close else "open"]),
                 "ret_pct": round(r * 100, 2), "note": note,
             })
             if r <= 0:
