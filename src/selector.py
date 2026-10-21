@@ -58,8 +58,8 @@ def split_by_date(panel: pd.DataFrame) -> dict[str, pd.DataFrame]:
 
 
 # ----------------------------------------------------------------------
-def regime_series(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    """大盘风控指标: 市场宽度(站上MA20占比) + 全市场等权指数(相对其MA20)。"""
+def regime_base(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """大盘风控基础序列(与风控参数无关, 可复用): 市场宽度 + 全市场等权指数。"""
     uni = panel[(panel["is_paused"] == 0) & (panel["is_st"] == 0) & (panel["bars"] >= 21)]
     uni = uni[uni["ts_code"].map(lambda c: board_of(c) in cfg["universe"]["boards"])]
     reg = uni.groupby("trade_date").agg(
@@ -67,6 +67,12 @@ def regime_series(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     )
     reg = reg.sort_index()
     reg["mkt_idx"] = (1 + reg["mkt_pct"] / 100).cumprod()
+    return reg
+
+
+def apply_regime(reg_base: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """按风控参数在基础序列上生成 trade_ok(均仅用截至当日数据, 无未来函数)。"""
+    reg = reg_base.copy()
     reg["mkt_ma"] = reg["mkt_idx"].rolling(cfg["regime"].get("market_ma", 20)).mean()
     ok = True
     if cfg["regime"].get("enabled", True):
@@ -79,6 +85,11 @@ def regime_series(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
             ok = breadth_ok & trend_ok
     reg["trade_ok"] = ok
     return reg
+
+
+def regime_series(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """大盘风控指标: 市场宽度(站上MA20占比) + 全市场等权指数(相对其MA)。"""
+    return apply_regime(regime_base(panel, cfg), cfg)
 
 
 # ----------------------------------------------------------------------

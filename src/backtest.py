@@ -37,7 +37,7 @@ import pandas as pd
 
 from .config import ROOT, load_config
 from .data_api import ZZClient
-from .selector import build_indicators, regime_series, select_stocks, split_by_date
+from .selector import apply_regime, build_indicators, regime_base, regime_series, select_stocks, split_by_date
 
 
 # ----------------------------------------------------------------------
@@ -70,7 +70,8 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
     print(f"[2/4] 计算指标(共{len(panel):,}行)...")
     panel = build_indicators(panel)
     by_date = split_by_date(panel)
-    reg = regime_series(panel, cfg)
+    reg_base = regime_base(panel, cfg)
+    reg = apply_regime(reg_base, cfg)
     # 主窗口仅保留实际有行情的日期(剔除日历中的未来日/无数据日)
     main_dates = [d for d in panel_dates[warmup:] if d in by_date]
 
@@ -84,7 +85,7 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
         names = dict(zip(sb["ts_code"], sb["name"]))
     except Exception:
         pass
-    return {"main_dates": main_dates, "by_date": by_date, "reg": reg,
+    return {"main_dates": main_dates, "by_date": by_date, "reg": reg, "reg_base": reg_base,
             "per_code": per_code, "names": names}
 
 
@@ -92,7 +93,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     if ctx is None:
         ctx = prepare_context(cfg, days)
     main_dates, by_date = ctx["main_dates"], ctx["by_date"]
-    reg, per_code, names = ctx["reg"], ctx["per_code"], ctx["names"]
+    # 风控参数按当前cfg实时重建(market_ma/breadth_min可扫描; 基础序列复用, 无需重算指标)
+    reg = apply_regime(ctx["reg_base"], cfg) if "reg_base" in ctx else ctx["reg"]
+    per_code, names = ctx["per_code"], ctx["names"]
     bt_cfg = cfg["backtest"]
 
     ex = cfg["execution"]

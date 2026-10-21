@@ -42,6 +42,12 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}   # 可选, 提升访问频率
         run: python -m src.daily_run
 
+      - name: 每日回测刷新网页绩效(复用当日增量数据)
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
+        run: python -m src.backtest
+
       - name: 提交更新记录(中文留痕)
         run: |
           git config user.name "github-actions[bot]"
