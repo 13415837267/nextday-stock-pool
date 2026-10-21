@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run_time": "2026-10-22 02:06:05",
+  "run_time": "2026-10-22 02:39:12",
   "start": "20240924",
   "end": "20261021",
   "days": 500,
@@ -4030,7 +4030,7 @@
   {
    "signal_date": "20261015",
    "code": "001228.SZ",
-   "name": "001228.SZ",
+   "name": "永泰运",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4041,7 +4041,7 @@
   {
    "signal_date": "20261015",
    "code": "002669.SZ",
-   "name": "002669.SZ",
+   "name": "康达新材",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4052,7 +4052,7 @@
   {
    "signal_date": "20261015",
    "code": "603236.SH",
-   "name": "603236.SH",
+   "name": "移远通信",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4063,7 +4063,7 @@
   {
    "signal_date": "20261015",
    "code": "300676.SZ",
-   "name": "300676.SZ",
+   "name": "华大基因",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4074,7 +4074,7 @@
   {
    "signal_date": "20261015",
    "code": "603978.SH",
-   "name": "603978.SH",
+   "name": "深圳新星",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4085,7 +4085,7 @@
   {
    "signal_date": "20261015",
    "code": "001317.SZ",
-   "name": "001317.SZ",
+   "name": "三羊马",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4096,7 +4096,7 @@
   {
    "signal_date": "20261015",
    "code": "002212.SZ",
-   "name": "002212.SZ",
+   "name": "天融信",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4107,7 +4107,7 @@
   {
    "signal_date": "20261015",
    "code": "603073.SH",
-   "name": "603073.SH",
+   "name": "彩蝶实业",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4118,7 +4118,7 @@
   {
    "signal_date": "20261015",
    "code": "000678.SZ",
-   "name": "000678.SZ",
+   "name": "襄阳轴承",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4129,7 +4129,7 @@
   {
    "signal_date": "20261015",
    "code": "603519.SH",
-   "name": "603519.SH",
+   "name": "立霸股份",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4140,7 +4140,7 @@
   {
    "signal_date": "20261015",
    "code": "300746.SZ",
-   "name": "300746.SZ",
+   "name": "汉嘉数智",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4151,7 +4151,7 @@
   {
    "signal_date": "20261015",
    "code": "301081.SZ",
-   "name": "301081.SZ",
+   "name": "严牌股份",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4162,7 +4162,7 @@
   {
    "signal_date": "20261015",
    "code": "002238.SZ",
-   "name": "002238.SZ",
+   "name": "天威视讯",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4173,7 +4173,7 @@
   {
    "signal_date": "20261015",
    "code": "603727.SH",
-   "name": "603727.SH",
+   "name": "博迈科",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4184,7 +4184,7 @@
   {
    "signal_date": "20261015",
    "code": "000635.SZ",
-   "name": "000635.SZ",
+   "name": "英力特",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4195,7 +4195,7 @@
   {
    "signal_date": "20261015",
    "code": "603067.SH",
-   "name": "603067.SH",
+   "name": "振华股份",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4206,7 +4206,7 @@
   {
    "signal_date": "20261015",
    "code": "002878.SZ",
-   "name": "002878.SZ",
+   "name": "元隆雅图",
    "buy_date": "20261016",
    "buy_px": null,
    "sell_date": null,
@@ -4217,7 +4217,7 @@
   {
    "signal_date": "20261016",
    "code": "301080.SZ",
-   "name": "301080.SZ",
+   "name": "百普赛斯",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4228,7 +4228,7 @@
   {
    "signal_date": "20261016",
    "code": "300243.SZ",
-   "name": "300243.SZ",
+   "name": "瑞丰高材",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4239,7 +4239,7 @@
   {
    "signal_date": "20261016",
    "code": "000504.SZ",
-   "name": "000504.SZ",
+   "name": "南华生物",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4250,7 +4250,7 @@
   {
    "signal_date": "20261016",
    "code": "300691.SZ",
-   "name": "300691.SZ",
+   "name": "联合光电",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4261,7 +4261,7 @@
   {
    "signal_date": "20261016",
    "code": "002577.SZ",
-   "name": "002577.SZ",
+   "name": "雷柏科技",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4272,7 +4272,7 @@
   {
    "signal_date": "20261016",
    "code": "605566.SH",
-   "name": "605566.SH",
+   "name": "福莱蒽特",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4283,7 +4283,7 @@
   {
    "signal_date": "20261016",
    "code": "001317.SZ",
-   "name": "001317.SZ",
+   "name": "三羊马",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4294,7 +4294,7 @@
   {
    "signal_date": "20261016",
    "code": "300676.SZ",
-   "name": "300676.SZ",
+   "name": "华大基因",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4305,7 +4305,7 @@
   {
    "signal_date": "20261016",
    "code": "301678.SZ",
-   "name": "301678.SZ",
+   "name": "新恒汇",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4316,7 +4316,7 @@
   {
    "signal_date": "20261016",
    "code": "001266.SZ",
-   "name": "001266.SZ",
+   "name": "宏英智能",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4327,7 +4327,7 @@
   {
    "signal_date": "20261016",
    "code": "001211.SZ",
-   "name": "001211.SZ",
+   "name": "双枪科技",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4338,7 +4338,7 @@
   {
    "signal_date": "20261016",
    "code": "603882.SH",
-   "name": "603882.SH",
+   "name": "金域医学",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4349,7 +4349,7 @@
   {
    "signal_date": "20261016",
    "code": "300916.SZ",
-   "name": "300916.SZ",
+   "name": "朗特智能",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4360,7 +4360,7 @@
   {
    "signal_date": "20261016",
    "code": "002693.SZ",
-   "name": "002693.SZ",
+   "name": "双成药业",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4371,7 +4371,7 @@
   {
    "signal_date": "20261016",
    "code": "603127.SH",
-   "name": "603127.SH",
+   "name": "昭衍新药",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4382,7 +4382,7 @@
   {
    "signal_date": "20261016",
    "code": "603693.SH",
-   "name": "603693.SH",
+   "name": "江苏新能",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4393,7 +4393,7 @@
   {
    "signal_date": "20261016",
    "code": "300410.SZ",
-   "name": "300410.SZ",
+   "name": "正业科技",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4404,7 +4404,7 @@
   {
    "signal_date": "20261016",
    "code": "301551.SZ",
-   "name": "301551.SZ",
+   "name": "无线传媒",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4415,7 +4415,7 @@
   {
    "signal_date": "20261016",
    "code": "300987.SZ",
-   "name": "300987.SZ",
+   "name": "川网传媒",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4426,7 +4426,7 @@
   {
    "signal_date": "20261016",
    "code": "603188.SH",
-   "name": "603188.SH",
+   "name": "亚邦股份",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4437,7 +4437,7 @@
   {
    "signal_date": "20261016",
    "code": "300182.SZ",
-   "name": "300182.SZ",
+   "name": "捷成股份",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4448,7 +4448,7 @@
   {
    "signal_date": "20261016",
    "code": "000692.SZ",
-   "name": "000692.SZ",
+   "name": "惠天热电",
    "buy_date": "20261019",
    "buy_px": null,
    "sell_date": null,
@@ -4459,7 +4459,7 @@
   {
    "signal_date": "20261016",
    "code": "002585.SZ",
-   "name": "002585.SZ",
+   "name": "双星新材",
    "buy_date": "20261019",
    "buy_px": 9.75,
    "sell_date": "20261020",
@@ -4470,7 +4470,7 @@
   {
    "signal_date": "20261019",
    "code": "601579.SH",
-   "name": "601579.SH",
+   "name": "会稽山",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4481,7 +4481,7 @@
   {
    "signal_date": "20261019",
    "code": "603266.SH",
-   "name": "603266.SH",
+   "name": "天龙股份",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4492,7 +4492,7 @@
   {
    "signal_date": "20261019",
    "code": "000002.SZ",
-   "name": "000002.SZ",
+   "name": "万科Ａ",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4503,7 +4503,7 @@
   {
    "signal_date": "20261019",
    "code": "002813.SZ",
-   "name": "002813.SZ",
+   "name": "路畅科技",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4514,7 +4514,7 @@
   {
    "signal_date": "20261019",
    "code": "600640.SH",
-   "name": "600640.SH",
+   "name": "国脉文化",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4525,7 +4525,7 @@
   {
    "signal_date": "20261019",
    "code": "300675.SZ",
-   "name": "300675.SZ",
+   "name": "建科院",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4536,7 +4536,7 @@
   {
    "signal_date": "20261019",
    "code": "603968.SH",
-   "name": "603968.SH",
+   "name": "醋化股份",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4547,7 +4547,7 @@
   {
    "signal_date": "20261019",
    "code": "300333.SZ",
-   "name": "300333.SZ",
+   "name": "兆日科技",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4558,7 +4558,7 @@
   {
    "signal_date": "20261019",
    "code": "002679.SZ",
-   "name": "002679.SZ",
+   "name": "福建金森",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4569,7 +4569,7 @@
   {
    "signal_date": "20261019",
    "code": "301025.SZ",
-   "name": "301025.SZ",
+   "name": "读客文化",
    "buy_date": "20261020",
    "buy_px": null,
    "sell_date": null,
@@ -4580,7 +4580,7 @@
   {
    "signal_date": "20261020",
    "code": "603001.SH",
-   "name": "603001.SH",
+   "name": "奥康国际",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4591,7 +4591,7 @@
   {
    "signal_date": "20261020",
    "code": "603172.SH",
-   "name": "603172.SH",
+   "name": "万丰股份",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4602,7 +4602,7 @@
   {
    "signal_date": "20261020",
    "code": "002791.SZ",
-   "name": "002791.SZ",
+   "name": "坚朗五金",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4613,7 +4613,7 @@
   {
    "signal_date": "20261020",
    "code": "002172.SZ",
-   "name": "002172.SZ",
+   "name": "澳洋健康",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4624,7 +4624,7 @@
   {
    "signal_date": "20261020",
    "code": "002748.SZ",
-   "name": "002748.SZ",
+   "name": "世龙实业",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4635,7 +4635,7 @@
   {
    "signal_date": "20261020",
    "code": "003006.SZ",
-   "name": "003006.SZ",
+   "name": "百亚股份",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4646,7 +4646,7 @@
   {
    "signal_date": "20261020",
    "code": "603329.SH",
-   "name": "603329.SH",
+   "name": "上海雅仕",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4657,7 +4657,7 @@
   {
    "signal_date": "20261020",
    "code": "600199.SH",
-   "name": "600199.SH",
+   "name": "金种子酒",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4668,7 +4668,7 @@
   {
    "signal_date": "20261020",
    "code": "600312.SH",
-   "name": "600312.SH",
+   "name": "平高电气",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
@@ -4679,7 +4679,7 @@
   {
    "signal_date": "20261020",
    "code": "002103.SZ",
-   "name": "002103.SZ",
+   "name": "广博股份",
    "buy_date": "20261021",
    "buy_px": null,
    "sell_date": null,
