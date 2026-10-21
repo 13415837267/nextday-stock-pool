@@ -4,6 +4,8 @@ name: 每日选股更新
 on:
   schedule:
     - cron: "30 7 * * 1-5"   # 北京时间周一至周五 15:30 (收盘后半小时)
+  push:
+    branches: [main]          # main 一有更新(策略优化/数据提交)即重新部署网页, 保证站点与 main 始终一致
   workflow_dispatch: {}      # 支持手动触发
 
 permissions:
