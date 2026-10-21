@@ -43,11 +43,7 @@ def _position_note(ex: dict) -> str:
         pos = f"若开仓: 达标票每笔约 {frac:g}% 总资产"
     if gap:
         pos += f"; 仅买开盘缺口 <= {gap:g}% 的深低开票"
-    stop = float(ex.get("intraday_stop_loss", 0) or 0)
-    if stop:
-        pos += f"; 买入当日尾盘(14:50)浮亏超 {stop:g}% 即尾盘止损"
-    if ex.get("risk_exit_eod", False):
-        pos += "; 当日收盘大盘风控触发时提前按尾盘价离场"
+    pos += "; T+1买入, T+2开盘卖出(遵守A股T+1制度, 无当日卖出)"
     return pos
 
 
