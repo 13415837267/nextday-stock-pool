@@ -46,6 +46,8 @@ def _position_note(ex: dict) -> str:
     stop = float(ex.get("intraday_stop_loss", 0) or 0)
     if stop:
         pos += f"; 买入当日尾盘(14:50)浮亏超 {stop:g}% 即尾盘止损"
+    if ex.get("risk_exit_eod", False):
+        pos += "; 当日收盘大盘风控触发时提前按尾盘价离场"
     return pos
 
 

@@ -259,6 +259,28 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         if reg_row is None or not bool(reg_row["trade_ok"]):
             empty_days += 1
             pending_buy = (d, [])
+            # 大盘风控触发 -> 当日买入的票提前按尾盘收盘价离场(可选, 无前视):
+            # 风控触发日常伴随次一交易日恐慌低开, 提前离场规避隔夜跳空
+            if ex.get("risk_exit_eod", False):
+                kept = []
+                for h in holding:
+                    if h["buy_date"] != d:
+                        kept.append(h)
+                        continue
+                    row2 = per_code[h["code"]].loc[d]
+                    close_eff = float(row2["close_adj"]) * (1 - slip)
+                    proceeds = h["units"] * close_eff * (1 - stamp) * (1 - comm)
+                    fee = h["units"] * close_eff * (stamp + comm)
+                    fee_total += fee
+                    cash += proceeds
+                    rr = proceeds / (h["units"] * h["buy_eff"] * (1 + comm)) - 1
+                    trades.append({
+                        "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
+                        "buy_date": d, "buy_px": h["buy_px_raw"],
+                        "sell_date": d, "sell_px": float(row2["close"]),
+                        "ret_pct": round(rr * 100, 2), "note": "风控尾盘离场",
+                    })
+                holding[:] = kept
         else:
             picks, _ = select_stocks(d, by_date[d], cfg, names)
             pending_buy = (d, [{**p, "signal_date": d} for p in picks])

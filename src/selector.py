@@ -63,9 +63,13 @@ def regime_series(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     reg["mkt_ma"] = reg["mkt_idx"].rolling(cfg["regime"].get("market_ma", 20)).mean()
     ok = True
     if cfg["regime"].get("enabled", True):
-        ok = (reg["breadth"] >= cfg["regime"].get("breadth_min", 0.35)) & (
-            reg["mkt_idx"] >= reg["mkt_ma"]
-        )
+        breadth_ok = reg["breadth"] >= cfg["regime"].get("breadth_min", 0.35)
+        trend_ok = reg["mkt_idx"] >= reg["mkt_ma"]
+        # mode: and=双条件均通过才交易(默认, 保守); or=任一通过即交易(宽松, 增加交易天数)
+        if cfg["regime"].get("mode", "and") == "or":
+            ok = breadth_ok | trend_ok
+        else:
+            ok = breadth_ok & trend_ok
     reg["trade_ok"] = ok
     return reg
 
