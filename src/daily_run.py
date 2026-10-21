@@ -82,13 +82,15 @@ def main():
     sel_cfg = cfg["selection"]
     cfg_sel = json.loads(json.dumps(cfg))
     cfg_sel["universe"]["listed_min_bars"] = 0
+    # 发布池数量: 人工审核用, 默认取评分前 display_top_n 只(与回测的 top_n 资金部署口径解耦)
+    disp_n = int(sel_cfg.get("display_top_n") or sel_cfg["top_n"])
     ranked, stats = select_stocks(signal_date, by_date[signal_date], cfg_sel,
                                   names, top_n=sel_cfg["top_n"] + 8)
     # ---- 4. 次新股/上市天数核查 ----
     start_far = (pd.Timestamp(signal_date) - pd.Timedelta(days=540)).strftime("%Y%m%d")
     verified = []
     for p in ranked:
-        if len(verified) >= sel_cfg["top_n"]:
+        if len(verified) >= disp_n:
             break
         hist = client.stock_history(p["code"], start_far, signal_date)
         bars = len(hist)
