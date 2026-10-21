@@ -76,7 +76,7 @@
       <li>T日收盘后：系统运行选股，发布「次日计划候选池」（评分前20只）</li>
       <li>T+1日开盘集合竞价：单吊——仅买评分第1名1只、全仓进出；且仅当其开盘缺口 ≤ -2.40% 才入场，高开/一字放弃并顺延下一只</li>
       <li>T+2日开盘集合竞价：全部卖出，资金复利滚动</li>
-      <li>风控触发时（市场宽度&lt;25% 或市场等权指数低于MA30）：次日空仓</li>
+      <li>风控触发时（市场宽度&lt;25% 或市场等权指数低于MA30）：次日空仓——整月空仓月的市场等权平均 -3.19%（2026-06/07 空仓避开约 -16% 累计跌幅），这是策略回撤仅 -14.26% 的关键来源，0 收益月是主动避险而非失效</li>
     </ul>
     <b>选股条件（T日收盘：趋势内缩量回调）</b>
     <ul class="rules">
@@ -126,6 +126,7 @@ async function loadLatest() {
   const badges = [];
   const ok = d.regime && d.regime.ok;
   badges.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日空仓"}</span>`);
+  if (!ok) badges.push(`<span class="badge">空仓避险: 弱市承接胜率显著下降, 回测整月空仓月市场等权平均 -3.2%, 空仓优于参与</span>`);
   if (d.regime && d.regime.breadth != null)
     badges.push(`<span class="badge">市场宽度 ${d.regime.breadth}</span>`);
   badges.push(`<span class="badge">候选 ${d.picks.length} 只</span>`);

@@ -108,6 +108,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     empty_days = 0
     fee_total = 0.0
     pending_cash = 0.0   # T+2收盘卖模式: 当日收盘卖出回笼、次日开盘方可投入的资金
+    # 连亏熔断(可选): 连续亏损达 streak 笔后暂停买入 pause_days 个交易日(0=禁用)
+    _ps = (cfg.get("risk") or {}).get("loss_streak_pause") or {}
+    ps_streak, ps_days = int(_ps.get("streak", 0)), int(_ps.get("pause_days", 5))
+    loss_streak = 0
+    pause_until = -1
 
     def do_buy(picks: list[dict], d: str):
         nonlocal cash, fee_total
@@ -141,12 +146,16 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             qualified.append({**p, "_row": row, "_gap": gap})
         if not qualified:
             return
-        # 第二遍: 每笔固定占组合总资产 frac%(与达标数量解耦, 防恐慌晨逆向选择),
-        # 按评分排序最多买 max_buy_per_day 只
+        # 每笔固定占组合总资产 frac%(与达标数量解耦, 防恐慌晨逆向选择),
+        # 按评分排序最多买 max_buy_per_day 只; 风控触发日按 blocked_frac 降仓参与(0=空仓)
         max_n = int(ex.get("max_buy_per_day", 0))
         if max_n > 0:
             qualified = qualified[:max_n]
+        reg_row = reg.loc[d] if d in reg.index else None
+        day_ok = reg_row is None or bool(reg_row["trade_ok"])
         frac = ex.get("alloc_frac_pct", 5.0) / 100.0
+        if not day_ok:
+            frac *= ex.get("blocked_frac", 0.0)  # 大盘风控期参与系数: 0=空仓(默认), 0.5=半仓
         equity = cash + sum(
             h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
             for h in holding if d in per_code[h["code"]].index
@@ -172,7 +181,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         #     "买入当日止损/止盈"逻辑; 所有持仓最早于次一交易日开盘卖出。
 
     def do_sell(d: str):
-        nonlocal cash, fee_total, pending_cash
+        nonlocal cash, fee_total, pending_cash, loss_streak
         remaining = []
         for h in holding:
             sub = per_code.get(h["code"])
@@ -227,11 +236,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "sell_date": sell_d, "sell_px": float(row["open" if ex.get("sell_at_open", True) else "close"]),
                 "ret_pct": round(r * 100, 2), "note": note,
             })
+            if r <= 0:
+                loss_streak += 1
+            else:
+                loss_streak = 0
         holding[:] = remaining
 
     print("[3/4] 逐日模拟交易...")
     t0 = time.time()
-    for d in main_dates:
+    for idx, d in enumerate(main_dates):
         # 次日开盘: 前一交易日收盘卖出回笼的资金此时方可投入(T+2收盘卖模式)
         cash += pending_cash
         pending_cash = 0.0
@@ -247,7 +260,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         curve[d] = total
         # 收盘后: 决定明日计划
         reg_row = reg.loc[d] if d in reg.index else None
-        if reg_row is None or not bool(reg_row["trade_ok"]):
+        blocked = reg_row is not None and not bool(reg_row["trade_ok"]) and not ex.get("blocked_frac", 0.0)
+        # 连亏熔断: 连续亏损达阈值后, 从当日起再暂停 pause_days 个交易日(买入端)
+        paused = False
+        if ps_streak > 0 and loss_streak >= ps_streak:
+            if idx > pause_until:
+                pause_until = idx + ps_days
+            paused = idx <= pause_until
+        if blocked or paused:
             empty_days += 1
             pending_buy = (d, [])
             # 注: 大盘风控触发仅限制次一交易日不买入; 持仓(含当日买入票)
