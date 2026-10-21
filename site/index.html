@@ -57,7 +57,7 @@
   <h2>一、次日执行计划</h2>
   <div class="panel plan-grid" id="plan"><div class="loading">加载中...</div></div>
 
-  <h2>二、计划候选池</h2>
+  <h2>二、计划候选池 <span class="muted" style="font-size:12px;font-weight:normal">（审核用发布池 · 实际执行仅按评分第1名单吊买入1只，其余为顺延备选）</span></h2>
   <div id="pool"><div class="loading">加载中...</div></div>
 
   <h2>三、回测绩效</h2>
@@ -65,7 +65,7 @@
   <div class="panel" style="margin-top:12px" id="bt-chart"></div>
   <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2>四、历史战绩（发布池实盘口径结算）</h2>
+  <h2>四、历史战绩（单吊top1实盘口径结算） <span class="muted" style="font-size:12px;font-weight:normal">（每日仅按评分第1名执行1笔：可成交即记1笔，不可成交顺延下一只；"成交/跳过"= top1成交与否 / 发布池中被竞价条件过滤的备选数）</span></h2>
   <div class="cards" id="hist-cards"></div>
   <div style="margin-top:12px" id="hist-table"></div>
 
@@ -210,11 +210,14 @@ async function loadHistory() {
       <div class="card"><div class="k">已结算期数</div><div class="v">${s.n_done ?? "-"}</div></div>
       <div class="card"><div class="k">胜率(按期)</div><div class="v">${s.win_rate != null ? s.win_rate + "%" : "-"}</div></div>
       <div class="card"><div class="k">平均单期收益</div><div class="v ${pctCls(s.avg_ret)}">${s.avg_ret != null ? pctStr(s.avg_ret) : "-"}</div></div>`;
-    let html = `<table><tr><th>发布日</th><th>买入日</th><th>卖出日</th><th>候选</th><th>成交/跳过</th><th>当期收益</th><th>状态</th></tr>`;
+    let html = `<table><tr><th>发布日</th><th>买入日</th><th>卖出日</th><th>单吊标的(top1)</th><th>备选数</th><th>成交/跳过</th><th>当期收益</th><th>状态</th></tr>`;
     (d.records || []).forEach(r => {
       const re = r.realized;
+      const t1 = (r.picks || [])[0] || {};
+      const nAlt = Math.max((r.picks || []).length - 1, 0);
       html += `<tr><td>${fmtDate(r.publish_date)}</td><td>${fmtDate(r.buy_date)}</td><td>${fmtDate(r.sell_date)}</td>
-        <td>${(r.picks || []).map(p => esc(p.name || p.code)).join("、")}</td>
+        <td>${esc(t1.name || t1.code || "-")}</td>
+        <td class="muted">${nAlt}</td>
         <td class="muted">${re ? re.n_traded + "/" + re.n_skipped : "-"}</td>
         <td class="${re ? pctCls(re.avg_ret_pct) : ""}">${re ? pctStr(re.avg_ret_pct) : "-"}</td>
         <td class="muted">${esc(r.status || "")}${r.regime_ok === false ? "·空仓" : ""}</td></tr>`;

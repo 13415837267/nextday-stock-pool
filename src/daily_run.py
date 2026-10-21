@@ -194,6 +194,13 @@ def main():
     buy_d = cal[pos + 1] if pos + 1 < len(cal) else None
     sell_d = cal[pos + 2] if pos + 2 < len(cal) else None
 
+    # 仓位说明: 超限参与日需额外标注当日实际仓位系数与专属承接线
+    pos_note = _position_note(ex)
+    if over_limit:
+        eff_gap = float(ex.get("block_gap_below", ex.get("buy_gap_below", 0)) or 0)
+        pos_note = (f"超限参与日: 仓位系数 {reenter:.0%}, 执行承接线 {eff_gap:g}%; "
+                    + pos_note)
+
     latest = {
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
@@ -202,7 +209,7 @@ def main():
             "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
             "sell_date": _fmt(sell_d) if sell_d else "",
             "sell_point": "次日开盘集合竞价卖出",
-            "position": _position_note(ex),
+            "position": pos_note,
         },
         "strategy": "次日开盘买入-再次日开盘卖出({})".format(
             "趋势内缩量回调+次日深低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)"
