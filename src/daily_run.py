@@ -186,7 +186,8 @@ def main():
         "max_block_days": max_block,
         "reenter_frac": reenter if over_limit else None,
         "note": "宽度/市场指数达标, 可正常开仓" if (reg_row is not None and reg_row["trade_ok"])
-                else (f"大盘风控连续第{consec}日, 超过{max_block}日上限: 次日按{reenter:.0%}小仓位参与候选池"
+                else (f"大盘风控连续第{consec}日, 超过{max_block}日上限: 次日按{reenter:.0%}仓位参与候选池"
+                      f"(执行承接线{cfg['execution'].get('block_gap_below', cfg['execution'].get('buy_gap_below'))}%)"
                       if over_limit else
                       (f"大盘风控触发(连续第{consec}日): 次日建议空仓观望" if reg_row is not None else "")),
     }

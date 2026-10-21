@@ -132,6 +132,13 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         nonlocal cash, fee_total
         if not picks:
             return
+        # 当日风控状态与承接线: 超限小仓参与日可用专属承接线 block_gap_below
+        # (弱市环境参与时要求更深承接, 提高胜率; 缺省沿用常规承接线)
+        reg_row = reg.loc[d] if d in reg.index else None
+        day_ok = reg_row is None or bool(reg_row["trade_ok"])
+        floor = ex.get("buy_gap_below", 0)
+        if (not day_ok) and day_frac and day_frac.get(d, 0) > 0:
+            floor = ex.get("block_gap_below", floor)
         # 第一遍: 先按竞价条件筛出实际可买名单(保持评分排序, 与实盘一致)
         qualified = []
         for p in picks:
@@ -152,8 +159,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if ex.get("skip_open_loss", 0) and gap * 100 <= -abs(ex["skip_open_loss"]):
                 trades.append(_trade(p, "skip", d, note=f"开盘低开{gap*100:.1f}%"))
                 continue
-            # dip 承接过滤: 仅买缺口 <= buy_gap_below% 的深低开票(0=不过滤)
-            floor = ex.get("buy_gap_below", 0)
+            # dip 承接过滤: 仅买缺口 <= floor% 的深低开票(0=不过滤)
             if floor and gap * 100 > floor:
                 trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{floor}%"))
                 continue
@@ -165,8 +171,6 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         max_n = int(ex.get("max_buy_per_day", 0))
         if max_n > 0:
             qualified = qualified[:max_n]
-        reg_row = reg.loc[d] if d in reg.index else None
-        day_ok = reg_row is None or bool(reg_row["trade_ok"])
         frac = ex.get("alloc_frac_pct", 5.0) / 100.0
         if not day_ok:
             if day_frac:
