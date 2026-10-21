@@ -95,6 +95,20 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     main_dates, by_date = ctx["main_dates"], ctx["by_date"]
     # 风控参数按当前cfg实时重建(market_ma/breadth_min可扫描; 基础序列复用, 无需重算指标)
     reg = apply_regime(ctx["reg_base"], cfg) if "reg_base" in ctx else ctx["reg"]
+    # 最大连续空仓上限(可选): 连续风控天数超过 max_block_days 后, 按 block_reenter_frac
+    # 降仓恢复参与(短期风控仍全额避险, 仅在超长空仓期小仓参与); 0=禁用(默认)
+    _rm = cfg.get("regime") or {}
+    max_block, reenter_frac = int(_rm.get("max_block_days", 0) or 0), float(_rm.get("block_reenter_frac", 0.0) or 0.0)
+    day_frac: dict[str, float] = {}
+    if max_block > 0 and reenter_frac > 0 and len(reg):
+        consec = 0
+        for d_i in reg.index:
+            if bool(reg.loc[d_i, "trade_ok"]):
+                consec = 0
+                day_frac[d_i] = 1.0
+            else:
+                consec += 1
+                day_frac[d_i] = 0.0 if consec <= max_block else reenter_frac
     per_code, names = ctx["per_code"], ctx["names"]
     bt_cfg = cfg["backtest"]
 
@@ -155,7 +169,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         day_ok = reg_row is None or bool(reg_row["trade_ok"])
         frac = ex.get("alloc_frac_pct", 5.0) / 100.0
         if not day_ok:
-            frac *= ex.get("blocked_frac", 0.0)  # 大盘风控期参与系数: 0=空仓(默认), 0.5=半仓
+            if day_frac:
+                frac *= day_frac.get(d, 0.0)  # 连续空仓超限后的降仓参与系数
+            else:
+                frac *= ex.get("blocked_frac", 0.0)  # 大盘风控期参与系数: 0=空仓(默认), 0.5=半仓
         equity = cash + sum(
             h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
             for h in holding if d in per_code[h["code"]].index
@@ -270,7 +287,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         curve[d] = total
         # 收盘后: 决定明日计划
         reg_row = reg.loc[d] if d in reg.index else None
-        blocked = reg_row is not None and not bool(reg_row["trade_ok"]) and not ex.get("blocked_frac", 0.0)
+        if day_frac:
+            eff_today = day_frac.get(d, 1.0)
+        else:
+            eff_today = 0.0 if (reg_row is not None and not bool(reg_row["trade_ok"])) \
+                and not ex.get("blocked_frac", 0.0) else 1.0
+        blocked = reg_row is not None and not bool(reg_row["trade_ok"]) and eff_today <= 0
         # 连亏熔断: 连续亏损达阈值后, 从当日起再暂停 pause_days 个交易日(买入端)
         paused = False
         if ps_streak > 0 and loss_streak >= ps_streak:

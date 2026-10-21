@@ -168,12 +168,27 @@ def main():
 
     # ---- 6. 写出候选池与历史(空仓时也展示观察池, 并明确标注风控状态) ----
     reg_row = reg.loc[signal_date] if signal_date in reg.index else None
+    # 最大连续空仓上限: 统计截至信号日的连续风控天数, 超限后按小仓位参与
+    _rm = cfg["regime"]
+    max_block, reenter = int(_rm.get("max_block_days", 0) or 0), float(_rm.get("block_reenter_frac", 0) or 0)
+    consec = 0
+    if reg_row is not None and not bool(reg_row["trade_ok"]):
+        for d_i in reversed(list(reg.index[:reg.index.get_loc(signal_date) + 1])):
+            if bool(reg.loc[d_i, "trade_ok"]):
+                break
+            consec += 1
+    over_limit = max_block > 0 and reenter > 0 and consec > max_block
     regime_info = {
         "ok": bool(reg_row["trade_ok"]) if reg_row is not None else True,
         "breadth": round(float(reg_row["breadth"]), 3) if reg_row is not None else None,
         "mkt_above_ma": bool(reg_row["mkt_idx"] >= reg_row["mkt_ma"]) if reg_row is not None else None,
+        "block_days": consec,
+        "max_block_days": max_block,
+        "reenter_frac": reenter if over_limit else None,
         "note": "宽度/市场指数达标, 可正常开仓" if (reg_row is not None and reg_row["trade_ok"])
-                else "大盘风控触发: 次日建议空仓观望" if reg_row is not None else "",
+                else (f"大盘风控连续第{consec}日, 超过{max_block}日上限: 次日按{reenter:.0%}小仓位参与候选池"
+                      if over_limit else
+                      (f"大盘风控触发(连续第{consec}日): 次日建议空仓观望" if reg_row is not None else "")),
     }
     buy_d = cal[pos + 1] if pos + 1 < len(cal) else None
     sell_d = cal[pos + 2] if pos + 2 < len(cal) else None
@@ -225,8 +240,14 @@ def main():
 
     # ---- 7. CHANGELOG 追加运行记录 ----
     cl = ROOT / "CHANGELOG.md"
+    if regime_info["ok"]:
+        regime_tag = "风控通过"
+    elif regime_info.get("reenter_frac") is not None:
+        regime_tag = f"超限小仓参与({regime_info['reenter_frac']:.0%})"
+    else:
+        regime_tag = "触发空仓"
     line = (f"- {datetime.now().strftime('%Y-%m-%d %H:%M')} 自动运行: 信号日 {_fmt(signal_date)}, "
-            f"候选 {len(verified)} 只, 风控{'通过' if regime_info['ok'] else '触发空仓'}, "
+            f"候选 {len(verified)} 只, {regime_tag}, "
             f"耗时 {time.time()-t0:.0f}s\n")
     text = cl.read_text(encoding="utf-8") if cl.exists() else "# 更新日志\n\n## 自动运行记录\n"
     marker = "## 自动运行记录\n"
