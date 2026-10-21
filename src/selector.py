@@ -43,6 +43,13 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     panel["bias20"] = (panel["close_adj"] / panel["ma20"] - 1) * 100
     panel["bars"] = g.cumcount() + 1
     panel["above_ma20"] = panel["close_adj"] > panel["ma20"]
+    # T日微观结构因子(均仅用截至T日数据):
+    panel["prev_close_adj"] = g["close_adj"].transform(lambda s: s.shift(1))
+    panel["amp_pct"] = (panel["high"] - panel["low"]) / panel["prev_close_adj"] * 100   # 当日振幅%
+    hl_rng = (panel["high"] - panel["low"]).replace(0, np.nan)
+    panel["close_pos"] = ((panel["close"] - panel["low"]) / hl_rng).fillna(0.5)          # 收盘在当日区间位置(0=最低1=最高)
+    body_low = panel[["open", "close"]].min(axis=1)
+    panel["low_tail"] = (body_low - panel["low"]) / panel["prev_close_adj"] * 100        # 下影线长度%
     return panel
 
 
@@ -126,6 +133,17 @@ def select_stocks(
             & (df["mom20"] <= sel_cfg["dip_mom20_max"])     # 有前期趋势但非高位加速
             & (df["bias20"] <= sel_cfg["bias20_max"])       # 乖离不过热
         )
+        # 可选微观结构过滤(均通过 config.selection 配置, 未配置即不启用):
+        if sel_cfg.get("dip_bias20_min") is not None:       # 乖离下限: 负乖离过深=趋势已崩坏
+            trend &= df["bias20"] >= sel_cfg["dip_bias20_min"]
+        if sel_cfg.get("dip_mom3_min") is not None:         # 3日动量下限: 短期跌太狠=崩坏中继
+            trend &= df["mom3"] >= sel_cfg["dip_mom3_min"]
+        if sel_cfg.get("dip_amp_max") is not None:          # T日振幅上限: 振幅过大=分歧过巨
+            trend &= df["amp_pct"] <= sel_cfg["dip_amp_max"]
+        if sel_cfg.get("dip_close_pos_max") is not None:    # 收盘位置上限: 阴线收太高=尾盘仍在出货
+            trend &= df["close_pos"] <= sel_cfg["dip_close_pos_max"]
+        if sel_cfg.get("dip_low_tail_min") is not None:     # 下影线下限: 盘中已有恐慌承接
+            trend &= df["low_tail"] >= sel_cfg["dip_low_tail_min"]
         df = df[trend]
         stats["trend_ok"] = int(len(df))
         if df.empty:
