@@ -104,6 +104,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     holding: list[dict] = []                            # 未平仓持仓
     empty_days = 0
     fee_total = 0.0
+    pending_cash = 0.0   # T+2收盘卖模式: 当日收盘卖出回笼、次日开盘方可投入的资金
 
     def do_buy(picks: list[dict], d: str):
         nonlocal cash, fee_total
@@ -168,7 +169,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         #     "买入当日止损/止盈"逻辑; 所有持仓最早于次一交易日开盘卖出。
 
     def do_sell(d: str):
-        nonlocal cash, fee_total
+        nonlocal cash, fee_total, pending_cash
         remaining = []
         for h in holding:
             sub = per_code.get(h["code"])
@@ -199,20 +200,28 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                         remaining.append(h)
                         continue
             open_adj, close_adj = float(row["open_adj"]), float(row["close_adj"])
-            sell_px_adj = open_adj
-            if ex.get("sell_limit_down_fallback", True) and float(row["open"]) <= float(row["low_limit"]) + 1e-9:
+            # 卖出时点(事前既定规则, 两种均合规): true=T+2开盘竞价卖(默认);
+            # false=T+2收盘卖(持有整个T+2交易日, 按收盘价成交)
+            sell_px_adj = open_adj if ex.get("sell_at_open", True) else close_adj
+            if ex.get("sell_at_open", True) and ex.get("sell_limit_down_fallback", True) \
+                    and float(row["open"]) <= float(row["low_limit"]) + 1e-9:
                 sell_px_adj = close_adj
                 note = (note + " 开盘跌停按收盘").strip()
             sell_eff = sell_px_adj * (1 - slip)
             proceeds = h["units"] * sell_eff * (1 - stamp) * (1 - comm)
             fee = h["units"] * sell_eff * (stamp + comm)
             fee_total += fee
-            cash += proceeds
+            # T+2开盘卖: 资金当日开盘即回笼可再投入; T+2收盘卖: 资金收盘后回笼,
+            # 次一交易日开盘才可用于买入(防止虚假资金复用)
+            if ex.get("sell_at_open", True):
+                cash += proceeds
+            else:
+                pending_cash += proceeds
             r = proceeds / (h["units"] * h["buy_eff"] * (1 + comm)) - 1
             trades.append({
                 "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
                 "buy_date": h["buy_date"], "buy_px": h["buy_px_raw"],
-                "sell_date": sell_d, "sell_px": float(row["open"]),
+                "sell_date": sell_d, "sell_px": float(row["open" if ex.get("sell_at_open", True) else "close"]),
                 "ret_pct": round(r * 100, 2), "note": note,
             })
         holding[:] = remaining
@@ -220,6 +229,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     print("[3/4] 逐日模拟交易...")
     t0 = time.time()
     for d in main_dates:
+        # 次日开盘: 前一交易日收盘卖出回笼的资金此时方可投入(T+2收盘卖模式)
+        cash += pending_cash
+        pending_cash = 0.0
         # 开盘: 先卖出昨日到期持仓(T-2信号的池), 再买入(T-1信号的池)
         do_sell(d)
         if pending_buy is not None:
@@ -227,8 +239,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             do_buy(picks, d)
             pending_buy = None
         # 收盘估值
-        total = cash + sum(h["units"] * float(per_code[h["code"]].loc[d]["close_adj"])
-                           for h in holding if d in per_code[h["code"]].index)
+        total = cash + pending_cash + sum(h["units"] * float(per_code[h["code"]].loc[d]["close_adj"])
+                                          for h in holding if d in per_code[h["code"]].index)
         curve[d] = total
         # 收盘后: 决定明日计划
         reg_row = reg.loc[d] if d in reg.index else None

@@ -155,6 +155,13 @@ def select_stocks(
             + w["neg_bias20"] * _zs(-df["bias20"])           # 乖离越低越安全
             + w["neg_amount"] * _zs(-np.log1p(df["amount"])) # 体量适中偏小弹性大
         )
+        # 可选扩展评分因子(权重缺省0=不启用, 兼容旧config):
+        if w.get("neg_close_pos"):
+            score = score + w["neg_close_pos"] * _zs(-df["close_pos"])   # 收盘位置越低(恐慌释放越充分)越好
+        if w.get("neg_vol_ratio"):
+            score = score + w["neg_vol_ratio"] * _zs(-df["vol_ratio"])   # 缩量越极致越好
+        if w.get("low_tail"):
+            score = score + w["low_tail"] * _zs(df["low_tail"])          # 下影线越长(盘中承接越强)越好
 
     elif mode == "momentum":
         # 隔夜动量(备用): 温和放量上涨, 均线多头
