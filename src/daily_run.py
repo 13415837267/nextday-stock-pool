@@ -67,6 +67,24 @@ def main():
     pos = cal.index(signal_date)
     print(f"信号日(最新完整交易日): {_fmt(signal_date)}")
 
+    # ---- 1.5 数据质量校验(异常检测, 防脏数据进信号) ----
+    anomalies = []
+    if len(day_df) < 3000:
+        anomalies.append(f"全市场行数仅{len(day_df)}(<3000)")
+    bad_pct = day_df[(day_df["pct"].abs() > 22)].shape[0]          # 涨跌幅超物理界限(主板10%/创业20%+误差)
+    if bad_pct:
+        anomalies.append(f"涨跌幅超±22%的记录{bad_pct}条")
+    nan_close = int(day_df["close"].isna().sum())
+    if nan_close:
+        anomalies.append(f"收盘价缺失{nan_close}条")
+    dup = int(day_df["ts_code"].duplicated().sum())
+    if dup:
+        anomalies.append(f"代码重复{dup}条")
+    if anomalies:
+        print("⚠ 数据质量异常: " + "; ".join(anomalies))
+    else:
+        print("数据质量校验通过")
+
     # ---- 2. 近期面板与指标 ----
     warm = max(cfg["regime"].get("warmup_days", 30), 25)
     panel_dates = cal[max(0, pos - warm + 1): pos + 1]
@@ -255,6 +273,7 @@ def main():
         "regime": regime_info,
         "stats": {k: v for k, v in stats.items()},
         "picks": verified,
+        "data_quality": {"anomalies": anomalies, "rows": int(len(day_df))},
         "disclaimer": DISCLAIMER,
     }
     (out_dir / "latest.json").write_text(

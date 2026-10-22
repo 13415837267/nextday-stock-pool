@@ -189,7 +189,7 @@ async function loadExecHistory() {
       <div class="card"><div class="k">累计复利收益(明细口径)</div><div class="v ${pctCls(cumRet)}">${det.length ? pctStr(cumRet) : "-"}</div></div>
       <div class="card"><div class="k">期数起点</div><div class="v" style="font-size:14px">${det.length ? fmtDate(det[det.length - 1].publish_date) : "-"}</div></div>`;
 
-    let html = `<table><tr><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
+    let html = `<table><tr><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
     // 只展示单吊明细口径(2026-10-22起): 有executed的已结算记录 + 最新待执行记录; 旧口径一律不显示
     recs.forEach(r => {
       const e = r.executed;
@@ -200,6 +200,7 @@ async function loadExecHistory() {
           <td class="muted">第${e.rank}名</td>
           <td>${e.buy_px}</td><td>${fmtDate(e.sell_date)}</td><td>${e.sell_px}</td>
           <td class="muted">${e.position_pct}%</td>
+          <td class="muted">${e.actual_buy_px ?? "-"}</td><td class="muted">${e.actual_sell_px ?? "-"}</td>
           <td class="${pctCls(e.ret_pct)}"><b>${pctStr(e.ret_pct)}</b></td>
           <td class="muted chain">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
           <td class="muted">${esc(r.status || "")}</td></tr>`;
@@ -218,7 +219,7 @@ async function loadExecHistory() {
       ht.innerHTML = `<div class="loading">明细自 2026-10-22 起逐笔记录, 首笔结算将在下一个交易日晚更新</div>`;
     else
       ht.innerHTML = html + "</table>" +
-      `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。</div>`;
+      `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。「实盘买/卖价」列用于记录你的真实成交价与模拟价对照(现为空, 成交后告知即写入)。</div>`;
   } catch (e) { ht.innerHTML = `<div class="loading">执行记录加载失败: ${esc(e.message)}</div>`; }
 }
 

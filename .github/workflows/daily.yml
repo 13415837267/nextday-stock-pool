@@ -12,6 +12,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: pages-deploy
@@ -75,3 +76,13 @@ jobs:
 
       - name: 部署 GitHub Pages
         uses: actions/deploy-pages@v4
+
+      - name: 失败告警(自动建Issue, 防静默漏更)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "⚠ 每日更新失败: $(TZ=Asia/Shanghai date +%F)" \
+            --body "每日选股工作流运行失败, 请查看日志: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            || echo "Issue创建失败(可能已有同名), 跳过"
