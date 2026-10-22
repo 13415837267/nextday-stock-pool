@@ -57,7 +57,7 @@
   <h2>一、次日执行计划</h2>
   <div class="panel plan-grid" id="plan"><div class="loading">加载中...</div></div>
 
-  <h2>二、计划候选池 <span class="muted" style="font-size:12px;font-weight:normal">（审核用发布池 · 实际执行仅按评分第1名单吊买入1只，其余为顺延备选）</span></h2>
+  <h2>二、计划候选池</h2>
   <div id="pool"><div class="loading">加载中...</div></div>
 
   <h2>三、回测绩效</h2>
@@ -65,7 +65,7 @@
   <div class="panel" style="margin-top:12px" id="bt-chart"></div>
   <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2>四、历史战绩（单吊top1实盘口径结算） <span class="muted" style="font-size:12px;font-weight:normal">（每日仅按评分第1名执行1笔：可成交即记1笔，不可成交顺延下一只；"成交/跳过"= top1成交与否 / 发布池中被竞价条件过滤的备选数）</span></h2>
+  <h2>四、历史战绩（发布池实盘口径结算）</h2>
   <div class="cards" id="hist-cards"></div>
   <div style="margin-top:12px" id="hist-table"></div>
 
@@ -76,7 +76,7 @@
       <li>T日收盘后：系统运行选股，发布「次日计划候选池」（评分前10只）</li>
       <li>T+1日开盘集合竞价：单吊——仅买评分第1名1只、全仓进出；且仅当其开盘缺口 ≤ -2.40% 才入场，高开/一字放弃并顺延下一只</li>
       <li>T+2日开盘集合竞价：全部卖出，资金复利滚动</li>
-      <li>风控触发时（市场宽度&lt;25% 或市场等权指数低于MA30）：次日空仓；连续风控超5个交易日后按70%仓位恢复参与，且仅买缺口≤-2.75%的深低开票——回撤仅 -14.14% 的关键来源，0 收益月是主动避险而非失效</li>
+      <li>风控触发时（市场宽度&lt;25% 或市场等权指数低于MA30）：次日空仓；连续风控超5个交易日后按75%仓位恢复参与，且仅买缺口≤-2.75%的深低开票——回撤仅 -14.14% 的关键来源，0 收益月是主动避险而非失效</li>
     </ul>
     <b>选股条件（T日收盘：趋势内缩量回调）</b>
     <ul class="rules">
@@ -85,7 +85,7 @@
       <li>当日涨幅 -5.7%~-3%（明显阴线回调，避开近跌停票）；收盘未跌停、非一字板</li>
       <li>量比 ≤ 3.0（缩量回调）；20日累计涨幅 5%~25%（有前期趋势、非高位加速）</li>
       <li>20日乖离率 ≤ 8%（离均线越近，下跌空间越小——单吊核心安全垫）</li>
-      <li>收盘位置 ≤ 0.34：阴线收盘须在当日振幅区间下沿34%以内（尾盘仍在出货的票次日反抽弱）</li>
+      <li>收盘位置 ≤ 0.32：阴线收盘须在当日振幅区间下沿32%以内（尾盘仍在出货的票次日反抽弱）</li>
       <li>评分 = 0.30·z(20日动量) + 0.60·z(-乖离) + 0.10·z(-成交额)；排序即买入顺序</li>
     </ul>
     <b>交易保护</b>
@@ -210,14 +210,11 @@ async function loadHistory() {
       <div class="card"><div class="k">已结算期数</div><div class="v">${s.n_done ?? "-"}</div></div>
       <div class="card"><div class="k">胜率(按期)</div><div class="v">${s.win_rate != null ? s.win_rate + "%" : "-"}</div></div>
       <div class="card"><div class="k">平均单期收益</div><div class="v ${pctCls(s.avg_ret)}">${s.avg_ret != null ? pctStr(s.avg_ret) : "-"}</div></div>`;
-    let html = `<table><tr><th>发布日</th><th>买入日</th><th>卖出日</th><th>单吊标的(top1)</th><th>备选数</th><th>成交/跳过</th><th>当期收益</th><th>状态</th></tr>`;
+    let html = `<table><tr><th>发布日</th><th>买入日</th><th>卖出日</th><th>候选</th><th>成交/跳过</th><th>当期收益</th><th>状态</th></tr>`;
     (d.records || []).forEach(r => {
       const re = r.realized;
-      const t1 = (r.picks || [])[0] || {};
-      const nAlt = Math.max((r.picks || []).length - 1, 0);
       html += `<tr><td>${fmtDate(r.publish_date)}</td><td>${fmtDate(r.buy_date)}</td><td>${fmtDate(r.sell_date)}</td>
-        <td>${esc(t1.name || t1.code || "-")}</td>
-        <td class="muted">${nAlt}</td>
+        <td>${(r.picks || []).map(p => esc(p.name || p.code)).join("、")}</td>
         <td class="muted">${re ? re.n_traded + "/" + re.n_skipped : "-"}</td>
         <td class="${re ? pctCls(re.avg_ret_pct) : ""}">${re ? pctStr(re.avg_ret_pct) : "-"}</td>
         <td class="muted">${esc(r.status || "")}${r.regime_ok === false ? "·空仓" : ""}</td></tr>`;
