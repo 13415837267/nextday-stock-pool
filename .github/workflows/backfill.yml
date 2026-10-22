@@ -1,0 +1,61 @@
+# 历史数据回填: 拉取指定区间缺失的每日全市场快照并入库(每批提交推送)
+name: 历史数据回填
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "开始日期 YYYYMMDD (数据源自2012-04-09起)"
+        default: "20120409"
+        required: false
+      end_date:
+        description: "结束日期 YYYYMMDD (留空=今天)"
+        required: false
+      batch_size:
+        description: "每批提交天数"
+        default: "150"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 回填历史数据
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python tools/backfill.py \
+            --start "${{ inputs.start_date || '20120409' }}" \
+            --end "${{ inputs.end_date }}" \
+            --batch "${{ inputs.batch_size || '150' }}"
+
+      - name: 回填完成汇总
+        if: always()
+        run: echo "回填工作流结束, 请查看上方日志与仓库 data/panel 目录"
