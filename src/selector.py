@@ -112,6 +112,12 @@ def select_stocks(
     top_n = top_n or sel_cfg["top_n"]
     mode = sel_cfg.get("mode", "momentum")
 
+    # 可选: 仅在指定星期几出池(0=周一...4=周五; 缺省=全部)
+    _wd = sel_cfg.get("buy_weekdays")
+    if _wd is not None:
+        if pd.Timestamp(date).dayofweek not in set(int(x) for x in _wd):
+            return [], {"universe": 0, "mode": mode, "weekday_skip": 1}
+
     df = day_df.copy()
     df["board"] = df["ts_code"].map(board_of)
     stats = {"universe": int(len(df)), "mode": mode}
@@ -123,6 +129,8 @@ def select_stocks(
 
     df = df[df["close"].between(uni_cfg["price_min"], uni_cfg["price_max"])]
     df = df[df["amount"] >= uni_cfg["amount_min_yi"] * 1e8]
+    if uni_cfg.get("amount_max_yi"):                 # 可选: 成交额上限(剔除过热巨量票)
+        df = df[df["amount"] <= uni_cfg["amount_max_yi"] * 1e8]
     df = df[df["turnover_rate"] >= uni_cfg["turnover_min"]]
     stats["liquidity"] = int(len(df))
 
@@ -137,6 +145,8 @@ def select_stocks(
         df = df[df["close"] > df["low_limit"]]              # 收盘未跌停
         df = df[df["low"] < df["high"]]                     # 非一字
         df = df[df["vol_ratio"] <= sel_cfg["dip_vol_ratio_max"]]  # 缩量回调(非放量出货)
+        if sel_cfg.get("dip_vol_ratio_min") is not None:  # 可选: 量比下限(过度缩量=无承接动能)
+            df = df[df["vol_ratio"] >= sel_cfg["dip_vol_ratio_min"]]
         stats["price_action"] = int(len(df))
 
         trend = (
