@@ -67,7 +67,7 @@
   <h2>二、计划候选池 <span class="sub">审核用发布池（前10只），实际仅执行第1名，不可成交顺延下一只</span></h2>
   <div id="pool"><div class="loading">加载中...</div></div>
 
-  <h2>三、单吊执行记录 <span class="sub">逐笔明细：买入哪只、什么价、卖出哪只、什么价（2026-10-22 起记录）</span></h2>
+  <h2>三、单吊执行记录 <span class="sub">逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）</span></h2>
   <div class="cards" id="exec-cards"></div>
   <div style="margin-top:12px" id="exec-table"></div>
 
@@ -189,6 +189,7 @@ async function loadExecHistory() {
       <div class="card"><div class="k">期数起点</div><div class="v" style="font-size:14px">${det.length ? fmtDate(det[det.length - 1].publish_date) : "-"}</div></div>`;
 
     let html = `<table><tr><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
+    // 只展示单吊明细口径(2026-10-22起): 有executed的已结算记录 + 最新待执行记录; 旧口径一律不显示
     recs.forEach(r => {
       const e = r.executed;
       if (e) {
@@ -201,27 +202,22 @@ async function loadExecHistory() {
           <td class="${pctCls(e.ret_pct)}"><b>${pctStr(e.ret_pct)}</b></td>
           <td class="muted chain">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
           <td class="muted">${esc(r.status || "")}</td></tr>`;
-      } else if (r.realized) {
-        html += `<tr>
-          <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(r.buy_date)}</td>
-          <td class="muted" colspan="3">旧口径·发布池结算(${r.realized.n_traded}笔)</td>
-          <td>${fmtDate(r.sell_date)}</td><td class="muted">-</td><td class="muted">-</td>
-          <td class="${pctCls(r.realized.avg_ret_pct)}">${pctStr(r.realized.avg_ret_pct)}</td>
-          <td class="muted">2026-10-22 前旧口径</td>
-          <td class="muted">${esc(r.status || "")}</td></tr>`;
-      } else if (r.status === "无成交" || r.status === "待结算") {
+      } else if (r.status === "待结算") {
         const chain = (r.skip_chain || []).join("；") || "-";
         html += `<tr>
           <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(r.buy_date)}</td>
-          <td class="muted">${r.status === "待结算" ? "待执行(明日开盘)" : "无成交"}</td>
+          <td class="muted">待执行(明日开盘)</td>
           <td class="muted">-</td><td class="muted">-</td><td class="muted">-</td><td class="muted">-</td>
           <td class="muted">-</td><td class="muted">-</td>
           <td class="muted chain">${esc(chain)}</td>
-          <td class="muted">${esc(r.status || "")}</td></tr>`;
+          <td class="muted">待结算</td></tr>`;
       }
     });
-    ht.innerHTML = html + "</table>" +
-      `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起记录；此前为旧口径(发布池等权结算)仅保留汇总收益。收益含佣金万2.5+印花税万5+滑点千1。</div>`;
+    if (!html.includes("<tr>") || html.split("<tr>").length <= 1)
+      ht.innerHTML = `<div class="loading">明细自 2026-10-22 起逐笔记录, 首笔结算将在下一个交易日晚更新</div>`;
+    else
+      ht.innerHTML = html + "</table>" +
+      `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。</div>`;
   } catch (e) { ht.innerHTML = `<div class="loading">执行记录加载失败: ${esc(e.message)}</div>`; }
 }
 
