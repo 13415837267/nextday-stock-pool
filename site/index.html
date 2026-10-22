@@ -190,8 +190,10 @@ async function loadExecHistory() {
       <div class="card"><div class="k">期数起点</div><div class="v" style="font-size:14px">${det.length ? fmtDate(det[det.length - 1].publish_date) : "-"}</div></div>`;
 
     let html = `<table><tr><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
-    // 只展示单吊明细口径(2026-10-22起): 有executed的已结算记录 + 最新待执行记录; 旧口径一律不显示
+    // 只展示单吊明细口径: publish_date >= 2026-10-22 的记录; 之前的记录(含待结算)一律不显示
+    const CUTOFF = "2026-10-22";
     recs.forEach(r => {
+      if (r.publish_date < CUTOFF) return;   // 旧口径记录硬性排除
       const e = r.executed;
       if (e) {
         html += `<tr>
