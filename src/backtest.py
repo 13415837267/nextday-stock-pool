@@ -127,6 +127,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     ps_streak, ps_days = int(_ps.get("streak", 0)), int(_ps.get("pause_days", 5))
     loss_streak = 0
     pause_until = -1
+    # 月度盈利熔断(可选): 当月已实现收益超过 cap_pct% 后, 后续买入仓位乘以 cut_frac
+    # (抑制单月利润滚雪球, 降低盈利月度集中度; 仅用已实现信息, 无未来函数)
+    _mc = (cfg.get("risk") or {}).get("month_profit_cap") or {}
+    mc_cap, mc_cut = float(_mc.get("cap_pct", 0) or 0), float(_mc.get("cut_frac", 1.0) or 1.0)
+    month_key, month_start_nav = None, None
 
     def do_buy(picks: list[dict], d: str):
         nonlocal cash, fee_total
@@ -181,6 +186,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
             for h in holding if d in per_code[h["code"]].index
         )
+        # 月度盈利熔断: 当月已实现收益超阈值后降仓(仅用已实现信息, 无未来函数)
+        if mc_cap > 0 and mc_cut < 1.0 and month_start_nav:
+            if (equity / month_start_nav - 1) * 100 > mc_cap:
+                frac *= mc_cut
         for p in qualified:
             if cash <= 0:
                 break
@@ -276,6 +285,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     print("[3/4] 逐日模拟交易...")
     t0 = time.time()
     for idx, d in enumerate(main_dates):
+        ym = d[:6]
+        if ym != month_key:
+            month_key = ym
+            # 月初基准 = 上一交易日收盘估值(首日用开盘前现金+持仓估值近似, 此处用前一curve值)
+            prev = curve.get(main_dates[idx - 1]) if idx > 0 else None
+            month_start_nav = prev if prev else float(bt_cfg["initial_capital"])
         # 次日开盘: 前一交易日收盘卖出回笼的资金此时方可投入(T+2收盘卖模式)
         cash += pending_cash
         pending_cash = 0.0
