@@ -55,6 +55,9 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     panel["down2"] = ((panel["pct"] < 0) & (panel["prev_pct"] < 0)).astype("int8")        # 连续两日阴线
     panel["dist_ma5"] = (panel["close_adj"] / panel["ma5"] - 1) * 100                     # 收盘相对5日线距离%
     panel["dist_low20"] = (panel["low"] / g["low"].transform(lambda s: s.rolling(20).min()) - 1) * 100  # 距20日最低%
+    panel["prev_low"] = g["low"].transform(lambda s: s.shift(1))                          # T-1日最低价
+    panel["below_prev_low"] = (panel["low"] < panel["prev_low"]).astype("int8")           # T日盘中破前日低
+    panel["hold_prev_low"] = (panel["close"] > panel["prev_low"]).astype("int8")          # T日收盘守住前日低
     return panel
 
 
@@ -180,6 +183,12 @@ def select_stocks(
             trend &= df["down2"] >= sel_cfg["dip_down2_min"]
         if sel_cfg.get("dip_dist_low20_min") is not None:   # 距20日最低涨幅下限(排除已深跌票)
             trend &= df["dist_low20"] >= sel_cfg["dip_dist_low20_min"]
+        if sel_cfg.get("dip_below_prev_low_max") is not None:  # 破前日低天数上限(1=允许盘中破前低)
+            trend &= df["below_prev_low"] <= sel_cfg["dip_below_prev_low_max"]
+        if sel_cfg.get("dip_hold_prev_low_min") is not None:   # 守住前日低下限(1=必须收盘守在前日低上)
+            trend &= df["hold_prev_low"] >= sel_cfg["dip_hold_prev_low_min"]
+        if sel_cfg.get("dip_dist_ma5_max") is not None:     # 收盘距5日线上限(%): 回调未击穿5日线过深
+            trend &= df["dist_ma5"] <= sel_cfg["dip_dist_ma5_max"]
         df = df[trend]
         stats["trend_ok"] = int(len(df))
         if df.empty:

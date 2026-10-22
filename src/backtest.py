@@ -121,6 +121,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     ex = cfg["execution"]
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
     gap_tiers = ex.get("gap_size_tiers") or []   # 缺口分级下注: [{below: -4.0, mult: 1.0}, ...]
+    min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
+    skip_gap_deep = ex.get("skip_gap_deep")       # 可选: 缺口深于该值(更恐慌)也放弃(崩塌保护)
     cash = float(bt_cfg["initial_capital"])
     curve: dict[str, float] = {}
     trades: list[dict] = []
@@ -176,6 +178,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # dip 承接过滤: 仅买缺口 <= floor% 的深低开票(0=不过滤)
             if floor and gap * 100 > floor:
                 trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{floor}%"))
+                continue
+            if skip_gap_deep is not None and gap * 100 < skip_gap_deep:
+                trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%深于崩塌线{skip_gap_deep}%"))
+                continue
+            if min_top1_score is not None and p.get("score", 0) < min_top1_score:
+                trades.append(_trade(p, "skip", d, note=f"top1评分{p.get('score',0):.2f}低于门槛{min_top1_score}"))
                 continue
             qualified.append({**p, "_row": row, "_gap": gap})
         if not qualified:
