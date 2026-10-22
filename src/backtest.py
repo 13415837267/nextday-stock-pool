@@ -99,6 +99,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     # 降仓恢复参与(短期风控仍全额避险, 仅在超长空仓期小仓参与); 0=禁用(默认)
     _rm = cfg.get("regime") or {}
     max_block, reenter_frac = int(_rm.get("max_block_days", 0) or 0), float(_rm.get("block_reenter_frac", 0.0) or 0.0)
+    rf_ramp = bool(_rm.get("rf_ramp", False))   # 渐近恢复: 超限后每多1日风控, 系数+0.05直至1.0
     day_frac: dict[str, float] = {}
     if max_block > 0 and reenter_frac > 0 and len(reg):
         consec = 0
@@ -108,12 +109,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 day_frac[d_i] = 1.0
             else:
                 consec += 1
-                day_frac[d_i] = 0.0 if consec <= max_block else reenter_frac
+                if consec <= max_block:
+                    day_frac[d_i] = 0.0
+                elif rf_ramp:
+                    day_frac[d_i] = min(1.0, reenter_frac + 0.05 * (consec - max_block))
+                else:
+                    day_frac[d_i] = reenter_frac
     per_code, names = ctx["per_code"], ctx["names"]
     bt_cfg = cfg["backtest"]
 
     ex = cfg["execution"]
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
+    gap_tiers = ex.get("gap_size_tiers") or []   # 缺口分级下注: [{below: -4.0, mult: 1.0}, ...]
     cash = float(bt_cfg["initial_capital"])
     curve: dict[str, float] = {}
     trades: list[dict] = []
@@ -194,7 +201,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if cash <= 0:
                 break
             row = p.pop("_row")
-            alloc = min(frac * equity, cash)
+            pick_frac = frac
+            # 缺口分级下注(可选): 竞价缺口越深=错杀越极端/edge越强, 仓位越高; 缺省关闭
+            if gap_tiers:
+                g100 = p["_gap"] * 100
+                for t in gap_tiers:
+                    if g100 <= t["below"]:
+                        pick_frac *= t["mult"]
+                        break
+            alloc = min(pick_frac * equity, cash)
             if alloc < frac * equity * 0.3:  # 剩余资金不足单笔最低规模(30%)则放弃
                 break
             buy_eff = row["open_adj"] * (1 + slip)
