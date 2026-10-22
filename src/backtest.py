@@ -144,7 +144,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     ml_cap, ml_cut = float(_ml.get("loss_pct", 0) or 0), float(_ml.get("cut_frac", 1.0) or 1.0)
     month_key, month_start_nav = None, None
 
-    def do_buy(picks: list[dict], d: str):
+    def do_buy(picks: list[dict], d: str, idx: int = 0):
         nonlocal cash, fee_total
         if not picks:
             return
@@ -232,16 +232,20 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             cash -= alloc
             holding.append({
                 **p, "buy_date": d, "units": units, "buy_eff": buy_eff,
-                "buy_px_raw": float(row["open"]),
+                "buy_px_raw": float(row["open"]), "buy_idx": idx,
             })
         # 未成交部分留在现金中, 复利滚动
         # 注: A股T+1制度, 当日买入的股票当日不可卖出, 因此不存在任何
         #     "买入当日止损/止盈"逻辑; 所有持仓最早于次一交易日开盘卖出。
 
-    def do_sell(d: str):
+    def do_sell(d: str, idx: int = 0):
+        hold_extra = int(ex.get("hold_extra_days", 0) or 0)  # T+2开盘后再多持有N个交易日(0=原口径)
         nonlocal cash, fee_total, pending_cash, loss_streak
         remaining = []
         for h in holding:
+            if idx - h.get("buy_idx", 0) < 1 + hold_extra:
+                remaining.append(h)   # 未到卖出时点(持有期延长口径)
+                continue
             sub = per_code.get(h["code"])
             row = sub.loc[d] if sub is not None and d in sub.index else None
             sell_px_adj, sell_d, note = None, d, ""
@@ -330,10 +334,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         cash += pending_cash
         pending_cash = 0.0
         # 开盘: 先卖出昨日到期持仓(T-2信号的池), 再买入(T-1信号的池)
-        do_sell(d)
+        do_sell(d, idx)
         if pending_buy is not None:
             _, picks = pending_buy
-            do_buy(picks, d)
+            do_buy(picks, d, idx)
             pending_buy = None
         # 收盘估值
         total = cash + pending_cash + sum(h["units"] * float(per_code[h["code"]].loc[d]["close_adj"])
