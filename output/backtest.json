@@ -1,26 +1,26 @@
 {
  "meta": {
-  "run_time": "2026-10-22 15:26:46",
+  "run_time": "2026-10-22 15:36:11",
   "start": "20240925",
-  "end": "20261021",
-  "days": 499,
+  "end": "20261022",
+  "days": 500,
   "initial_capital": 1000000.0,
   "rules": "T+1开盘买入/T+2开盘卖出/复利/佣金万2.5+印花税万5+滑点千1"
  },
  "metrics": {
   "总收益率%": 3052.24,
-  "年化收益率%": 471.24,
+  "年化收益率%": 469.25,
   "最大回撤%": -14.14,
-  "卡玛比率": 33.33,
+  "卡玛比率": 33.19,
   "夏普比率": 2.88,
   "交易次数": 134,
   "胜率%": 60.45,
   "平均单笔收益%": 3.138,
   "盈亏比": 5.07,
   "空仓天数": 59,
-  "跳过买入次数": 19515,
+  "跳过买入次数": 19534,
   "总费用(元)": 1217024.0,
-  "同期市场等权基准%": 58.79
+  "同期市场等权基准%": 54.46
  },
  "equity": [
   {
@@ -2017,6 +2017,10 @@
   },
   {
    "d": "2026-10-21",
+   "nav": 31522392.0
+  },
+  {
+   "d": "2026-10-22",
    "nav": 31522392.0
   }
  ],
@@ -4016,218 +4020,13 @@
   {
    "d": "2026-10-21",
    "nav": 1587867.0
+  },
+  {
+   "d": "2026-10-22",
+   "nav": 1544556.0
   }
  ],
  "trades_recent": [
-  {
-   "signal_date": "20261015",
-   "code": "002669.SZ",
-   "name": "康达新材",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口1.8%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "001228.SZ",
-   "name": "永泰运",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口2.2%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "603001.SH",
-   "name": "奥康国际",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口2.4%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "300676.SZ",
-   "name": "华大基因",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口0.7%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "603978.SH",
-   "name": "深圳新星",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口2.0%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "001317.SZ",
-   "name": "三羊马",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口0.9%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "002212.SZ",
-   "name": "天融信",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口1.3%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "000678.SZ",
-   "name": "襄阳轴承",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口0.8%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "603073.SH",
-   "name": "彩蝶实业",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口2.8%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "603519.SH",
-   "name": "立霸股份",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口1.2%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "300746.SZ",
-   "name": "汉嘉数智",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口2.0%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "301081.SZ",
-   "name": "严牌股份",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口1.3%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "002238.SZ",
-   "name": "天威视讯",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口1.8%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "603727.SH",
-   "name": "博迈科",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口-0.7%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "000635.SZ",
-   "name": "英力特",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口3.1%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "603067.SH",
-   "name": "振华股份",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口3.1%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261015",
-   "code": "002878.SZ",
-   "name": "元隆雅图",
-   "buy_date": "20261016",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口1.7%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261016",
-   "code": "601579.SH",
-   "name": "会稽山",
-   "buy_date": "20261019",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口-0.5%未达承接线-2.75%"
-  },
-  {
-   "signal_date": "20261016",
-   "code": "301080.SZ",
-   "name": "百普赛斯",
-   "buy_date": "20261019",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口-1.0%未达承接线-2.75%"
-  },
   {
    "signal_date": "20261016",
    "code": "300243.SZ",
@@ -4678,6 +4477,215 @@
    "sell_px": null,
    "ret_pct": null,
    "note": "缺口-0.4%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "301108.SZ",
+   "name": "洁雅股份",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口0.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "301210.SZ",
+   "name": "金杨精密",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.7%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "600356.SH",
+   "name": "恒丰纸业",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口0.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "600418.SH",
+   "name": "江淮汽车",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-1.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "002869.SZ",
+   "name": "金溢科技",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.4%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "300368.SZ",
+   "name": "汇金股份",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-1.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "301081.SZ",
+   "name": "严牌股份",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口1.4%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "301132.SZ",
+   "name": "满坤科技",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口0.2%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "603956.SH",
+   "name": "威派格",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.6%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "300989.SZ",
+   "name": "蕾奥规划",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-1.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "603418.SH",
+   "name": "友升股份",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.5%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "300733.SZ",
+   "name": "西菱动力",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.4%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "300893.SZ",
+   "name": "松原安全",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口1.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "603232.SH",
+   "name": "格尔软件",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口2.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "300226.SZ",
+   "name": "上海钢联",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-1.8%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "603239.SH",
+   "name": "浙江仙通",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.5%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "600629.SH",
+   "name": "华建集团",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-1.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "002510.SZ",
+   "name": "天汽模",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口0.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261021",
+   "code": "301398.SZ",
+   "name": "星源卓镁",
+   "buy_date": "20261022",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.2%未达承接线-2.75%"
   }
  ],
  "monthly": [
