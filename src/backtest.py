@@ -279,6 +279,13 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 sell_px_adj = close_adj
                 sold_at_close = True
                 note = (note + " 开盘跌停按收盘").strip()
+            # 可选: T+2开盘深跌(未跌停)延迟至收盘卖(避免恐慌开盘割肉; 用当日已实现的open/prev_close)
+            scd = ex.get("sell_close_if_open_drop")
+            if (not sold_at_close) and scd and sell_d == d and float(row["pre_close"]) > 0 \
+                    and (float(row["open"]) / float(row["pre_close"]) - 1) * 100 <= -scd:
+                sell_px_adj = close_adj
+                sold_at_close = True
+                note = (note + f" 开盘深跌{sced_lbl(scd)}按收盘").strip()
             # 条件延迟卖出(可选): T+2开盘相对买入成交价涨幅超阈值(强势高开)时,
             # 延迟至当日收盘卖出让利润奔跑; 卖出所得收盘后回笼, 次日开盘方可投入
             if (not sold_at_close) and ex.get("hold_if_open_gain", 0) > 0 \
@@ -405,6 +412,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         "monthly": _monthly(nav),
     }
     return result
+
+
+def sced_lbl(x):
+    return f"{x:g}%"
 
 
 def _trade(p: dict, kind: str, d: str, note: str = "") -> dict:
