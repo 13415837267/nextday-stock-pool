@@ -111,6 +111,26 @@ def main():
         history = []
     ex = cfg["execution"]
 
+    # 买入日风控状态(与回测口径一致): 超限参与日用专属承接线与参与系数(含渐近恢复)
+    _rm = cfg["regime"]
+    max_block = int(_rm.get("max_block_days", 0) or 0)
+    reenter = float(_rm.get("block_reenter_frac", 0) or 0)
+    rf_ramp = bool(_rm.get("rf_ramp", False))
+    day_frac_map: dict[str, float] = {}
+    _consec = 0
+    for _d in reg.index:
+        if bool(reg.loc[_d, "trade_ok"]):
+            _consec = 0
+            day_frac_map[_d] = 1.0
+        else:
+            _consec += 1
+            if _consec <= max_block:
+                day_frac_map[_d] = 0.0
+            elif rf_ramp:
+                day_frac_map[_d] = min(1.0, reenter + 0.05 * (_consec - max_block))
+            else:
+                day_frac_map[_d] = reenter
+
     def row_of(d: str, code: str):
         sub = by_date.get(d)
         if sub is None:
@@ -129,9 +149,16 @@ def main():
         sell_d = cal[ip + 2] if ip + 2 < len(cal) else None
         if not sell_d or sell_d > signal_date:
             continue  # 卖出日数据尚未产生
-        rets, skipped = [], []
+        # 买入日仓位系数与承接线(与回测口径一致)
+        bfrac = day_frac_map.get(buy_d, 1.0) if buy_d else 0.0
+        day_ok = bfrac > 0
+        floor = ex.get("buy_gap_below", 0)
+        if not day_ok:
+            floor = ex.get("block_gap_below", floor)
+        rets, skipped, chain = [], [], []
+        executed = None
         maxn = int(ex.get("max_buy_per_day", 0))
-        for p in rec.get("picks", []):
+        for rank_i, p in enumerate(rec.get("picks", []), 1):
             if maxn > 0 and len(rets) >= maxn:
                 break  # 与回测口径一致: 竞价过滤后仅按评分买入前 maxn 只
             rb = row_of(buy_d, p["code"]) if buy_d else None
@@ -139,15 +166,21 @@ def main():
             rp = row_of(pdate, p["code"])
             gap = (rb["open_adj"] / rp["close_adj"] - 1) * 100 \
                 if (rb is not None and rp is not None and rp["close_adj"] > 0) else 999
-            if rb is None or rb["is_paused"] == 1 or rb["vol"] <= 0 or rb["open"] >= rb["high_limit"] - 1e-9 \
-               or gap >= ex["skip_open_gain"]:
-                skipped.append(p["code"])
-                continue
-            if ex.get("skip_open_loss", 0) and gap <= -abs(ex["skip_open_loss"]):
-                skipped.append(p["code"])
-                continue
-            floor = ex.get("buy_gap_below", 0)
-            if floor and gap > floor:
+            reason = None
+            if not day_ok:
+                reason = "大盘风控空仓"
+            elif rb is None or rb["is_paused"] == 1 or rb["vol"] <= 0:
+                reason = "停牌/无成交"
+            elif rb["open"] >= rb["high_limit"] - 1e-9:
+                reason = "开盘一字涨停"
+            elif gap >= ex["skip_open_gain"]:
+                reason = f"高开{gap:.1f}%放弃"
+            elif ex.get("skip_open_loss", 0) and gap <= -abs(ex["skip_open_loss"]):
+                reason = f"低开{gap:.1f}%过深"
+            elif floor and gap > floor:
+                reason = f"缺口{gap:.1f}%未达承接线{floor}%"
+            if reason:
+                chain.append(f"第{rank_i}名 {p.get('name', p['code'])}: {reason}")
                 skipped.append(p["code"])
                 continue
             if rs is None or rs["is_paused"] == 1 or rs["vol"] <= 0:
@@ -156,6 +189,15 @@ def main():
                       / ((1 + ex["slippage"]) * (1 + ex["commission_rate"]))
             r = (rs["open_adj"] / rb["open_adj"]) * gap_fee - 1
             rets.append(float(r))
+            executed = {
+                "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
+                "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
+                "sell_date": _fmt(sell_d), "sell_px": round(float(rs["open"]), 2),
+                "ret_pct": round(float(r) * 100, 2),
+                "position_pct": round(bfrac * ex.get("alloc_frac_pct", 100.0), 1),
+                "gap_pct": round(gap, 2),
+                "chain": chain,
+            }
         if rets:
             rec["realized"] = {
                 "buy_date": _fmt(buy_d), "sell_date": _fmt(sell_d),
@@ -163,6 +205,9 @@ def main():
                 "avg_ret_pct": round(sum(rets) / len(rets) * 100, 2),
                 "win": sum(1 for r in rets if r > 0),
             }
+            rec["executed"] = executed
+        elif executed is None and (chain or not day_ok):
+            rec["skip_chain"] = chain if day_ok else ["大盘风控空仓"]
         rec["status"] = "已结算" if rets else "无成交"
         rec["skipped_codes"] = skipped
 
@@ -194,13 +239,6 @@ def main():
     buy_d = cal[pos + 1] if pos + 1 < len(cal) else None
     sell_d = cal[pos + 2] if pos + 2 < len(cal) else None
 
-    # 仓位说明: 超限参与日需额外标注当日实际仓位系数与专属承接线
-    pos_note = _position_note(ex)
-    if over_limit:
-        eff_gap = float(ex.get("block_gap_below", ex.get("buy_gap_below", 0)) or 0)
-        pos_note = (f"超限参与日: 仓位系数 {reenter:.0%}, 执行承接线 {eff_gap:g}%; "
-                    + pos_note)
-
     latest = {
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
@@ -209,7 +247,7 @@ def main():
             "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
             "sell_date": _fmt(sell_d) if sell_d else "",
             "sell_point": "次日开盘集合竞价卖出",
-            "position": pos_note,
+            "position": _position_note(ex),
         },
         "strategy": "次日开盘买入-再次日开盘卖出({})".format(
             "趋势内缩量回调+次日深低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)"
