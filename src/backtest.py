@@ -138,6 +138,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     # (抑制单月利润滚雪球, 降低盈利月度集中度; 仅用已实现信息, 无未来函数)
     _mc = (cfg.get("risk") or {}).get("month_profit_cap") or {}
     mc_cap, mc_cut = float(_mc.get("cap_pct", 0) or 0), float(_mc.get("cut_frac", 1.0) or 1.0)
+    _ml = (cfg.get("risk") or {}).get("month_loss_cap") or {}
+    ml_cap, ml_cut = float(_ml.get("loss_pct", 0) or 0), float(_ml.get("cut_frac", 1.0) or 1.0)
     month_key, month_start_nav = None, None
 
     def do_buy(picks: list[dict], d: str):
@@ -193,10 +195,13 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
             for h in holding if d in per_code[h["code"]].index
         )
-        # 月度盈利熔断: 当月已实现收益超阈值后降仓(仅用已实现信息, 无未来函数)
-        if mc_cap > 0 and mc_cut < 1.0 and month_start_nav:
-            if (equity / month_start_nav - 1) * 100 > mc_cap:
+        # 月度盈利/亏损熔断: 当月已实现收益超阈值后降仓(仅用已实现信息, 无未来函数)
+        if month_start_nav:
+            mret = (equity / month_start_nav - 1) * 100
+            if mc_cap > 0 and mc_cut < 1.0 and mret > mc_cap:
                 frac *= mc_cut
+            if ml_cap > 0 and ml_cut < 1.0 and mret < -ml_cap:
+                frac *= ml_cut
         for p in qualified:
             if cash <= 0:
                 break
@@ -388,6 +393,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         "equity": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in nav.items()],
         "benchmark": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in bench_norm.items()] if len(bench_norm) else [],
         "trades_recent": trades[-60:],
+        **({"trades_all": trades} if __import__("os").environ.get("BT_FULL_TRADES") else {}),
         "monthly": _monthly(nav),
     }
     return result
