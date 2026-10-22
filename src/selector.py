@@ -50,6 +50,11 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     panel["close_pos"] = ((panel["close"] - panel["low"]) / hl_rng).fillna(0.5)          # 收盘在当日区间位置(0=最低1=最高)
     body_low = panel[["open", "close"]].min(axis=1)
     panel["low_tail"] = (body_low - panel["low"]) / panel["prev_close_adj"] * 100        # 下影线长度%
+    # 扩展微观结构特征(均仅用截至T日数据, 供可选条件/因子使用):
+    panel["prev_pct"] = g["pct"].transform(lambda s: s.shift(1))                          # T-1日涨幅%
+    panel["down2"] = ((panel["pct"] < 0) & (panel["prev_pct"] < 0)).astype("int8")        # 连续两日阴线
+    panel["dist_ma5"] = (panel["close_adj"] / panel["ma5"] - 1) * 100                     # 收盘相对5日线距离%
+    panel["dist_low20"] = (panel["low"] / g["low"].transform(lambda s: s.rolling(20).min()) - 1) * 100  # 距20日最低%
     return panel
 
 
@@ -165,6 +170,16 @@ def select_stocks(
             trend &= df["close_pos"] <= sel_cfg["dip_close_pos_max"]
         if sel_cfg.get("dip_low_tail_min") is not None:     # 下影线下限: 盘中已有恐慌承接
             trend &= df["low_tail"] >= sel_cfg["dip_low_tail_min"]
+        if sel_cfg.get("dip_prev_pct_min") is not None:     # T-1日涨幅下限(排除前日已大跌)
+            trend &= df["prev_pct"] >= sel_cfg["dip_prev_pct_min"]
+        if sel_cfg.get("dip_prev_pct_max") is not None:     # T-1日涨幅上限(排除前日大涨后回调)
+            trend &= df["prev_pct"] <= sel_cfg["dip_prev_pct_max"]
+        if sel_cfg.get("dip_down2_max") is not None:        # 连阴天数上限(1=禁连阴票)
+            trend &= df["down2"] <= sel_cfg["dip_down2_max"]
+        if sel_cfg.get("dip_down2_min") is not None:        # 连阴天数下限(1=只要连阴票)
+            trend &= df["down2"] >= sel_cfg["dip_down2_min"]
+        if sel_cfg.get("dip_dist_low20_min") is not None:   # 距20日最低涨幅下限(排除已深跌票)
+            trend &= df["dist_low20"] >= sel_cfg["dip_dist_low20_min"]
         df = df[trend]
         stats["trend_ok"] = int(len(df))
         if df.empty:
@@ -183,6 +198,10 @@ def select_stocks(
             score = score + w["neg_vol_ratio"] * _zs(-df["vol_ratio"])   # 缩量越极致越好
         if w.get("low_tail"):
             score = score + w["low_tail"] * _zs(df["low_tail"])          # 下影线越长(盘中承接越强)越好
+        if w.get("neg_dist_ma5"):
+            score = score + w["neg_dist_ma5"] * _zs(-df["dist_ma5"])     # 贴5日线越近(跌幅未失控)越好
+        if w.get("neg_dist_low20"):
+            score = score + w["neg_dist_low20"] * _zs(-df["dist_low20"]) # 距20日低点越近(弹性越大)越好
 
     elif mode == "momentum":
         # 隔夜动量(备用): 温和放量上涨, 均线多头
