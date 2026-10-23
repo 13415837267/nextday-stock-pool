@@ -112,6 +112,33 @@ def main():
                               f"竞价缺口{result['gap_pct']:.2f}%, 开盘价{result['open_px']}, "
                               f"仓位{result['position_pct']}%")
 
+    # ---- 持仓实时浮盈: 扫描 history 中「持仓中」记录, 拉现价 ----
+    try:
+        hist_path = os.path.join(ROOT, "output", "history.json")
+        positions = []
+        if os.path.exists(hist_path):
+            hist = json.load(open(hist_path, encoding="utf-8"))
+            hold_codes, hold_recs = [], []
+            for rec in hist.get("records", []):
+                e = rec.get("executed") or {}
+                if e.get("holding") and e.get("code"):
+                    hold_codes.append(e["code"])
+                    hold_recs.append(e)
+            if hold_codes:
+                q = fetch_quotes(hold_codes)
+                for e in hold_recs:
+                    cur = q.get(e["code"], {})
+                    px = cur.get("open", cur.get("prev_close"))
+                    fl = round((px / e["buy_px"] - 1) * 100, 2) if (px and e.get("buy_px")) else None
+                    positions.append({"code": e["code"], "name": e.get("name", ""),
+                                      "buy_px": e.get("buy_px"), "buy_date": e.get("buy_date"),
+                                      "cur_px": px, "float_pct": fl})
+        if positions:
+            result["positions"] = positions
+            print("持仓浮盈:", [(p["name"], p["float_pct"]) for p in positions])
+    except Exception as e:
+        print(f"持仓浮盈计算失败(不影响确认): {e}", flush=True)
+
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     json.dump(result, open(out_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print("竞价确认:", result["note"])

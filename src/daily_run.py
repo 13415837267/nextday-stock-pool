@@ -365,6 +365,44 @@ def main():
                           "评分入池": stats.get("scored")} if not verified else None),
     }
 
+    def _audit_vs_auction(out_dir, today_fmt, history):
+        """两道判定一致性对账: 9:26竞价确认(auction.json, 腾讯实时) vs 晚间panel结算(权威)。
+        两道判定应一致; 不一致说明数据源异常, 返回match=False供告警。"""
+        ap = out_dir / "auction.json"
+        if not ap.exists():
+            return {"checked": False, "note": "无竞价确认记录"}
+        try:
+            a = json.loads(ap.read_text(encoding="utf-8"))
+        except Exception:
+            return {"checked": False, "note": "auction.json 解析失败"}
+        if a.get("buy_date", "").replace("-", "") != today_fmt.replace("-", ""):
+            return {"checked": False, "note": f"auction非今日数据({a.get('buy_date')})"}
+        # 今日实际结算结果(executed: 已结算或持仓中)
+        actual = None
+        for rec in history:
+            e = rec.get("executed") or {}
+            if str(e.get("buy_date", "")).replace("-", "") == today_fmt.replace("-", "") and not e.get("holding"):
+                actual = e  # 已结算(卖出也完成了)
+                break
+            if str(e.get("buy_date", "")).replace("-", "") == today_fmt.replace("-", ""):
+                actual = e
+                break
+        a_rank, a_code = a.get("rank"), a.get("code")
+        if a.get("action") == "buy":
+            if actual and str(actual.get("code")) == str(a_code):
+                return {"checked": True, "match": True,
+                        "note": f"两道判定一致: 买入{a.get('name')} 第{a_rank}名 (竞价缺口{a.get('gap_pct')}%)"}
+            if actual:
+                return {"checked": True, "match": False,
+                        "note": f"不一致! 竞价确认买{a.get('name')}, panel结算为{actual.get('name')} —— 请检查数据源"}
+            return {"checked": True, "match": False,
+                    "note": "不一致! 竞价确认有买入但panel未结算到成交 —— 请检查数据源"}
+        # auction 认为空仓
+        if actual:
+            return {"checked": True, "match": False,
+                    "note": f"不一致! 竞价确认空仓但panel结算有成交({actual.get('name')}) —— 请检查数据源"}
+        return {"checked": True, "match": True, "note": "两道判定一致: 今日空仓"}
+
     latest = {
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
@@ -382,6 +420,7 @@ def main():
         "stats": {k: v for k, v in stats.items()},
         "picks": verified,
         "t1_decision": t1_decision,
+        "audit": _audit_vs_auction(out_dir, _fmt(signal_date), history),
         "data_quality": {"anomalies": anomalies, "rows": int(len(day_df))},
         "disclaimer": DISCLAIMER,
     }

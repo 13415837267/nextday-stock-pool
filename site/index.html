@@ -208,6 +208,10 @@ async function renderAuction(buyDate) {
       head = `<span class="muted"><b>⛔ 竞价确认：今日空仓</b> · ${esc(a.note || "")}</span>`;
     }
     if (a.chain && a.chain.length) body = `<div class="muted" style="font-size:12px;margin-top:4px">${a.chain.map(esc).join("；")}</div>`;
+    if (a.positions && a.positions.length) {
+      body += `<div style="margin-top:6px">` + a.positions.map(p =>
+        `<span>📌 当前持仓 <b>${esc(p.name)}</b>(${esc(p.code)}) 买入${p.buy_px}（${fmtDate(p.buy_date)}）· 现价${p.cur_px} · 浮动 <b class="${pctCls(p.float_pct)}">${pctStr(p.float_pct)}</b></span>`).join("<br>") + `</div>`;
+    }
     box.innerHTML = head + body;
   } catch (e) {
     box.innerHTML = `<span class="muted">竞价确认: 尚未生成（每交易日 9:26 自动更新）</span>`;
