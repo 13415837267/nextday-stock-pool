@@ -1,0 +1,17 @@
+{
+ "confirm_time": "2026-10-23 19:31:38",
+ "buy_date": "2026-10-26",
+ "signal_date": "2026-10-23",
+ "for_today": false,
+ "allow_buy": true,
+ "floor_pct": -2.75,
+ "position_pct": 95.0,
+ "action": "skip",
+ "name": "",
+ "code": "",
+ "rank": null,
+ "open_px": null,
+ "gap_pct": null,
+ "chain": [],
+ "note": "今日(20261023)非计划买入日(计划买入日2026-10-26), 无需竞价确认"
+}
