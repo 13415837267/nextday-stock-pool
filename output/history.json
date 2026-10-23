@@ -7,8 +7,8 @@
  "records": [
   {
    "publish_date": "2026-10-23",
-   "buy_date": "",
-   "sell_date": "",
+   "buy_date": "2026-10-26",
+   "sell_date": "2026-10-27",
    "regime_ok": false,
    "picks": [],
    "status": "待结算"
