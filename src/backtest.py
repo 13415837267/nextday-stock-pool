@@ -390,6 +390,20 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     gross_loss = -sum(t["ret_pct"] for t in losses)
     bench = reg.loc[reg.index.isin(main_dates), "mkt_idx"]
     bench_norm = (bench / bench.iloc[0] * float(bt_cfg["initial_capital"])) if len(bench) else bench
+    # 期末未平仓持仓披露: 买入记录延迟至卖出日(do_sell)才写入trades, 期末未平仓的
+    # 持仓在trades明细中天然缺席——显式列出, 防止"明细全skip"被误读为"未买入"
+    open_positions = []
+    for h in holding:
+        sub = per_code.get(h["code"])
+        last = sub.iloc[-1] if sub is not None and len(sub) else None
+        unreal = (float(last["close_adj"]) / h["buy_eff"] - 1) * 100 if last is not None else None
+        open_positions.append({
+            "signal_date": h.get("signal_date", ""), "code": h["code"], "name": h.get("name", ""),
+            "buy_date": h.get("buy_date", ""), "buy_px": h.get("buy_px_raw"),
+            "cost_pct": round(h["units"] * h["buy_eff"] / float(nav.iloc[-1]) * 100, 1),
+            "last_px": float(last["close"]) if last is not None else None,
+            "unrealized_pct": round(unreal, 2) if unreal is not None else None,
+        })
 
     result = {
         "meta": {
@@ -417,6 +431,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         "benchmark": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in bench_norm.items()] if len(bench_norm) else [],
         "trades_recent": trades[-60:],
         **({"trades_all": trades} if __import__("os").environ.get("BT_FULL_TRADES") else {}),
+        **({"open_positions": open_positions} if open_positions else {}),
         "monthly": _monthly(nav),
     }
     return result

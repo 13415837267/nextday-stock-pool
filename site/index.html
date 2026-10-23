@@ -326,6 +326,19 @@ async function loadBacktest() {
         `<div style="margin-top:14px"><b style="font-size:13px">月度收益（近12月）</b>
          <table style="margin-top:6px"><tr><th>月份</th><th>收益</th></tr>${rows}</table></div>`);
     }
+    const op = d.open_positions || [];
+    if (op.length) {
+      const rows = op.map(x => {
+        const u = x.unrealized_pct;
+        return `<tr><td>${x.buy_date}</td><td>${esc(x.code)}</td><td>${esc(x.name || x.code)}</td>
+          <td>${x.buy_px ?? "-"}</td><td>${x.cost_pct != null ? x.cost_pct + "%" : "-"}</td>
+          <td class="${pctCls(u)}">${u == null ? "—" : pctStr(u)}</td></tr>`;
+      }).join("");
+      document.getElementById("bt-chart").insertAdjacentHTML("beforeend",
+        `<div style="margin-top:14px"><b style="font-size:13px">期末未平仓持仓</b>
+         <span class="muted" style="font-size:12px;margin-left:8px">买入后未到卖出日(T+2), 交易明细中暂不显示</span>
+         <table style="margin-top:6px"><tr><th>买入日</th><th>代码</th><th>名称</th><th>买入价</th><th>成本占比</th><th>浮动盈亏</th></tr>${rows}</table></div>`);
+    }
   } catch (e) {
     cards.innerHTML = `<div class="card"><div class="k">回测报告</div><div class="v" style="font-size:14px;color:var(--muted)">尚未运行（可在 Actions 中手动触发「回测」）</div></div>`;
   }
