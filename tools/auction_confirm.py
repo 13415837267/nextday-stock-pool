@@ -4,11 +4,13 @@
 输出 output/auction.json, 供网页「竞价确认」卡展示。"""
 import json
 import os
+import re
 import sys
 import urllib.request
 from datetime import datetime, timezone, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 CST = timezone(timedelta(hours=8))
 
 
@@ -106,11 +108,50 @@ def main():
         if result["action"] == "skip" and not any("顺延" in c for c in result["chain"]) and cands:
             result["note"] = "候选数据异常, 请人工复核"
         elif result["action"] == "skip":
-            result["note"] = "全部候选未达标 → 今日空仓"
+            result["note"] = ("全部候选未达标 → 今日空仓" if cands
+                              else "空池日(无合格候选) → 今日空仓")
         if result["action"] == "buy":
             result["note"] = (f"确认买入第{result['rank']}名 {name}({code}), "
                               f"竞价缺口{result['gap_pct']:.2f}%, 开盘价{result['open_px']}, "
                               f"仓位{result['position_pct']}%")
+
+    # ---- 卖出侧确认(2026-10-24新增): 「持仓中」记录的卖出日==今日 → 生成卖出执行卡 ----
+    # 输出实际竞价开盘价/预计实现收益(含双边费用口径与回测一致)/开盘跌停→收盘卖出提示
+    try:
+        from src.config import load_config
+        _ex = load_config()["execution"]
+        hist_path = os.path.join(ROOT, "output", "history.json")
+        sells = []
+        if os.path.exists(hist_path):
+            hist = json.load(open(hist_path, encoding="utf-8"))
+            sell_recs = []
+            for rec in hist.get("records", []):
+                e = rec.get("executed") or {}
+                if e.get("holding") and str(e.get("sell_date", "")).replace("-", "") == today:
+                    sell_recs.append(e)
+            if sell_recs:
+                q = fetch_quotes([e["code"] for e in sell_recs])
+                fee = (1 - _ex.get("slippage", 0)) \
+                    * (1 - _ex.get("commission_rate", 0) - _ex.get("stamp_tax", 0)) \
+                    / ((1 + _ex.get("slippage", 0)) * (1 + _ex.get("commission_rate", 0)))
+                for e in sell_recs:
+                    cur = q.get(e["code"], {})
+                    op, prev = cur.get("open") or 0, cur.get("prev_close") or 0
+                    item = {"code": e["code"], "name": e.get("name", ""),
+                            "buy_date": e.get("buy_date"), "buy_px": e.get("buy_px"),
+                            "sell_date": e.get("sell_date"), "open_px": op or None,
+                            "est_ret_pct": None, "limit_down": False}
+                    if op and e.get("buy_px"):
+                        item["est_ret_pct"] = round((op / e["buy_px"] * fee - 1) * 100, 2)
+                        if prev:
+                            ratio = 0.20 if e["code"].startswith(("300", "301")) else 0.10
+                            item["limit_down"] = op <= round(prev * (1 - ratio), 2) + 0.001
+                    sells.append(item)
+        if sells:
+            result["sell_today"] = sells
+            print("卖出确认:", [(s["name"], s.get("est_ret_pct"), s["limit_down"]) for s in sells], flush=True)
+    except Exception as e:
+        print(f"卖出确认失败(不影响买入确认): {e}", flush=True)
 
     # ---- 持仓实时浮盈: 扫描 history 中「持仓中」记录, 拉现价 ----
     try:

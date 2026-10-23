@@ -71,9 +71,16 @@ def main():
     anomalies = []
     if len(day_df) < 3000:
         anomalies.append(f"全市场行数仅{len(day_df)}(<3000)")
-    bad_pct = day_df[(day_df["pct"].abs() > 22)].shape[0]          # 涨跌幅超物理界限(主板10%/创业20%+误差)
-    if bad_pct:
-        anomalies.append(f"涨跌幅超±22%的记录{bad_pct}条")
+    # 新股上市首日: pre_close=0, pct为脏值(如+7199%)属正常现象, 单独列示不计为异常
+    ipo_rows = day_df[day_df["pre_close"] <= 0] if "pre_close" in day_df.columns else day_df.iloc[:0]
+    if len(ipo_rows):
+        _codes = ", ".join(ipo_rows["ts_code"].head(3))
+        anomalies.append(f"新股上市首日{len(ipo_rows)}只({_codes}等, pct脏值已在指标层置NaN, 正常)")
+    bad_pct = day_df[(day_df["pre_close"] > 0) & (day_df["pct"].abs() > 22)] \
+        if "pre_close" in day_df.columns else day_df[(day_df["pct"].abs() > 22)]
+    if len(bad_pct):
+        _codes = ", ".join(bad_pct["ts_code"].head(5))
+        anomalies.append(f"真实异常: pre_close>0且|pct|>22%共{len(bad_pct)}条({_codes})")
     nan_close = int(day_df["close"].isna().sum())
     if nan_close:
         anomalies.append(f"收盘价缺失{nan_close}条")
@@ -197,8 +204,7 @@ def main():
                 "chain": chain,
                 "holding": True,
             }
-        if chain:
-            rec["skip_chain"] = chain
+        rec["skip_chain"] = chain   # 总是覆盖: 顺延链为空即清空, 防历史运行残留与executed矛盾
         return None
 
     for rec in history:
@@ -221,6 +227,9 @@ def main():
                     rec["executed"] = _holding
                     rec["status"] = "持仓中"
                     rec["skipped_codes"] = []
+                    rec.pop("skip_chain", None)   # 清除历史运行残留的旧顺延链(与executed矛盾)
+                else:
+                    rec.pop("executed", None)     # 判定未成交: 清除可能的旧持仓记录
             continue
         # 买入日仓位系数与承接线(与回测口径一致)
         bfrac = day_frac_map.get(buy_d, 1.0) if buy_d else 0.0
@@ -279,8 +288,11 @@ def main():
                 "win": sum(1 for r in rets if r > 0),
             }
             rec["executed"] = executed
+            rec.pop("skip_chain", None)   # 顺延链已在executed.chain内, 清除顶层残留
         elif executed is None and (chain or not day_ok):
             rec["skip_chain"] = chain if day_ok else ["大盘风控空仓"]
+        else:
+            rec.pop("skip_chain", None)
         rec["status"] = "已结算" if rets else "无成交"
         rec["skipped_codes"] = skipped
 

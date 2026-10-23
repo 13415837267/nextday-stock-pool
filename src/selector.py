@@ -23,6 +23,11 @@ from .config import board_of, load_config
 def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     """在长表上向量化计算前复权价格与全部技术指标(仅用截至当日数据, 无未来函数)。"""
     panel = panel.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
+    # 数据卫生(2026-10-24): 上市首日行 pre_close=0, 数据源的pct为脏值(实测+7199%)。
+    # 置NaN使其在选股区间过滤与风控等权均值(mean跳过NaN)中被显式排除,
+    # 不再依赖 bars>=21 过滤的隐性防护; 次日起pct由close_adj正常衔接。
+    if "pre_close" in panel.columns:
+        panel.loc[panel["pre_close"] <= 0, "pct"] = np.nan
     g = panel.groupby("ts_code", sort=False)
 
     flast = g["factor"].transform("last")

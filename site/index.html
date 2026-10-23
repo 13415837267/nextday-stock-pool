@@ -198,8 +198,9 @@ async function renderAuction(buyDate) {
     if (!r.ok) throw 0;
     const a = await r.json();
     const isToday = a.for_today;
+    const hasSell = a.sell_today && a.sell_today.length;
     let head, body = "";
-    if (!isToday) {
+    if (!isToday && !hasSell) {
       head = `<span class="muted">今日非买入日（计划买入日 ${fmtDate(a.buy_date)}），无需竞价确认</span>`;
     } else if (a.action === "buy") {
       head = `<span style="color:var(--up)"><b>🔔 竞价确认（${a.confirm_time.split(" ")[1] || ""}）：买入 第${a.rank}名 ${esc(a.name)}（${esc(a.code)}）</b></span>
@@ -208,6 +209,12 @@ async function renderAuction(buyDate) {
       head = `<span class="muted"><b>⛔ 竞价确认：今日空仓</b> · ${esc(a.note || "")}</span>`;
     }
     if (a.chain && a.chain.length) body = `<div class="muted" style="font-size:12px;margin-top:4px">${a.chain.map(esc).join("；")}</div>`;
+    if (hasSell) {
+      body += `<div style="margin-top:6px">` + a.sell_today.map(s =>
+        `<span style="color:var(--gold)">📤 今日开盘卖出 <b>${esc(s.name)}</b>(${esc(s.code)}) 买入价${s.buy_px}（${fmtDate(s.buy_date)}）`
+        + ` · 竞价开盘${s.open_px ?? "-"} · 预计实现 <b class="${pctCls(s.est_ret_pct)}">${s.est_ret_pct != null ? pctStr(s.est_ret_pct) : "-"}</b>（含费用）`
+        + (s.limit_down ? ` · <span style="color:var(--red)">开盘跌停 → 按规则今日收盘卖出</span>` : ``) + `</span>`).join("<br>") + `</div>`;
+    }
     if (a.positions && a.positions.length) {
       body += `<div style="margin-top:6px">` + a.positions.map(p =>
         `<span>📌 当前持仓 <b>${esc(p.name)}</b>(${esc(p.code)}) 买入${p.buy_px}（${fmtDate(p.buy_date)}）· 现价${p.cur_px} · 浮动 <b class="${pctCls(p.float_pct)}">${pctStr(p.float_pct)}</b></span>`).join("<br>") + `</div>`;
