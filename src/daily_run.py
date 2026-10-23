@@ -150,12 +150,14 @@ def main():
     reenter = float(_rm.get("block_reenter_frac", 0) or 0)
     rf_ramp = bool(_rm.get("rf_ramp", False))
     day_frac_map: dict[str, float] = {}
+    day_block_map: dict[str, bool] = {}   # 该日是否处于风控期(trade_ok=False), 供承接线口径判定
     _consec = 0
     for _d in reg.index:
         if bool(reg.loc[_d, "trade_ok"]):
             _consec = 0
             day_frac_map[_d] = 1.0
         else:
+            day_block_map[_d] = True
             _consec += 1
             if _consec <= max_block:
                 day_frac_map[_d] = 0.0
@@ -177,7 +179,8 @@ def main():
         bfrac = day_frac_map.get(buy_d, 1.0) if buy_d else 0.0
         day_ok = bfrac > 0
         floor = ex.get("buy_gap_below", 0)
-        if not day_ok:
+        if day_ok and day_block_map.get(buy_d, False):
+            # 超限小仓参与日(风控期但允许小仓): 用专属承接线, 与回测口径一致
             floor = ex.get("block_gap_below", floor)
         maxn = int(ex.get("max_buy_per_day", 0))
         chain = []
@@ -243,7 +246,8 @@ def main():
         bfrac = day_frac_map.get(buy_d, 1.0) if buy_d else 0.0
         day_ok = bfrac > 0
         floor = ex.get("buy_gap_below", 0)
-        if not day_ok:
+        if day_ok and day_block_map.get(buy_d, False):
+            # 超限小仓参与日(风控期但允许小仓): 用专属承接线, 与回测口径一致
             floor = ex.get("block_gap_below", floor)
         rets, skipped, chain = [], [], []
         executed = None
