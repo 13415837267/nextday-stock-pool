@@ -256,6 +256,59 @@ def main():
     }
     buy_d = cal[pos + 1] if pos + 1 < len(cal) else None
     sell_d = cal[pos + 2] if pos + 2 < len(cal) else None
+    if buy_d is None:   # 信号日=日历最后一天: 推算下一交易日(跳过周末; 法定节假日顺延, 误差可接受)
+        _bd = pd.bdate_range(start=_fmt(signal_date), periods=3)
+        buy_d = _bd[1].strftime("%Y%m%d")
+        sell_d = _bd[2].strftime("%Y%m%d")
+        print(f"交易日历无未来日, 推算买入日{buy_d}/卖出日{sell_d}(遇节假日顺延)")
+
+    # ---- T+1 执行判定卡(每晚生成, 次日照卡执行) ----
+    regime_ok_now = bool(reg_row["trade_ok"]) if reg_row is not None else True
+    over_limit_now = over_limit
+    panic_day = False
+    if reg_row is not None and cfg["regime"].get("vol_max"):
+        _vol20 = float(reg["mkt_pct"].rolling(20).std().loc[signal_date]) if signal_date in reg.index else 0.0
+        _m20 = float((reg["mkt_idx"].loc[signal_date] / reg["mkt_idx"].shift(20).loc[signal_date] - 1) * 100) \
+            if signal_date in reg.index else 0.0
+        panic_day = (_vol20 > cfg["regime"]["vol_max"]) and (_m20 < cfg["regime"].get("vol_mkt_ret_min", 0.0))
+    if panic_day:
+        allow_buy = False
+        buy_note = "恐慌型波动日(高波动+市场20日下跌): 全额空仓, 不参与任何买入"
+    elif regime_ok_now:
+        allow_buy = True
+        buy_note = "风控通过: 可正常开仓(承接线见下)"
+    elif over_limit_now:
+        allow_buy = True
+        buy_note = f"超限参与日(连续风控第{consec}日): 按{reenter:.0%}仓位参与, 执行更严承接线"
+    else:
+        allow_buy = False
+        buy_note = f"大盘风控中(连续第{consec}日): 空仓观望"
+
+    floor_now = ex.get("buy_gap_below", 0)
+    if allow_buy and not regime_ok_now:
+        floor_now = ex.get("block_gap_below", floor_now)
+    steps = []
+    for i, p in enumerate(verified[:5], 1):
+        steps.append({
+            "rank": i, "code": p["code"], "name": p["name"], "score": p.get("score"),
+            "close": p.get("close"), "pct": p.get("pct"),
+            "rule": f"9:25竞价缺口 ≤ {floor_now}% 且 < 9% 且未停牌未一字 → 买入全仓",
+            "fallback": f"不达标 → 顺延第{i+1}名" if i < min(5, len(verified)) else "",
+        })
+    if not verified:
+        steps.append({"rank": 0, "code": "", "name": "（今日无合格候选）", "rule": "明日空仓, 无需操作", "fallback": ""})
+    t1_decision = {
+        "allow_buy": allow_buy,
+        "buy_note": buy_note,
+        "panic_day": panic_day,
+        "floor_pct": floor_now if allow_buy else None,
+        "position_pct": round((reenter if (over_limit_now and not regime_ok_now) else 1.0) * ex.get("alloc_frac_pct", 100.0), 1),
+        "steps": steps,
+        "sell_plan": "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)",
+        "empty_funnel": ({"全市场": stats.get("universe"), "流动性/次新": stats.get("liquidity"),
+                          "回调形态": stats.get("price_action"), "趋势条件": stats.get("trend_ok"),
+                          "评分入池": stats.get("scored")} if not verified else None),
+    }
 
     latest = {
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -273,6 +326,7 @@ def main():
         "regime": regime_info,
         "stats": {k: v for k, v in stats.items()},
         "picks": verified,
+        "t1_decision": t1_decision,
         "data_quality": {"anomalies": anomalies, "rows": int(len(day_df))},
         "disclaimer": DISCLAIMER,
     }

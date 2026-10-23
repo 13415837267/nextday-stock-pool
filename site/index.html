@@ -140,16 +140,27 @@ async function loadLatest() {
   badges.push(`<span class="badge gold">候选 ${d.picks.length} 只</span>`);
   document.getElementById("badges").innerHTML = badges.join("");
 
-  // 单吊计划卡片: top1
+  // T+1 执行判定卡: 每晚生成决策树, 次日照卡执行
   const p = d.plan || {};
   const t1 = d.picks[0] || {};
+  const td = d.t1_decision || {};
+  const allow = td.allow_buy !== false && d.picks.length > 0;
+  const judgeHead = allow
+    ? `<div class="big" style="color:var(--up)">✅ 明日可买入 · 仓位 ${td.position_pct ?? 100}%</div>
+       <div class="row"><b>判定：</b>${esc(td.buy_note || "")}</div>
+       <div class="row"><b>承接线：</b>开盘缺口 ≤ <b>${td.floor_pct ?? "-"}%</b> 才买（高开≥9%/一字/停牌放弃并顺延）</div>`
+    : `<div class="big" style="color:var(--muted)">⛔ 明日不买入（空仓）</div>
+       <div class="row"><b>判定：</b>${esc(td.buy_note || (d.picks.length === 0 ? "今日无合格候选" : "风控限制"))}</div>`;
+  const stepsHtml = (td.steps || []).filter(s => s.rank > 0).map(s =>
+    `<div class="row">▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}</div>`).join("")
+    || `<div class="row">▸ 今日候选池为空${td.empty_funnel ? `：` + Object.entries(td.empty_funnel).filter(([k,v])=>v!=null).map(([k,v])=>`${k} ${v}`).join(" → ") + " → 全部过滤" : ""}，明日空仓</div>`;
   document.getElementById("plan").innerHTML = `
     <div class="plan-grid">
-      <div class="t1-box">
-        <div class="k muted" style="font-size:12px">明日执行标的（评分第1名）</div>
-        <div class="big">${esc(t1.name || "-")} <span class="muted" style="font-size:13px">${esc(t1.code || "")}</span></div>
-        <div class="row">收盘 <b>${t1.close ?? "-"}</b> · 当日涨幅 <b class="${pctCls(t1.pct)}">${pctStr(t1.pct)}</b> · 评分 <b>${t1.score ?? "-"}</b></div>
-        <div class="row">入场条件：开盘缺口 ≤ -2.40%（超限日 -2.75%）· 高开/一字放弃并顺延下一只</div>
+      <div class="t1-box" style="grid-column:1/-1">
+        <div class="k muted" style="font-size:12px">T+1（${fmtDate(p.buy_date)}）执行判定卡 · 9:25 竞价结束后照此执行</div>
+        ${judgeHead}
+        ${stepsHtml}
+        <div class="row"><b>卖出：</b>${esc(td.sell_plan || "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)")}</div>
       </div>
       <div class="panel">
         <b>买入</b><br><span class="muted">${fmtDate(p.buy_date)} ${esc(p.buy_point || "")}</span>
@@ -160,14 +171,18 @@ async function loadLatest() {
       </div>
     </div>`;
 
-  let html = `<table><tr><th>#</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
-  d.picks.forEach((x, i) => {
-    html += `<tr><td class="${i === 0 ? "up" : "muted"}"><b>${i + 1}</b></td><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${x.close}</td>
-      <td class="${pctCls(x.pct)}">${pctStr(x.pct)}</td><td>${x.vol_ratio}</td><td>${x.turnover_rate}%</td>
-      <td>${x.amount_yi}</td><td class="${pctCls(x.mom20)}">${pctStr(x.mom20)}</td>
-      <td><b>${x.score}</b></td><td class="muted">${esc(x.reasons)}</td></tr>`;
-  });
-  document.getElementById("pool").innerHTML = html + "</table>";
+  if (!d.picks.length) {
+    document.getElementById("pool").innerHTML = `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
+  } else {
+    let html = `<table><tr><th>#</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
+    d.picks.forEach((x, i) => {
+      html += `<tr><td class="${i === 0 ? "up" : "muted"}"><b>${i + 1}</b></td><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${x.close}</td>
+        <td class="${pctCls(x.pct)}">${pctStr(x.pct)}</td><td>${x.vol_ratio}</td><td>${x.turnover_rate}%</td>
+        <td>${x.amount_yi}</td><td class="${pctCls(x.mom20)}">${pctStr(x.mom20)}</td>
+        <td><b>${x.score}</b></td><td class="muted">${esc(x.reasons)}</td></tr>`;
+    });
+    document.getElementById("pool").innerHTML = html + "</table>";
+  }
   document.getElementById("disclaimer").textContent = d.disclaimer || "";
 }
 
