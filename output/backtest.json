@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run_time": "2026-10-24 02:31:58",
+  "run_time": "2026-10-24 02:37:02",
   "start": "20240926",
   "end": "20261023",
   "days": 500,
@@ -4686,6 +4686,18 @@
    "sell_px": null,
    "ret_pct": null,
    "note": "缺口-2.0%未达承接线-2.75%"
+  }
+ ],
+ "open_positions": [
+  {
+   "signal_date": "20261022",
+   "code": "300192.SZ",
+   "name": "科德教育",
+   "buy_date": "20261023",
+   "buy_px": 19.02,
+   "cost_pct": 98.7,
+   "last_px": 19.29,
+   "unrealized_pct": 1.32
   }
  ],
  "monthly": [
