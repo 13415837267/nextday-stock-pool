@@ -1,0 +1,61 @@
+name: 竞价确认
+on:
+  schedule:
+    - cron: "26 1 * * 1-5"   # 北京时间周一至周五 09:26(集合竞价撮合完成后自动判定今日买入)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 竞价确认(9:25竞价数据自动判定)
+        run: python tools/auction_confirm.py
+
+      - name: 提交确认结果
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/auction.json
+          git commit -m "竞价确认: $(TZ=Asia/Shanghai date '+%F %H:%M')" || echo "无变化"
+          git pull --rebase origin main || true
+          git push
+
+      - name: 组装 Pages 站点
+        run: |
+          mkdir -p site/data
+          cp output/latest.json output/history.json output/backtest.json output/auction.json site/data/ 2>/dev/null || true
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: 部署 GitHub Pages
+        uses: actions/deploy-pages@v4
+
+      - name: 失败告警(自动建Issue)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "⚠ 竞价确认失败: $(TZ=Asia/Shanghai date +%F)" \
+            --body "竞价确认工作流失败, 请查看日志: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            || echo "Issue创建失败(可能已有同名), 跳过"

@@ -158,6 +158,7 @@ async function loadLatest() {
     <div class="plan-grid">
       <div class="t1-box" style="grid-column:1/-1">
         <div class="k muted" style="font-size:12px">T+1（${fmtDate(p.buy_date)}）执行判定卡 · 9:25 竞价结束后照此执行</div>
+        <div id="auction-box" class="row" style="padding:8px 0;border-top:1px dashed var(--border);margin-top:8px"><span class="muted">竞价确认: 加载中…</span></div>
         ${judgeHead}
         ${stepsHtml}
         <div class="row"><b>卖出：</b>${esc(td.sell_plan || "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)")}</div>
@@ -170,6 +171,8 @@ async function loadLatest() {
         <b>仓位</b><br><span class="muted">${esc(p.position || "")}</span>
       </div>
     </div>`;
+
+  renderAuction(p.buy_date);
 
   if (!d.picks.length) {
     document.getElementById("pool").innerHTML = `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
@@ -184,6 +187,31 @@ async function loadLatest() {
     document.getElementById("pool").innerHTML = html + "</table>";
   }
   document.getElementById("disclaimer").textContent = d.disclaimer || "";
+}
+
+/* ---------- 竞价确认卡(9:26 自动判定) ---------- */
+async function renderAuction(buyDate) {
+  const box = document.getElementById("auction-box");
+  if (!box) return;
+  try {
+    const r = await fetch(`data/auction.json?t=${Date.now()}`);
+    if (!r.ok) throw 0;
+    const a = await r.json();
+    const isToday = a.for_today;
+    let head, body = "";
+    if (!isToday) {
+      head = `<span class="muted">今日非买入日（计划买入日 ${fmtDate(a.buy_date)}），无需竞价确认</span>`;
+    } else if (a.action === "buy") {
+      head = `<span style="color:var(--up)"><b>🔔 竞价确认（${a.confirm_time.split(" ")[1] || ""}）：买入 第${a.rank}名 ${esc(a.name)}（${esc(a.code)}）</b></span>
+        <span class="muted">· 开盘价 ${a.open_px} · 缺口 ${pctStr(a.gap_pct)} · 仓位 ${a.position_pct}%</span>`;
+    } else {
+      head = `<span class="muted"><b>⛔ 竞价确认：今日空仓</b> · ${esc(a.note || "")}</span>`;
+    }
+    if (a.chain && a.chain.length) body = `<div class="muted" style="font-size:12px;margin-top:4px">${a.chain.map(esc).join("；")}</div>`;
+    box.innerHTML = head + body;
+  } catch (e) {
+    box.innerHTML = `<span class="muted">竞价确认: 尚未生成（每交易日 9:26 自动更新）</span>`;
+  }
 }
 
 /* ---------- 三: 单吊执行记录(逐笔明细) ---------- */

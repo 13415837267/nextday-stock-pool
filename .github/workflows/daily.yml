@@ -6,6 +6,8 @@ on:
     - cron: "0 10 * * 1-5"   # 北京时间周一至周五 18:00 每交易日自动更新一次(免费数据源当日数据此时已完整)
   push:
     branches: [main]          # main 一有更新(策略优化/数据提交)即重新部署网页, 保证站点与 main 始终一致
+    paths-ignore:             # 竞价确认只改 auction.json, 由 auction.yml 自行部署, 不触发每日全量
+      - "output/auction.json"
   workflow_dispatch: {}      # 支持手动触发
 
 permissions:
