@@ -104,6 +104,11 @@ def apply_regime(reg_base: pd.DataFrame, cfg: dict) -> pd.DataFrame:
                     & (m20 < cfg["regime"].get("vol_mkt_ret_min", 0.0))
             ok = ok & ~panic
     reg["trade_ok"] = ok
+    # panic 标记: 供回测引擎区分"恐慌日"(不计入连续风控天数, 防止被超限参与机制绕过)
+    if cfg["regime"].get("vol_max"):
+        reg["panic"] = panic
+    else:
+        reg["panic"] = False
     return reg
 
 

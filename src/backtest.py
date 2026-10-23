@@ -102,11 +102,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     rf_ramp = bool(_rm.get("rf_ramp", False))   # 渐近恢复: 超限后每多1日风控, 系数+0.05直至1.0
     day_frac: dict[str, float] = {}
     if max_block > 0 and reenter_frac > 0 and len(reg):
+        has_panic = "panic" in reg.columns
         consec = 0
         for d_i in reg.index:
             if bool(reg.loc[d_i, "trade_ok"]):
                 consec = 0
                 day_frac[d_i] = 1.0
+            elif has_panic and bool(reg.loc[d_i, "panic"]):
+                day_frac[d_i] = 0.0   # 恐慌型波动日: 全额空仓且不计入连续风控天数
+                                      # (防恐慌期被超限参与机制绕过熔断; 2026-10-23定稿)
             else:
                 consec += 1
                 if consec <= max_block:
