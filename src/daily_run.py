@@ -150,7 +150,8 @@ def main():
                 day_frac_map[_d] = reenter
 
     def row_of(d: str, code: str):
-        sub = by_date.get(d)
+        # 日期归一化: 调用方可能传入带横杠(history)或无横杠(cal)格式
+        sub = by_date.get(str(d).replace("-", ""))
         if sub is None:
             return None
         r = sub[sub["ts_code"] == code]
