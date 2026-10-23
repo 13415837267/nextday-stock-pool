@@ -60,7 +60,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "回测结果无变化, 跳过提交"
           else
-            git commit -m "回测更新: $(TZ=Asia/Shanghai date +%F) 实盘口径复利回测报告"
+            git commit -m "回测更新: $(TZ=Asia/Shanghai date +%F) 实盘口径复利回测报告 [skip ci]"
             git push
           fi
 

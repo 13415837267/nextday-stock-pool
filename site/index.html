@@ -154,6 +154,15 @@ async function loadLatest() {
   const stepsHtml = (td.steps || []).filter(s => s.rank > 0).map(s =>
     `<div class="row">▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}</div>`).join("")
     || `<div class="row">▸ 今日候选池为空${td.empty_funnel ? `：` + Object.entries(td.empty_funnel).filter(([k,v])=>v!=null).map(([k,v])=>`${k} ${v}`).join(" → ") + " → 全部过滤" : ""}，明日空仓</div>`;
+  // 两道判定对账(9:26竞价确认 vs 晚间panel结算) + 数据质量(过滤"新股首日属正常"条目)
+  const au = d.audit || {};
+  const dq = ((d.data_quality || {}).anomalies || []).filter(s => String(s).indexOf("正常)") < 0);
+  const auditHtml = au.checked
+    ? `<div class="row" style="${au.match === false ? "color:var(--red);font-weight:bold" : "color:var(--muted);font-size:12px"}">${au.match === false ? "⚠ 两道判定不一致（请人工复核）" : "✓ 两道判定对账一致"} · ${esc(au.note || "")}</div>`
+    : "";
+  const dqHtml = dq.length
+    ? `<div class="row" style="color:var(--red)">⚠ 数据质量: ${esc(dq.join("；"))}</div>`
+    : "";
   document.getElementById("plan").innerHTML = `
     <div class="plan-grid">
       <div class="t1-box" style="grid-column:1/-1">
@@ -161,6 +170,8 @@ async function loadLatest() {
         <div id="auction-box" class="row" style="padding:8px 0;border-top:1px dashed var(--border);margin-top:8px"><span class="muted">竞价确认: 加载中…</span></div>
         ${judgeHead}
         ${stepsHtml}
+        ${auditHtml}
+        ${dqHtml}
         <div class="row"><b>卖出：</b>${esc(td.sell_plan || "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)")}</div>
       </div>
       <div class="panel">

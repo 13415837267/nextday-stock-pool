@@ -96,6 +96,14 @@ def main():
     warm = max(cfg["regime"].get("warmup_days", 30), 25)
     panel_dates = cal[max(0, pos - warm + 1): pos + 1]
     panel = fetch_panel(client, panel_dates)
+    if not len(panel):
+        raise RuntimeError("面板抓取为空, 指标无法计算, 终止(请检查数据源)")
+    got = set(panel["trade_date"].astype(str))
+    miss = [d for d in panel_dates if str(d) not in got]
+    if miss:
+        print(f"⚠ 面板缺日 {len(miss)}/{len(panel_dates)} 天: {', '.join(miss[:5])}"
+              + (" ..." if len(miss) > 5 else "")
+              + " —— 指标与风控基于实际可得日期计算, 请核查数据源")
     panel = build_indicators(panel)
     by_date = split_by_date(panel)
     reg = regime_series(panel, cfg)

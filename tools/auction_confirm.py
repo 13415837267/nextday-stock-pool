@@ -6,12 +6,20 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.request
 from datetime import datetime, timezone, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 CST = timezone(timedelta(hours=8))
+
+from src.config import load_config   # noqa: E402  (需先注入ROOT)
+
+
+def limit_ratio(code):
+    """A股涨跌停幅度: 创业板300/301与科创板688/689为20%, 其余主板10%(北交所未参与)。"""
+    return 0.20 if str(code).startswith(("300", "301", "688", "689")) else 0.10
 
 
 def http_get(url, headers=None, timeout=15):
@@ -21,20 +29,26 @@ def http_get(url, headers=None, timeout=15):
 
 
 def fetch_quotes(codes):
-    """codes: ['000504.SZ', ...] -> {code: {name, prev_close, open}}"""
+    """codes: ['000504.SZ', ...] -> {code: {name, prev_close, open}}
+    主源(腾讯)失败/空返回自动重试3次(9:26窗口网络抖动常见), 仍缺的交由备源(新浪)补齐。"""
     quotes = {}
-    # 主源: 腾讯
-    try:
-        q = codes and "q=" + ",".join(("sh" if c.endswith(".SH") else "sz") + c[:6] for c in codes)
-        raw = http_get(f"https://qt.gtimg.cn/{q}").decode("gbk", "ignore")
-        import re
-        for m in re.finditer(r'v_(?:sh|sz)(\d{6})="([^"]*)"', raw):
-            f = m.group(2).split("~")
-            if len(f) > 5 and float(f[4] or 0) > 0:
-                quotes[f"{m.group(1)}.{'SH' if m.group(1).startswith(('6', '9')) else 'SZ'}"] = {
-                    "name": f[1], "prev_close": float(f[4]), "open": float(f[5])}
-    except Exception as e:
-        print(f"腾讯源失败: {e}", flush=True)
+    # 主源: 腾讯(自动重试)
+    q = codes and "q=" + ",".join(("sh" if c.endswith(".SH") else "sz") + c[:6] for c in codes)
+    for attempt in range(1, 4):
+        try:
+            raw = http_get(f"https://qt.gtimg.cn/{q}").decode("gbk", "ignore")
+            for m in re.finditer(r'v_(?:sh|sz)(\d{6})="([^"]*)"', raw):
+                f = m.group(2).split("~")
+                if len(f) > 5 and float(f[4] or 0) > 0:
+                    quotes[f"{m.group(1)}.{'SH' if m.group(1).startswith(('6', '9')) else 'SZ'}"] = {
+                        "name": f[1], "prev_close": float(f[4]), "open": float(f[5])}
+            if quotes or not codes:
+                break
+            print(f"腾讯源第{attempt}次返回空", flush=True)
+        except Exception as e:
+            print(f"腾讯源第{attempt}次失败: {e}", flush=True)
+        if attempt < 3:
+            time.sleep(2)
     # 备源: 新浪(补缺)
     miss = [c for c in codes if c not in quotes]
     if miss:
@@ -42,7 +56,6 @@ def fetch_quotes(codes):
             q = "list=" + ",".join(("sh" if c.endswith(".SH") else "sz") + c[:6] for c in miss)
             raw = http_get(f"https://hq.sinajs.cn/{q}",
                            headers={"Referer": "https://finance.sina.com.cn"}).decode("gbk", "ignore")
-            import re
             for m in re.finditer(r'hq_str_(?:sh|sz)(\d{6})="([^"]*)"', raw):
                 f = m.group(2).split(",")
                 if len(f) > 2 and float(f[2] or 0) > 0:
@@ -54,6 +67,8 @@ def fetch_quotes(codes):
 
 
 def main():
+    cfg = load_config()
+    ex = cfg["execution"]
     latest_path = os.path.join(ROOT, "output", "latest.json")
     out_path = os.path.join(ROOT, "output", "auction.json")
     latest = json.load(open(latest_path, encoding="utf-8"))
@@ -71,9 +86,11 @@ def main():
         "allow_buy": bool(td.get("allow_buy")),
         "floor_pct": td.get("floor_pct"),
         "position_pct": td.get("position_pct"),
+        "data_ok": True,
         "action": "skip", "name": "", "code": "", "rank": None,
         "open_px": None, "gap_pct": None, "chain": [],
     }
+    cands = []
     if buy_date != today:
         result["note"] = f"今日({today})非计划买入日(计划买入日{plan.get('buy_date')}), 无需竞价确认"
     elif not result["allow_buy"]:
@@ -83,7 +100,7 @@ def main():
         codes = [c for _, c, _ in cands if c]
         quotes = fetch_quotes(codes)
         floor = result["floor_pct"]
-        skip_gain = 9.0
+        skip_gain = float(ex.get("skip_open_gain", 9.0) or 9.0)   # 与config执行口径同步, 防硬编码漂移
         for rank, code, name in cands:
             q = quotes.get(code)
             if q is None or q.get("open", 0) <= 0:
@@ -91,13 +108,13 @@ def main():
                 continue
             prev, op = q["prev_close"], q["open"]
             gap = (op / prev - 1) * 100 if prev else 0.0
-            ratio = 0.20 if code.startswith(("300", "301")) else 0.10
+            ratio = limit_ratio(code)
             limit_up = round(prev * (1 + ratio), 2)
             if op >= limit_up - 0.001:
                 result["chain"].append(f"第{rank}名 {name}: 一字涨停({gap:+.2f}%) → 顺延")
                 continue
             if gap >= skip_gain:
-                result["chain"].append(f"第{rank}名 {name}: 高开{gap:.2f}%≥9% → 顺延")
+                result["chain"].append(f"第{rank}名 {name}: 高开{gap:.2f}%≥{skip_gain:g}% → 顺延")
                 continue
             if floor is not None and gap > floor:
                 result["chain"].append(f"第{rank}名 {name}: 缺口{gap:.2f}%未达承接线{floor}% → 顺延")
@@ -115,11 +132,15 @@ def main():
                               f"竞价缺口{result['gap_pct']:.2f}%, 开盘价{result['open_px']}, "
                               f"仓位{result['position_pct']}%")
 
+        # ---- 行情全失败保护(2026-10-24新增): 双源均无数据时绝不误报"今日空仓" ----
+        # 退出码2 → 工作流失败 → 自动建Issue告警; 不写入误导性auction.json
+        if cands and not quotes:
+            print("⚠ 行情源(腾讯+新浪)全部失败, 竞价确认不可用 —— 请人工复核, 切勿按空仓处理", flush=True)
+            sys.exit(2)
+
     # ---- 卖出侧确认(2026-10-24新增): 「持仓中」记录的卖出日==今日 → 生成卖出执行卡 ----
     # 输出实际竞价开盘价/预计实现收益(含双边费用口径与回测一致)/开盘跌停→收盘卖出提示
     try:
-        from src.config import load_config
-        _ex = load_config()["execution"]
         hist_path = os.path.join(ROOT, "output", "history.json")
         sells = []
         if os.path.exists(hist_path):
@@ -131,9 +152,9 @@ def main():
                     sell_recs.append(e)
             if sell_recs:
                 q = fetch_quotes([e["code"] for e in sell_recs])
-                fee = (1 - _ex.get("slippage", 0)) \
-                    * (1 - _ex.get("commission_rate", 0) - _ex.get("stamp_tax", 0)) \
-                    / ((1 + _ex.get("slippage", 0)) * (1 + _ex.get("commission_rate", 0)))
+                fee = (1 - ex.get("slippage", 0)) \
+                    * (1 - ex.get("commission_rate", 0) - ex.get("stamp_tax", 0)) \
+                    / ((1 + ex.get("slippage", 0)) * (1 + ex.get("commission_rate", 0)))
                 for e in sell_recs:
                     cur = q.get(e["code"], {})
                     op, prev = cur.get("open") or 0, cur.get("prev_close") or 0
@@ -144,7 +165,7 @@ def main():
                     if op and e.get("buy_px"):
                         item["est_ret_pct"] = round((op / e["buy_px"] * fee - 1) * 100, 2)
                         if prev:
-                            ratio = 0.20 if e["code"].startswith(("300", "301")) else 0.10
+                            ratio = limit_ratio(e["code"])
                             item["limit_down"] = op <= round(prev * (1 - ratio), 2) + 0.001
                     sells.append(item)
         if sells:

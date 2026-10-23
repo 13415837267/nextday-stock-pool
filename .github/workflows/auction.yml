@@ -16,6 +16,7 @@ concurrency:
 jobs:
   confirm:
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # 行情重试+双源备援最多数分钟, 10分钟足够; 超时按失败自动建Issue
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
