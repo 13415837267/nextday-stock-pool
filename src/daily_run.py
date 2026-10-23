@@ -156,6 +156,50 @@ def main():
         r = sub[sub["ts_code"] == code]
         return r.iloc[0] if len(r) else None
 
+    def _settle_holding(rec, buy_d, sell_d, signal_date, cal, day_frac_map, row_of, ex, cfg):
+        """买入日已发生但卖出日未到: 按当日真实竞价判定成交, 返回持仓中明细(无卖出价)。"""
+        bfrac = day_frac_map.get(buy_d, 1.0) if buy_d else 0.0
+        day_ok = bfrac > 0
+        floor = ex.get("buy_gap_below", 0)
+        if not day_ok:
+            floor = ex.get("block_gap_below", floor)
+        maxn = int(ex.get("max_buy_per_day", 0))
+        chain = []
+        for rank_i, p in enumerate(rec.get("picks", []), 1):
+            rb = row_of(buy_d, p["code"]) if buy_d else None
+            rp = row_of(rec["publish_date"], p["code"])
+            gap = (rb["open_adj"] / rp["close_adj"] - 1) * 100 \
+                if (rb is not None and rp is not None and rp["close_adj"] > 0) else 999
+            reason = None
+            if not day_ok:
+                reason = "大盘风控空仓"
+            elif rb is None or rb["is_paused"] == 1 or rb["vol"] <= 0:
+                reason = "停牌/无成交"
+            elif rb["open"] >= rb["high_limit"] - 1e-9:
+                reason = "开盘一字涨停"
+            elif gap >= ex["skip_open_gain"]:
+                reason = f"高开{gap:.1f}%放弃"
+            elif ex.get("skip_open_loss", 0) and gap <= -abs(ex["skip_open_loss"]):
+                reason = f"低开{gap:.1f}%过深"
+            elif floor and gap > floor:
+                reason = f"缺口{gap:.1f}%未达承接线{floor}%"
+            if reason:
+                chain.append(f"第{rank_i}名 {p.get('name', p['code'])}: {reason}")
+                continue
+            return {
+                "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
+                "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
+                "sell_date": _fmt(sell_d) if sell_d else "", "sell_px": None,
+                "ret_pct": None,
+                "position_pct": round(bfrac * ex.get("alloc_frac_pct", 100.0), 1),
+                "gap_pct": round(gap, 2),
+                "chain": chain,
+                "holding": True,
+            }
+        if chain:
+            rec["skip_chain"] = chain
+        return None
+
     for rec in history:
         if rec.get("status") == "已结算":
             continue
@@ -166,7 +210,14 @@ def main():
         buy_d = cal[ip + 1] if ip + 1 < len(cal) else None
         sell_d = cal[ip + 2] if ip + 2 < len(cal) else None
         if not sell_d or sell_d > signal_date:
-            continue  # 卖出日数据尚未产生
+            # 卖出日未到: 若买入日数据已产生, 记录"持仓中"(买入事实当日可见)
+            if buy_d and buy_d <= signal_date and rec.get("picks"):
+                _holding = _settle_holding(rec, buy_d, sell_d, signal_date, cal, day_frac_map, row_of, ex, cfg)
+                if _holding:
+                    rec["executed"] = _holding
+                    rec["status"] = "持仓中"
+                    rec["skipped_codes"] = []
+            continue
         # 买入日仓位系数与承接线(与回测口径一致)
         bfrac = day_frac_map.get(buy_d, 1.0) if buy_d else 0.0
         day_ok = bfrac > 0

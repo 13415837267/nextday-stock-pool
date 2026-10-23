@@ -211,7 +211,19 @@ async function loadExecHistory() {
     recs.forEach(r => {
       if (r.publish_date < CUTOFF) return;   // 旧口径记录硬性排除
       const e = r.executed;
-      if (e) {
+      if (e && e.holding) {
+        // 持仓中: 买入已成交, 待卖出
+        html += `<tr>
+          <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(e.buy_date)}</td>
+          <td><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
+          <td class="muted">第${e.rank}名</td>
+          <td>${e.buy_px}</td><td>${fmtDate(e.sell_date)}</td><td class="muted">待开盘</td>
+          <td class="muted">${e.position_pct}%</td>
+          <td class="muted">${e.actual_buy_px ?? "-"}</td><td class="muted">-</td>
+          <td class="muted">持仓中</td>
+          <td class="muted chain">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
+          <td class="muted">持仓中</td></tr>`;
+      } else if (e) {
         html += `<tr>
           <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(e.buy_date)}</td>
           <td><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
@@ -224,9 +236,10 @@ async function loadExecHistory() {
           <td class="muted">${esc(r.status || "")}</td></tr>`;
       } else if (r.status === "待结算") {
         const chain = (r.skip_chain || []).join("；") || "-";
+        const isFlat = !(r.picks || []).length;
         html += `<tr>
           <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(r.buy_date)}</td>
-          <td class="muted">待执行(明日开盘)</td>
+          <td class="muted">${isFlat ? "空池日(无候选, 空仓)" : "待执行(明日开盘)"}</td>
           <td class="muted">-</td><td class="muted">-</td><td class="muted">-</td><td class="muted">-</td>
           <td class="muted">-</td><td class="muted">-</td>
           <td class="muted chain">${esc(chain)}</td>
