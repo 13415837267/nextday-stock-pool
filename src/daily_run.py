@@ -204,9 +204,12 @@ def main():
         if rec.get("status") == "已结算":
             continue
         pdate = rec["publish_date"]
-        if pdate not in cal:
+        # 日期格式归一化: history 的 publish_date 带横杠, cal/by_date/reg 为无横杠
+        # (此前格式不一致导致结算循环静默跳过所有记录 —— 2026-10-23 发现并修复)
+        pdate_n = str(pdate).replace("-", "")
+        if pdate_n not in cal:
             continue
-        ip = cal.index(pdate)
+        ip = cal.index(pdate_n)
         buy_d = cal[ip + 1] if ip + 1 < len(cal) else None
         sell_d = cal[ip + 2] if ip + 2 < len(cal) else None
         if not sell_d or sell_d > signal_date:
