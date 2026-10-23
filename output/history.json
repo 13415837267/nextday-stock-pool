@@ -6,6 +6,14 @@
  },
  "records": [
   {
+   "publish_date": "2026-10-23",
+   "buy_date": "",
+   "sell_date": "",
+   "regime_ok": false,
+   "picks": [],
+   "status": "待结算"
+  },
+  {
    "publish_date": "2026-10-22",
    "buy_date": "",
    "sell_date": "",
