@@ -91,6 +91,18 @@ def apply_regime(reg_base: pd.DataFrame, cfg: dict) -> pd.DataFrame:
             ok = breadth_ok | trend_ok
         else:
             ok = breadth_ok & trend_ok
+        # 恐慌型波动熔断(2026-10-23定稿, 十年3372日信号扫描+走前验证):
+        # 仅当 高波动(等权日收益20日std>vol_max) 且 市场20日动量为负 时空仓 ——
+        # "暴跌中带高波动"=恐慌深水区, dip承接是接飞刀; "暴涨型高波动"(如2024-10
+        # 924行情初期)是趋势启动, 保留参与。被剔除29笔全部位于2015股灾/2016熔断/
+        # 2018/2020-03/2022/2026-03恐慌期, 均值-1.72%/胜率41%;
+        # h1(前半)-0.488%→+0.104%, h2(后半)+0.702%→+1.092%/胜率56.5%, 双段一致
+        vol_max = cfg["regime"].get("vol_max")
+        if vol_max:
+            m20 = reg["mkt_idx"] / reg["mkt_idx"].shift(20) - 1
+            panic = (reg["mkt_pct"].rolling(20).std() > vol_max) \
+                    & (m20 < cfg["regime"].get("vol_mkt_ret_min", 0.0))
+            ok = ok & ~panic
     reg["trade_ok"] = ok
     return reg
 
