@@ -1,5 +1,5 @@
 {
- "update_time": "2026-10-23 22:31:37",
+ "update_time": "2026-10-24 01:19:59",
  "signal_date": "2026-10-23",
  "plan": {
   "buy_date": "2026-10-26",
@@ -51,9 +51,14 @@
    "评分入池": null
   }
  },
+ "audit": {
+  "checked": false,
+  "note": "auction非今日数据(2026-10-26)"
+ },
  "data_quality": {
   "anomalies": [
-   "涨跌幅超±22%的记录5条"
+   "新股上市首日1只(920285.BJ等, pct脏值已在指标层置NaN, 正常)",
+   "真实异常: pre_close>0且|pct|>22%共4条(002731.SZ, 688809.SH, 920091.BJ, 920207.BJ)"
   ],
   "rows": 5577
  },
