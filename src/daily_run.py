@@ -145,6 +145,9 @@ def main():
         print(f"信号日{_fmt(signal_date)}今日已处理过(latest.json一致), 幂等跳过")
         return
 
+    names_df = client.stock_names()
+    names = dict(zip(names_df["ts_code"], names_df["name"]))
+
     # ---- 1.5 数据质量校验(异常检测, 防脏数据进信号) ----
     anomalies = []
     if len(day_df) < 3000:
@@ -158,9 +161,16 @@ def main():
     # 限价=0为无涨跌幅限制的次新股, 不参与判定)
     lim = day_df[(day_df["pre_close"] > 0) & (day_df["high_limit"] > 0) & (day_df["low_limit"] > 0)]
     out_lim = lim[(lim["close"] > lim["high_limit"] + 0.005) | (lim["close"] < lim["low_limit"] - 0.005)]
-    if len(out_lim):
-        _codes = ", ".join(out_lim["ts_code"].head(5))
-        anomalies.append(f"真实异常: 收盘超出自身涨跌停价共{len(out_lim)}条({_codes})")
+    # 退市/退市整理期豁免(2026-10-24): 面值退市区(close<1元)或名称含"退"的票, 退市整理期首日
+    # 无涨跌幅限制而数据源限价字段仍按常规板别计算, 越界属正常退市流程波动, 不计为真实异常
+    _delist = (out_lim["close"] < 1) | out_lim["ts_code"].map(lambda c: "退" in str(names.get(c, "")))
+    out_real, out_delist = out_lim[~_delist], out_lim[_delist]
+    if len(out_real):
+        _codes = ", ".join(out_real["ts_code"].head(5))
+        anomalies.append(f"真实异常: 收盘超出自身涨跌停价共{len(out_real)}条({_codes})")
+    if len(out_delist):
+        _codes = ", ".join(out_delist["ts_code"].head(3))
+        anomalies.append(f"退市整理期波动{len(out_delist)}只({_codes}等, 无涨跌幅限制属正常)")
     # 疑似除权: pct与收盘/昨收隐含收益矛盾但收盘在限价内(除权日quote_rate对未复权昨收, 属正常)
     mism = lim[lim["close"] > 0]
     _implied = (mism["close"] / mism["pre_close"] - 1) * 100

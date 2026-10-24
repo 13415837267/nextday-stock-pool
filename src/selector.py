@@ -157,6 +157,11 @@ def select_stocks(
     df = df[df["board"].isin(uni_cfg["boards"])]
     stats["non_st_board"] = int(len(df))
 
+    # 退市/退市整理期排除(2026-10-24): 名称含"退"(交易所对退市整理期股票的标识)不参与选股。
+    # 此类票价格通常已跌破价格下限, 几乎必然死于后续价格/流动性过滤, 此处为显式正确性兜底
+    if names:
+        df = df[df["ts_code"].map(lambda c: "退" not in str(names.get(c, "")))]
+
     df = df[df["close"].between(uni_cfg["price_min"], uni_cfg["price_max"])]
     df = df[df["amount"] >= uni_cfg["amount_min_yi"] * 1e8]
     if uni_cfg.get("amount_max_yi"):                 # 可选: 成交额上限(剔除过热巨量票)
