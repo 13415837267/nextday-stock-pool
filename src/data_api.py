@@ -112,6 +112,19 @@ class ZZClient:
             cal = int(cal * 1.5)
         return out[-need:] if len(out) > need else out
 
+    def is_trading_day(self, date: str) -> bool:
+        """判断某自然日是否为A股交易日(区间查询含未来日期, 可用于当日开盘前判断)。
+
+        注: trade_days(days=N) 只返回已过去的交易日, 不能用于判断"今天";
+        单日区间查询(day_start=day_end)则含未来日历, 周末/法定假日返回空。
+        """
+        d = str(date).replace("-", "")
+        if len(d) != 8:
+            return False
+        ds = f"{d[:4]}-{d[4:6]}-{d[6:]}"
+        rows = self._call(self.api.trade_days, day_start=ds, day_end=ds)
+        return d in {str(x).replace("-", "") for x in list(rows)}
+
     # ------------------------------------------------------------------
     _PANEL_DTYPES = {"trade_date": str, "is_paused": "int8", "is_st": "int8"}
     # 数值列合理精度(消除 float 长尾, 显著提升 parquet 压缩率):

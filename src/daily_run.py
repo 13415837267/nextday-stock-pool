@@ -2,6 +2,7 @@
 """每日运行入口(供 GitHub Actions 每日收盘后调用)。
 
 流程:
+  0. 交易日历闸门: 非交易日(周末/法定假日)或同信号日已处理则跳过
   1. 确定最新有完整数据的交易日 T
   2. 抓取近 regime.warmup_days 个交易日全市场日线 -> 计算指标与大盘风控
   3. 在 T 日横截面上执行选股, 得到"次日(T+1)计划候选池"
@@ -52,6 +53,18 @@ def main():
     client = ZZClient(cfg)
     t0 = time.time()
 
+    # ---- 0. 交易日历闸门: 非交易日(周末/法定假日)直接空转, 防周期轮询在非交易日重复计算 ----
+    try:
+        from zoneinfo import ZoneInfo
+        _now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    except Exception:  # noqa: BLE001 时区库不可用时退回系统本地时间
+        _now = datetime.now()
+    _today = _now.strftime("%Y%m%d")
+    if not client.is_trading_day(_today):
+        print(f"今日{_fmt(_today)}非A股交易日(周末或法定假日), 按交易日历跳过")
+        return
+    print(f"今日{_fmt(_today)}为A股交易日, 开始运行")
+
     # ---- 1. 最新完整交易日 ----
     cal = client.trade_days(days=cfg["regime"].get("warmup_days", 30) + 45)
     signal_date = None
@@ -66,6 +79,20 @@ def main():
         raise RuntimeError("近8个交易日均无完整行情数据, 终止")
     pos = cal.index(signal_date)
     print(f"信号日(最新完整交易日): {_fmt(signal_date)}")
+
+    # ---- 1.4 同信号日幂等跳过: 今日收盘信号已处理过则不重复计算(防重复触发) ----
+    # 注: 仅当解析出的信号日就是今天(收盘数据已完整)且与latest.json一致时跳过;
+    #     信号日<今天(盘前运行/数据延迟)时不跳过, 保留既有补算与恢复路径
+    _latest_path = ROOT / "output" / "latest.json"
+    _prev_sig = ""
+    if _latest_path.exists():
+        try:
+            _prev_sig = str((json.loads(_latest_path.read_text(encoding="utf-8")) or {}).get("signal_date") or "")
+        except Exception:  # noqa: BLE001 latest.json损坏时视为未处理, 正常重算
+            _prev_sig = ""
+    if _prev_sig == _fmt(signal_date) and signal_date >= _today:
+        print(f"信号日{_fmt(signal_date)}今日已处理过(latest.json一致), 幂等跳过")
+        return
 
     # ---- 1.5 数据质量校验(异常检测, 防脏数据进信号) ----
     anomalies = []
