@@ -52,7 +52,7 @@
   footer { margin-top: 32px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
   .chain { max-width: 340px; white-space: normal !important; font-size: 12px; }
   .tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  /* 手机端适配: 收窄留白/字号; 宽表格在 .tscroll 内横向滚动, 不撑破页面 */
+  /* 手机端适配: 收窄留白/字号; 宽表(.rtable)转卡片布局免横滑, 其余表格在 .tscroll 内横向滚动 */
   @media (max-width: 640px) {
     .wrap { padding: 18px 10px 48px; }
     h1 { font-size: 20px; }
@@ -65,6 +65,23 @@
     .chain { max-width: none; }
     .t1-box .big { font-size: 19px; }
     .t1-box, .panel { padding: 12px; }
+    /* 卡片式表格: 表头隐藏, 每行一张卡片, td 变两列网格的 label:value */
+    .tscroll { overflow-x: visible; }
+    table.rtable { background: transparent; overflow: visible; border-collapse: separate; border-spacing: 0; }
+    table.rtable tr.h { display: none; }
+    table.rtable tr {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px;
+      border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+      padding: 6px 12px 8px; margin-bottom: 10px;
+    }
+    table.rtable td {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+      padding: 5px 0; white-space: normal; border-bottom: none;
+    }
+    table.rtable td::before { content: attr(data-label); color: var(--muted); font-size: 11px; flex-shrink: 0; }
+    table.rtable td.full { grid-column: 1 / -1; }
+    table.rtable td.skip { display: none; }
+    table.rtable tr:hover td { background: transparent; }
   }
 </style>
 </head>
@@ -203,12 +220,12 @@ async function loadLatest() {
   if (!d.picks.length) {
     document.getElementById("pool").innerHTML = `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
   } else {
-    let html = `<div class="tscroll"><table><tr><th>#</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
+    let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>#</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
     d.picks.forEach((x, i) => {
-      html += `<tr><td class="${i === 0 ? "up" : "muted"}"><b>${i + 1}</b></td><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${x.close}</td>
-        <td class="${pctCls(x.pct)}">${pctStr(x.pct)}</td><td>${x.vol_ratio}</td><td>${x.turnover_rate}%</td>
-        <td>${x.amount_yi}</td><td class="${pctCls(x.mom20)}">${pctStr(x.mom20)}</td>
-        <td><b>${x.score}</b></td><td class="muted">${esc(x.reasons)}</td></tr>`;
+      html += `<tr><td class="skip ${i === 0 ? "up" : "muted"}" data-label="排名"><b>${i + 1}</b></td><td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name)}</td><td data-label="收盘价">${x.close}</td>
+        <td class="${pctCls(x.pct)}" data-label="涨幅">${pctStr(x.pct)}</td><td data-label="量比">${x.vol_ratio}</td><td data-label="换手率">${x.turnover_rate}%</td>
+        <td data-label="成交额(亿)">${x.amount_yi}</td><td class="${pctCls(x.mom20)}" data-label="20日动量">${pctStr(x.mom20)}</td>
+        <td data-label="评分"><b>${x.score}</b></td><td class="muted full" data-label="入选理由">${esc(x.reasons)}</td></tr>`;
     });
     document.getElementById("pool").innerHTML = html + "</table></div>";
   }
@@ -270,7 +287,7 @@ async function loadExecHistory() {
       <div class="card"><div class="k">累计复利收益(明细口径)</div><div class="v ${pctCls(cumRet)}">${det.length ? pctStr(cumRet) : "-"}</div></div>
       <div class="card"><div class="k">期数起点</div><div class="v" style="font-size:14px">${det.length ? fmtDate(det[det.length - 1].publish_date) : "-"}</div></div>`;
 
-    let html = `<div class="tscroll"><table><tr><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
+    let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
     // 只展示单吊明细口径: publish_date >= 2026-10-22 的记录; 之前的记录(含待结算)一律不显示
     const CUTOFF = "2026-10-22";
     recs.forEach(r => {
@@ -279,37 +296,37 @@ async function loadExecHistory() {
       if (e && e.holding) {
         // 持仓中: 买入已成交, 待卖出
         html += `<tr>
-          <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(e.buy_date)}</td>
-          <td><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
-          <td class="muted">第${e.rank}名</td>
-          <td>${e.buy_px}</td><td>${fmtDate(e.sell_date)}</td><td class="muted">待开盘</td>
-          <td class="muted">${e.position_pct}%</td>
-          <td class="muted">${e.actual_buy_px ?? "-"}</td><td class="muted">-</td>
-          <td class="muted">持仓中</td>
-          <td class="muted chain">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
-          <td class="muted">持仓中</td></tr>`;
+          <td data-label="发布日">${fmtDate(r.publish_date)}</td><td data-label="买入日">${fmtDate(e.buy_date)}</td>
+          <td class="full" data-label="买入标的"><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
+          <td class="muted" data-label="名次">第${e.rank}名</td>
+          <td data-label="买入价">${e.buy_px}</td><td data-label="卖出日">${fmtDate(e.sell_date)}</td><td class="muted" data-label="卖出价">待开盘</td>
+          <td class="muted" data-label="仓位">${e.position_pct}%</td>
+          <td class="muted" data-label="实盘买价">${e.actual_buy_px ?? "-"}</td><td class="muted" data-label="实盘卖价">-</td>
+          <td class="muted" data-label="单期收益">持仓中</td>
+          <td class="muted chain full" data-label="顺延/放弃过程">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
+          <td class="muted" data-label="状态">持仓中</td></tr>`;
       } else if (e) {
         html += `<tr>
-          <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(e.buy_date)}</td>
-          <td><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
-          <td class="muted">第${e.rank}名</td>
-          <td>${e.buy_px}</td><td>${fmtDate(e.sell_date)}</td><td>${e.sell_px}</td>
-          <td class="muted">${e.position_pct}%</td>
-          <td class="muted">${e.actual_buy_px ?? "-"}</td><td class="muted">${e.actual_sell_px ?? "-"}</td>
-          <td class="${pctCls(e.ret_pct)}"><b>${pctStr(e.ret_pct)}</b></td>
-          <td class="muted chain">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
-          <td class="muted">${esc(r.status || "")}</td></tr>`;
+          <td data-label="发布日">${fmtDate(r.publish_date)}</td><td data-label="买入日">${fmtDate(e.buy_date)}</td>
+          <td class="full" data-label="买入标的"><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
+          <td class="muted" data-label="名次">第${e.rank}名</td>
+          <td data-label="买入价">${e.buy_px}</td><td data-label="卖出日">${fmtDate(e.sell_date)}</td><td data-label="卖出价">${e.sell_px}</td>
+          <td class="muted" data-label="仓位">${e.position_pct}%</td>
+          <td class="muted" data-label="实盘买价">${e.actual_buy_px ?? "-"}</td><td class="muted" data-label="实盘卖价">${e.actual_sell_px ?? "-"}</td>
+          <td class="${pctCls(e.ret_pct)}" data-label="单期收益"><b>${pctStr(e.ret_pct)}</b></td>
+          <td class="muted chain full" data-label="顺延/放弃过程">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
+          <td class="muted" data-label="状态">${esc(r.status || "")}</td></tr>`;
       } else if (r.status === "待结算") {
         const chain = (r.skip_chain || []).join("；") || "-";
         const isFlat = !(r.picks || []).length;
         html += `<tr>
-          <td>${fmtDate(r.publish_date)}</td><td>${fmtDate(r.buy_date)}</td>
-          <td class="muted">${isFlat ? "空池日(无候选, 空仓)" : "待执行(明日开盘)"}</td>
-          <td class="muted">-</td><td class="muted">-</td><td class="muted">-</td><td class="muted">-</td>
-          <td class="muted">-</td><td class="muted">-</td>
-          <td class="muted">-</td><td class="muted">-</td>
-          <td class="muted chain">${esc(chain)}</td>
-          <td class="muted">待结算</td></tr>`;
+          <td data-label="发布日">${fmtDate(r.publish_date)}</td><td data-label="买入日">${fmtDate(r.buy_date)}</td>
+          <td class="full muted" data-label="买入标的">${isFlat ? "空池日(无候选, 空仓)" : "待执行(明日开盘)"}</td>
+          <td class="muted" data-label="名次">-</td><td class="muted" data-label="买入价">-</td><td class="muted" data-label="卖出日">-</td><td class="muted" data-label="卖出价">-</td>
+          <td class="muted" data-label="仓位">-</td><td class="muted" data-label="实盘买价">-</td>
+          <td class="muted" data-label="实盘卖价">-</td><td class="muted" data-label="单期收益">-</td>
+          <td class="muted chain full" data-label="顺延/放弃过程">${esc(chain)}</td>
+          <td class="muted" data-label="状态">待结算</td></tr>`;
       }
     });
     if (!html.includes("<tr>") || html.split("<tr>").length <= 1)
@@ -346,14 +363,14 @@ async function loadBacktest() {
     if (op.length) {
       const rows = op.map(x => {
         const u = x.unrealized_pct;
-        return `<tr><td>${x.buy_date}</td><td>${esc(x.code)}</td><td>${esc(x.name || x.code)}</td>
-          <td>${x.buy_px ?? "-"}</td><td>${x.cost_pct != null ? x.cost_pct + "%" : "-"}</td>
-          <td class="${pctCls(u)}">${u == null ? "—" : pctStr(u)}</td></tr>`;
+        return `<tr><td data-label="买入日">${x.buy_date}</td><td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name || x.code)}</td>
+          <td data-label="买入价">${x.buy_px ?? "-"}</td><td data-label="成本占比">${x.cost_pct != null ? x.cost_pct + "%" : "-"}</td>
+          <td class="${pctCls(u)}" data-label="浮动盈亏">${u == null ? "—" : pctStr(u)}</td></tr>`;
       }).join("");
       document.getElementById("bt-chart").insertAdjacentHTML("beforeend",
         `<div style="margin-top:14px"><b style="font-size:13px">期末未平仓持仓</b>
          <span class="muted" style="font-size:12px;margin-left:8px">买入后未到卖出日(T+2), 交易明细中暂不显示</span>
-         <div class="tscroll"><table style="margin-top:6px"><tr><th>买入日</th><th>代码</th><th>名称</th><th>买入价</th><th>成本占比</th><th>浮动盈亏</th></tr>${rows}</table></div></div>`);
+         <div class="tscroll"><table class="rtable" style="margin-top:6px"><tr class="h"><th>买入日</th><th>代码</th><th>名称</th><th>买入价</th><th>成本占比</th><th>浮动盈亏</th></tr>${rows}</table></div></div>`);
     }
   } catch (e) {
     cards.innerHTML = `<div class="card"><div class="k">回测报告</div><div class="v" style="font-size:14px;color:var(--muted)">尚未运行（可在 Actions 中手动触发「回测」）</div></div>`;
