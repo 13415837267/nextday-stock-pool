@@ -41,17 +41,193 @@ from .selector import apply_regime, build_indicators, regime_base, regime_series
 
 
 # ----------------------------------------------------------------------
-def fetch_panel(client: ZZClient, dates: list[str], log_every: int = 50) -> pd.DataFrame:
-    """按交易日抓取全市场日线并合并为长表(带缓存)。空数据日(未来日期)自动跳过。"""
-    frames = []
-    t0 = time.time()
+def _downcast_float(df: pd.DataFrame) -> pd.DataFrame:
+    """数值列 float64->float32(就地): 价格数据7位有效数字足够, 内存减半。"""
+    fc = df.select_dtypes(include="float64").columns
+    if len(fc):
+        df[fc] = df[fc].astype("float32")
+    return df
+
+
+class _LazyPerCode:
+    """逐票历史懒加载索引(2026-10-24第四十二轮, 长窗口内存优化)。
+
+    原实现: prepare_context 对全市场面板 groupby("ts_code")+set_index——
+    整张面板被完整复制一份(2500日约1400万行, 内存直接翻倍, 沙盒OOM主因)。
+    实际回测仅访问"被交易/被持仓"的票(十年约数千只), 改为按需构建
+    轻量单票视图(_PerCodeView): 仅缓存该票存在的日期列表(~20KB/票),
+    行数据实时从 by_date(CoW惰性视图, 近零内存)按行号取, 零DataFrame拼装
+    (拼装版实测: 500日窗口独特票数千只, 每票concat全窗口行~0.5s, 模拟
+    阶段超20分钟; 视图版单行查询~0.15ms)。
+
+    反向索引: 逐日ts_code数组+searchsorted(方案A, ~95MB), 乱序日回退
+    groupby.indices字典(方案B)。
+
+    接口兼容 dict: .get(code) 与 [code], 值为 _PerCodeView(模拟
+    DataFrame(index=trade_date) 的 .loc/.index/.iloc/len 子集)或 None。
+    """
+
+    def __init__(self, by_date: dict[str, pd.DataFrame]):
+        self.by_date = by_date
+        self._dates = sorted(by_date)   # 键=YYYYMMDD字符串, 字典序即时间序
+        self.date_i = {d: i for i, d in enumerate(self._dates)}
+        self._cache: dict[str, pd.DataFrame | None] = {}
+        # 反向索引方案A(默认): 逐日ts_code的numpy数组+searchsorted定位。
+        # 前提: 逐日帧按代码序(源数据如此, 启动时逐日校验, 乱序则回退方案B)。
+        # 2660日×4400码 ≈ 95MB。
+        # 方案B(回退): groupby.indices字典——每日~4400个小ndarray的对象头
+        # 开销~0.5MB, 2660日累计~1.3GB(第四十二轮实测OOM元凶), 仅乱序时用。
+        self._codes: list | None = []
+        for d in self._dates:
+            arr = by_date[d]["ts_code"].to_numpy()
+            self._codes.append(arr)
+            if arr.size > 1 and not pd.Index(arr).is_monotonic_increasing:
+                self._codes = None
+                break
+        if self._codes is None:
+            self.pos = [by_date[d]["ts_code"].groupby(by_date[d]["ts_code"]).indices
+                        for d in self._dates]
+
+    def _pos(self, i: int, code: str) -> int:
+        """code在第i个日期帧中的行号(每日唯一), 不存在返回-1。"""
+        if self._codes is not None:
+            arr = self._codes[i]
+            lo = int(np.searchsorted(arr, code))
+            return lo if lo < arr.size and arr[lo] == code else -1
+        pm = self.pos[i].get(code)
+        return int(pm[0]) if pm is not None else -1
+
+    def get(self, code: str) -> "_PerCodeView | None":
+        if code in self._cache:
+            return self._cache[code]
+        dates = [d for i, d in enumerate(self._dates) if self._pos(i, code) >= 0]
+        out = _PerCodeView(self, code, dates) if dates else None
+        self._cache[code] = out
+        return out
+
+    def __getitem__(self, code: str) -> "_PerCodeView | None":
+        return self.get(code)
+
+
+class _PerCodeView:
+    """单票历史轻量视图: 仅实现回测引擎用到的 DataFrame 子集接口。
+
+    兼容用法(见 run_backtest): d in view.index / view.index.get_loc(d) /
+    view.index[i] / view.loc[d](单行Series) / view.iloc[j](含-1) / len(view)。
+    """
+
+    def __init__(self, store: _LazyPerCode, code: str, dates: list[str]):
+        self._s, self._c, self._dates = store, code, dates
+        self._idx = _DateIndex(dates)
+
+    def _row_series(self, d: str) -> pd.Series:
+        i = self._s.date_i[d]
+        p = self._s._pos(i, self._c)   # 每日代码唯一, p即行号
+        return self._s.by_date[d].iloc[p]
+
+    @property
+    def loc(self) -> "_Loc":
+        return _Loc(self)
+
+    @property
+    def iloc(self) -> "_ILoc":
+        return _ILoc(self)
+
+    @property
+    def index(self) -> "_DateIndex":
+        return self._idx
+
+    def __len__(self) -> int:
+        return len(self._dates)
+
+
+class _Loc:
+    def __init__(self, view: _PerCodeView):
+        self._v = view
+
+    def __getitem__(self, d: str) -> pd.Series:
+        return self._v._row_series(d)
+
+
+class _ILoc:
+    def __init__(self, view: _PerCodeView):
+        self._v = view
+
+    def __getitem__(self, j: int) -> pd.Series:
+        return self._v._row_series(self._v._dates[j])
+
+
+class _DateIndex:
+    """类Index: 支持 in / get_loc / [i] / len。"""
+
+    def __init__(self, dates: list[str]):
+        self._d = dates
+        self._m = {d: i for i, d in enumerate(dates)}
+
+    def __contains__(self, d) -> bool:
+        return d in self._m
+
+    def get_loc(self, d) -> int:
+        return self._m[d]
+
+    def __getitem__(self, i: int):
+        return self._d[i]
+
+    def __len__(self) -> int:
+        return len(self._d)
+
+
+def fetch_panel(client: ZZClient, dates: list[str], log_every: int = 50,
+                float32: bool = False) -> pd.DataFrame:
+    """按交易日抓取全市场日线并合并为长表(带缓存)。空数据日(未来日期)自动跳过。
+
+    float32=True(回测专用): 数值列降float32 + 流式列拼装——逐日仅保留各列的
+    numpy数组(零DataFrame包装), 最终逐列拼接并即时释放中间列表。峰值内存从
+    "全量frames列表+全量concat结果"两份共存(2500日约3GB, 受限环境OOM)降至
+    单份+ε(约1GB)。默认False走原路径, 实盘链路(daily_run)保持float64不变。
+    """
+    if not float32:
+        frames = []
+        t0 = time.time()
+        for i, d in enumerate(dates, 1):
+            df = client.market_day(d)
+            if len(df):
+                frames.append(df)
+            if i % log_every == 0:
+                print(f"  已抓取 {i}/{len(dates)} 个交易日, 累计 {time.time()-t0:.0f}s", flush=True)
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    num: dict[str, list] = {}
+    codes: list[pd.Series] = []
+    day_list: list[str] = []
+    counts: list[int] = []
+    order: list[str] = []
+    _intern: dict[str, str] = {}   # ts_code字符串驻留: 各日csv各持独立字符串对象,
+    t0 = time.time()               # 2500日1400万行不驻留则~850MB, 驻留后仅~120MB指针
     for i, d in enumerate(dates, 1):
-        df = client.market_day(d)
+        df = _downcast_float(client.market_day(d))
         if len(df):
-            frames.append(df)
+            if not order:
+                order = [c for c in df.columns if c not in ("ts_code", "trade_date")]
+            for c in order:
+                num.setdefault(c, []).append(df[c].to_numpy())
+            codes.append(df["ts_code"].map(lambda s: _intern.setdefault(s, s)))
+            day_list.append(d)
+            counts.append(len(df))
         if i % log_every == 0:
             print(f"  已抓取 {i}/{len(dates)} 个交易日, 累计 {time.time()-t0:.0f}s", flush=True)
-    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    data: dict = {}
+    for c, parts in num.items():
+        data[c] = np.concatenate(parts)
+        num[c] = None   # 即时释放, 峰值=单份数据
+    num = None
+    data["ts_code"] = (pd.concat(codes, ignore_index=True) if codes
+                       else pd.Series([], dtype="str"))
+    codes = None
+    if day_list:
+        data["trade_date"] = pd.Series(day_list, dtype="object").repeat(
+            np.asarray(counts)).reset_index(drop=True)
+    return pd.DataFrame(data) if data else pd.DataFrame()
 
 
 def prepare_context(cfg: dict, days: int | None = None) -> dict:
@@ -66,18 +242,21 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
     if len(all_days) < n_days + warmup:
         raise RuntimeError(f"交易日不足: 需要{n_days + warmup}日, 仅获取{len(all_days)}日")
     panel_dates = all_days[-(n_days + warmup):]
-    panel = fetch_panel(client, panel_dates)
+    panel = fetch_panel(client, panel_dates, float32=True)
     print(f"[2/4] 计算指标(共{len(panel):,}行)...")
     panel = build_indicators(panel)
+    panel = _downcast_float(panel)   # 指标新增列同步降float32(长窗口内存)
     by_date = split_by_date(panel)
     reg_base = regime_base(panel, cfg)
+    reg_base = reg_base.astype("float64")   # 风控序列保持float64(均线/累计比较精度)
     reg = apply_regime(reg_base, cfg)
+    del panel   # 数据已被 by_date 惰性视图引用, 释放长表对象本身
     # 主窗口仅保留实际有行情的日期(剔除日历中的未来日/无数据日)
     main_dates = [d for d in panel_dates[warmup:] if d in by_date]
 
-    per_code: dict[str, pd.DataFrame] = {}
-    for code, sub in panel.groupby("ts_code", sort=False):
-        per_code[code] = sub.set_index("trade_date").sort_index()
+    # 逐票历史懒加载(第四十二轮): 替代原groupby全量复制面板(长窗口OOM主因),
+    # 见 _LazyPerCode 文档。接口兼容 dict.get / dict[code]。
+    per_code = _LazyPerCode(by_date)
 
     names = {}
     try:
@@ -470,7 +649,9 @@ def _monthly(nav: pd.Series) -> list[dict]:
 def save_result(result: dict, out: str | None = None):
     out_path = Path(out) if out else ROOT / "output" / "backtest.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+    # default=float: float32面板(长窗口)下指标为np.float32, 兜底转float
+    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=1, default=float),
+                        encoding="utf-8")
     return out_path
 
 

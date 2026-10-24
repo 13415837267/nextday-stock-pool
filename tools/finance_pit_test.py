@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-"""PIT财务因子在dip已执行样本上的分层检验(第四十一轮, 事前注册)。
+"""PIT财务因子在dip已执行样本上的分层检验(第四十一轮注册, 第四十二轮扩窗口)。
 
-方法: 直接复用 output/backtest.json 的500日回测已执行交易(signal_date=T,
-T+1买入, T+2卖出; 与每日线上回测口径完全一致)逐笔取"T日已公告的最新一期
-财报"(公告日<=T), 按因子分层的已结算收益。2500/1500日全市场面板在本沙盒
-OOM(exit 137), 故不重跑长窗口; 样本=128笔(当前策略实际全部已执行历史)。
+方法: 复用回测已执行交易(signal_date=T, T+1买入, T+2卖出; 与每日线上回测
+口径完全一致)逐笔取"T日已公告的最新一期财报"(公告日<=T), 按因子分层的
+已结算收益。
+
+用法: python3 -m tools.finance_pit_test [trades_json]
+  缺省读取 output/backtest.json(500日基准, 128笔);
+  传 output/backtest_long.json 则读十年(2500日)全量成交 trades_all(~498笔,
+  第四十二轮 float32+懒加载改造后沙盒可跑, 见 tools/backtest_long.py)。
 
 事前注册口径(不调参):
-  主检验: 各因子五分位(全样本分位, 仅描述用; 128笔只作苗头级判定)
+  主检验: 各因子五分位(全样本分位, 仅描述用; 苗头级判定)
   固定桶: rev_yoy按(-inf,-20),[-20,-10),[-10,0),[0,20),[20,inf)——对应
          第三十一轮观察级苗头③"营收同比-10~0区间h2较好(n=2)"
   一致性: h1(<20240901)与h2(>=20240901)的分层方向须同号才算苗头存活
@@ -54,11 +58,13 @@ def _layer(df: pd.DataFrame, key: str, order: list[str] | None = None) -> None:
 
 
 def main() -> None:
-    print("== 1/3 读取500日回测已执行交易(output/backtest.json) ==")
+    src = sys.argv[1] if len(sys.argv) > 1 else "/workspace/output/backtest.json"
+    print(f"== 1/3 读取回测已执行交易({src}) ==")
     import json
     from pathlib import Path
-    bt = json.loads((Path("/workspace/output/backtest.json")).read_text())
-    trades = [t for t in bt["trades_executed_recent"] if t.get("ret_pct") is not None]
+    bt = json.loads(Path(src).read_text())
+    raw = bt.get("trades_all") or bt.get("trades_executed_recent") or []
+    trades = [t for t in raw if t.get("ret_pct") is not None]
     print(f"已执行 {len(trades)} 笔")
 
     print("== 2/3 逐笔取T日已公告最新财报(PIT) ==")

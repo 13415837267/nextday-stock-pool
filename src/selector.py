@@ -21,13 +21,27 @@ from .config import board_of, load_config
 
 # ----------------------------------------------------------------------
 def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
-    """在长表上向量化计算前复权价格与全部技术指标(仅用截至当日数据, 无未来函数)。"""
-    panel = panel.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
+    """在长表上向量化计算前复权价格与全部技术指标(仅用截至当日数据, 无未来函数)。
+
+    前置: panel为日期主序(fetch_panel/逐日csv拼接均满足)。groupby保组内相对序,
+    每票组内即时间序, 故无需全表sort_values——2026-10-24第四十二轮去掉该排序:
+    2500日面板全表排序复制~2GB, 是长窗口OOM主因之一; 逐日内源数据已按代码序,
+    去排序后逐日帧行序与原先完全一致, 指标零漂移。
+    """
     # 数据卫生(2026-10-24): 上市首日行 pre_close=0, 数据源的pct为脏值(实测+7199%)。
     # 置NaN使其在选股区间过滤与风控等权均值(mean跳过NaN)中被显式排除,
     # 不再依赖 bars>=21 过滤的隐性防护; 次日起pct由close_adj正常衔接。
     if "pre_close" in panel.columns:
         panel.loc[panel["pre_close"] <= 0, "pct"] = np.nan
+    # float32面板(长窗口回测)下新增指标列同步float32: pandas3的rolling/shift/
+    # pct_change对float32输入仍返回float64, 25个新列在2500日(1477万行)上若保持
+    # float64累计~2.1GB, 是长窗口OOM主因之三。float64面板(实盘daily_run)路径
+    # 逐字节不变。与prepare_context尾部_downcast_float等价, 只是提前到逐列赋值时。
+    f32 = panel["close"].dtype == np.float32
+
+    def put(name: str, s: pd.Series, dt: str | None = None) -> None:
+        panel[name] = s.astype(dt or "float32", copy=False) if f32 else s
+
     g = panel.groupby("ts_code", sort=False)
 
     flast = g["factor"].transform("last")
@@ -36,44 +50,63 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     panel["open_adj"] = panel["open"] * k
 
     ca = g["close_adj"]
-    panel["ma5"] = ca.transform(lambda s: s.rolling(5).mean())
-    panel["ma10"] = ca.transform(lambda s: s.rolling(10).mean())
-    panel["ma20"] = ca.transform(lambda s: s.rolling(20).mean())
-    panel["ma5_prev"] = g["ma5"].transform(lambda s: s.shift(1))
-    panel["ma20_prev"] = g["ma20"].transform(lambda s: s.shift(1))
-    panel["vol_ma5_prev"] = g["vol"].transform(lambda s: s.shift(1).rolling(5).mean())
+    put("ma5", ca.transform(lambda s: s.rolling(5).mean()))
+    put("ma10", ca.transform(lambda s: s.rolling(10).mean()))
+    put("ma20", ca.transform(lambda s: s.rolling(20).mean()))
+    put("ma5_prev", g["ma5"].transform(lambda s: s.shift(1)))
+    put("ma20_prev", g["ma20"].transform(lambda s: s.shift(1)))
+    put("vol_ma5_prev", g["vol"].transform(lambda s: s.shift(1).rolling(5).mean()))
     panel["vol_ratio"] = panel["vol"] / panel["vol_ma5_prev"]
-    panel["mom3"] = ca.transform(lambda s: s.pct_change(3)) * 100
-    panel["mom20"] = ca.transform(lambda s: s.pct_change(20)) * 100
+    put("mom3", ca.transform(lambda s: s.pct_change(3)) * 100)
+    put("mom20", ca.transform(lambda s: s.pct_change(20)) * 100)
     panel["bias20"] = (panel["close_adj"] / panel["ma20"] - 1) * 100
-    panel["bars"] = g.cumcount() + 1
+    put("bars", g.cumcount() + 1, "int32" if f32 else None)
     panel["above_ma20"] = panel["close_adj"] > panel["ma20"]
     # T日微观结构因子(均仅用截至T日数据):
-    panel["prev_close_adj"] = g["close_adj"].transform(lambda s: s.shift(1))
+    put("prev_close_adj", g["close_adj"].transform(lambda s: s.shift(1)))
     panel["amp_pct"] = (panel["high"] - panel["low"]) / panel["prev_close_adj"] * 100   # 当日振幅%
     hl_rng = (panel["high"] - panel["low"]).replace(0, np.nan)
     panel["close_pos"] = ((panel["close"] - panel["low"]) / hl_rng).fillna(0.5)          # 收盘在当日区间位置(0=最低1=最高)
+    del hl_rng
     body_low = panel[["open", "close"]].min(axis=1)
     panel["low_tail"] = (body_low - panel["low"]) / panel["prev_close_adj"] * 100        # 下影线长度%
+    del body_low
     # 扩展微观结构特征(均仅用截至T日数据, 供可选条件/因子使用):
-    panel["prev_pct"] = g["pct"].transform(lambda s: s.shift(1))                          # T-1日涨幅%
+    put("prev_pct", g["pct"].transform(lambda s: s.shift(1)))                             # T-1日涨幅%
     panel["down2"] = ((panel["pct"] < 0) & (panel["prev_pct"] < 0)).astype("int8")        # 连续两日阴线
     panel["dist_ma5"] = (panel["close_adj"] / panel["ma5"] - 1) * 100                     # 收盘相对5日线距离%
-    panel["dist_low20"] = (panel["low"] / g["low"].transform(lambda s: s.rolling(20).min()) - 1) * 100  # 距20日最低%
-    panel["prev_low"] = g["low"].transform(lambda s: s.shift(1))                          # T-1日最低价
+    dl = g["low"].transform(lambda s: s.rolling(20).min())
+    panel["dist_low20"] = (panel["low"] / dl - 1) * 100   # 距20日最低%
+    del dl
+    put("prev_low", g["low"].transform(lambda s: s.shift(1)))                             # T-1日最低价
     panel["below_prev_low"] = (panel["low"] < panel["prev_low"]).astype("int8")           # T日盘中破前日低
     panel["hold_prev_low"] = (panel["close"] > panel["prev_low"]).astype("int8")          # T日收盘守住前日低
     return panel
 
 
 def split_by_date(panel: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    return {str(d): sub for d, sub in panel.groupby("trade_date", sort=True)}
+    """按trade_date切分为逐日帧。
+
+    日期主序面板(所有调用方均为fetch_panel式逐日拼接)下日期块必然连续,
+    用位置切片出CoW视图(近零拷贝, 第四十二轮: 原groupby全量复制2500日~2GB,
+    OOM主因之二); 块不连续时回退groupby复制保正确性。
+    """
+    d = panel["trade_date"].to_numpy()
+    if len(d):
+        bounds = np.flatnonzero(np.r_[True, d[1:] != d[:-1]])
+        if len(bounds) == panel["trade_date"].nunique():   # 日期块连续
+            edges = np.r_[bounds, len(d)]
+            return {str(d[i]): panel.iloc[i:j] for i, j in zip(edges[:-1], edges[1:])}
+    return {str(v): sub for v, sub in panel.groupby("trade_date", sort=True)}
 
 
 # ----------------------------------------------------------------------
 def regime_base(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """大盘风控基础序列(与风控参数无关, 可复用): 市场宽度 + 全市场等权指数。"""
-    uni = panel[(panel["is_paused"] == 0) & (panel["is_st"] == 0) & (panel["bars"] >= 21)]
+    # 先裁列再过滤(第四十二轮内存优化): 全列过滤副本2500日~2GB, 裁到7列后~0.6GB
+    cols = ["trade_date", "ts_code", "is_paused", "is_st", "bars", "above_ma20", "pct"]
+    uni = panel.loc[(panel["is_paused"] == 0) & (panel["is_st"] == 0)
+                    & (panel["bars"] >= 21), cols]
     uni = uni[uni["ts_code"].map(lambda c: board_of(c) in cfg["universe"]["boards"])]
     reg = uni.groupby("trade_date").agg(
         breadth=("above_ma20", "mean"), mkt_pct=("pct", "mean")
