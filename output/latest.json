@@ -63,5 +63,19 @@
   ],
   "rows": 5577
  },
- "disclaimer": "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
+ "disclaimer": "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。",
+ "monitor": {
+  "level": "样本不足",
+  "n": 0,
+  "window": 20,
+  "mean_pct": null,
+  "win_pct": null,
+  "note": "已结算0/20笔, 随实盘积累自动生效(期间维持现有风控纪律)",
+  "thresholds": {
+   "watch_mean_pct": 1.0,
+   "warn_mean_pct": 0.0,
+   "halt_mean_pct": -1.0,
+   "window": 20
+  }
+ }
 }
