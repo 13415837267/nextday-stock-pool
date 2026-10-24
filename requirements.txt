@@ -3,3 +3,5 @@ git+https://github.com/zzquant/zzshare.git
 pandas>=2.0
 numpy>=1.24
 PyYAML>=6.0
+# 择时层数据源(第四十轮): 两融账户统计/期指基差, 免凭据
+akshare>=1.19
