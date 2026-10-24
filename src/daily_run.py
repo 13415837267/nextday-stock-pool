@@ -76,11 +76,22 @@ def main():
     if len(ipo_rows):
         _codes = ", ".join(ipo_rows["ts_code"].head(3))
         anomalies.append(f"新股上市首日{len(ipo_rows)}只({_codes}等, pct脏值已在指标层置NaN, 正常)")
-    bad_pct = day_df[(day_df["pre_close"] > 0) & (day_df["pct"].abs() > 22)] \
-        if "pre_close" in day_df.columns else day_df[(day_df["pct"].abs() > 22)]
-    if len(bad_pct):
-        _codes = ", ".join(bad_pct["ts_code"].head(5))
-        anomalies.append(f"真实异常: pre_close>0且|pct|>22%共{len(bad_pct)}条({_codes})")
+    # 真实异常: 收盘价超出自身涨跌停价(按各板自身限制判断, 北交所±30%/科创板±20%不再误报;
+    # 限价=0为无涨跌幅限制的次新股, 不参与判定)
+    lim = day_df[(day_df["pre_close"] > 0) & (day_df["high_limit"] > 0) & (day_df["low_limit"] > 0)]
+    out_lim = lim[(lim["close"] > lim["high_limit"] + 0.005) | (lim["close"] < lim["low_limit"] - 0.005)]
+    if len(out_lim):
+        _codes = ", ".join(out_lim["ts_code"].head(5))
+        anomalies.append(f"真实异常: 收盘超出自身涨跌停价共{len(out_lim)}条({_codes})")
+    # 疑似除权: pct与收盘/昨收隐含收益矛盾但收盘在限价内(除权日quote_rate对未复权昨收, 属正常)
+    mism = lim[lim["close"] > 0]
+    _implied = (mism["close"] / mism["pre_close"] - 1) * 100
+    mism = mism[((mism["pct"] - _implied).abs() > 1.5)
+                & (mism["close"] <= mism["high_limit"] + 0.005)
+                & (mism["close"] >= mism["low_limit"] - 0.005)]
+    if len(mism):
+        _codes = ", ".join(mism["ts_code"].head(5))
+        anomalies.append(f"疑似除权: pct与收盘昨收不一致共{len(mism)}条({_codes}等, 除权日属正常)")
     nan_close = int(day_df["close"].isna().sum())
     if nan_close:
         anomalies.append(f"收盘价缺失{nan_close}条")
