@@ -169,6 +169,15 @@ async function loadLatest() {
   if (d.regime && d.regime.note) badges.push(`<span class="badge">${esc(d.regime.note)}</span>`);
   if (d.regime && d.regime.breadth != null)
     badges.push(`<span class="badge">市场宽度 ${d.regime.breadth}</span>`);
+  // 失效监测灯(第三十九轮): 滚动20笔已结算净收益的事前注册告警(纯提示, 不改执行)
+  const mo = d.monitor;
+  if (mo) {
+    const lv = String(mo.level || "");
+    const mc = lv.startsWith("绿") ? "var(--up)"
+      : lv.startsWith("黄") ? "#b8860b"
+      : (lv.startsWith("红") || lv.startsWith("深红")) ? "var(--red)" : "var(--muted)";
+    badges.push(`<span class="badge" style="color:${mc};border-color:${mc}">失效监测: ${esc(lv)}</span>`);
+  }
   badges.push(`<span class="badge gold">候选 ${d.picks.length} 只</span>`);
   document.getElementById("badges").innerHTML = badges.join("");
 
