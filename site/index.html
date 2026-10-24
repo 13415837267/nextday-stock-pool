@@ -51,6 +51,21 @@
   .dot { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin: 0 4px 2px 0; }
   footer { margin-top: 32px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
   .chain { max-width: 340px; white-space: normal !important; font-size: 12px; }
+  .tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* 手机端适配: 收窄留白/字号; 宽表格在 .tscroll 内横向滚动, 不撑破页面 */
+  @media (max-width: 640px) {
+    .wrap { padding: 18px 10px 48px; }
+    h1 { font-size: 20px; }
+    h1 small { display: block; margin-left: 0; margin-top: 4px; }
+    h2 { font-size: 16px; margin: 24px 0 10px; }
+    .card { padding: 10px 12px; }
+    .card .v { font-size: 17px; }
+    table { font-size: 12px; }
+    th, td { padding: 7px 8px; }
+    .chain { max-width: none; }
+    .t1-box .big { font-size: 19px; }
+    .t1-box, .panel { padding: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -188,14 +203,14 @@ async function loadLatest() {
   if (!d.picks.length) {
     document.getElementById("pool").innerHTML = `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
   } else {
-    let html = `<table><tr><th>#</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
+    let html = `<div class="tscroll"><table><tr><th>#</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
     d.picks.forEach((x, i) => {
       html += `<tr><td class="${i === 0 ? "up" : "muted"}"><b>${i + 1}</b></td><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${x.close}</td>
         <td class="${pctCls(x.pct)}">${pctStr(x.pct)}</td><td>${x.vol_ratio}</td><td>${x.turnover_rate}%</td>
         <td>${x.amount_yi}</td><td class="${pctCls(x.mom20)}">${pctStr(x.mom20)}</td>
         <td><b>${x.score}</b></td><td class="muted">${esc(x.reasons)}</td></tr>`;
     });
-    document.getElementById("pool").innerHTML = html + "</table>";
+    document.getElementById("pool").innerHTML = html + "</table></div>";
   }
   document.getElementById("disclaimer").textContent = d.disclaimer || "";
 }
@@ -255,7 +270,7 @@ async function loadExecHistory() {
       <div class="card"><div class="k">累计复利收益(明细口径)</div><div class="v ${pctCls(cumRet)}">${det.length ? pctStr(cumRet) : "-"}</div></div>
       <div class="card"><div class="k">期数起点</div><div class="v" style="font-size:14px">${det.length ? fmtDate(det[det.length - 1].publish_date) : "-"}</div></div>`;
 
-    let html = `<table><tr><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
+    let html = `<div class="tscroll"><table><tr><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
     // 只展示单吊明细口径: publish_date >= 2026-10-22 的记录; 之前的记录(含待结算)一律不显示
     const CUTOFF = "2026-10-22";
     recs.forEach(r => {
@@ -292,6 +307,7 @@ async function loadExecHistory() {
           <td class="muted">${isFlat ? "空池日(无候选, 空仓)" : "待执行(明日开盘)"}</td>
           <td class="muted">-</td><td class="muted">-</td><td class="muted">-</td><td class="muted">-</td>
           <td class="muted">-</td><td class="muted">-</td>
+          <td class="muted">-</td><td class="muted">-</td>
           <td class="muted chain">${esc(chain)}</td>
           <td class="muted">待结算</td></tr>`;
       }
@@ -299,7 +315,7 @@ async function loadExecHistory() {
     if (!html.includes("<tr>") || html.split("<tr>").length <= 1)
       ht.innerHTML = `<div class="loading">明细自 2026-10-22 起逐笔记录, 首笔结算将在下一个交易日晚更新</div>`;
     else
-      ht.innerHTML = html + "</table>" +
+      ht.innerHTML = html + "</table></div>" +
       `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。「实盘买/卖价」列用于记录你的真实成交价与模拟价对照(现为空, 成交后告知即写入)。</div>`;
   } catch (e) { ht.innerHTML = `<div class="loading">执行记录加载失败: ${esc(e.message)}</div>`; }
 }
@@ -324,7 +340,7 @@ async function loadBacktest() {
         `<tr><td>${x.month}</td><td class="${pctCls(x.ret_pct)}">${pctStr(x.ret_pct)}</td></tr>`).join("");
       document.getElementById("bt-chart").insertAdjacentHTML("beforeend",
         `<div style="margin-top:14px"><b style="font-size:13px">月度收益（近12月）</b>
-         <table style="margin-top:6px"><tr><th>月份</th><th>收益</th></tr>${rows}</table></div>`);
+         <div class="tscroll"><table style="margin-top:6px"><tr><th>月份</th><th>收益</th></tr>${rows}</table></div></div>`);
     }
     const op = d.open_positions || [];
     if (op.length) {
@@ -337,7 +353,7 @@ async function loadBacktest() {
       document.getElementById("bt-chart").insertAdjacentHTML("beforeend",
         `<div style="margin-top:14px"><b style="font-size:13px">期末未平仓持仓</b>
          <span class="muted" style="font-size:12px;margin-left:8px">买入后未到卖出日(T+2), 交易明细中暂不显示</span>
-         <table style="margin-top:6px"><tr><th>买入日</th><th>代码</th><th>名称</th><th>买入价</th><th>成本占比</th><th>浮动盈亏</th></tr>${rows}</table></div>`);
+         <div class="tscroll"><table style="margin-top:6px"><tr><th>买入日</th><th>代码</th><th>名称</th><th>买入价</th><th>成本占比</th><th>浮动盈亏</th></tr>${rows}</table></div></div>`);
     }
   } catch (e) {
     cards.innerHTML = `<div class="card"><div class="k">回测报告</div><div class="v" style="font-size:14px;color:var(--muted)">尚未运行（可在 Actions 中手动触发「回测」）</div></div>`;
