@@ -259,7 +259,9 @@ async function renderAuction(buyDate) {
         + (s.limit_down ? ` · <span style="color:var(--red)">开盘跌停 → 按规则今日收盘卖出</span>` : ``) + `</span>`).join("<br>") + `</div>`;
     }
     if (a.positions && a.positions.length) {
-      body += `<div style="margin-top:6px">` + a.positions.map(p =>
+      body += `<div style="margin-top:6px">`
+        + (a.positions_time ? `<span class="muted" style="font-size:12px">现价截至 ${esc(a.positions_time)}（收盘后=收盘价, 盘中=实时价）</span><br>` : "")
+        + a.positions.map(p =>
         `<span>📌 当前持仓 <b>${esc(p.name)}</b>(${esc(p.code)}) 买入${p.buy_px}（${fmtDate(p.buy_date)}）· 现价${p.cur_px} · 浮动 <b class="${pctCls(p.float_pct)}">${pctStr(p.float_pct)}</b></span>`).join("<br>") + `</div>`;
     }
     box.innerHTML = head + body;

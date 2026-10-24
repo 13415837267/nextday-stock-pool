@@ -29,10 +29,11 @@ def http_get(url, headers=None, timeout=15):
 
 
 def fetch_quotes(codes):
-    """codes: ['000504.SZ', ...] -> {code: {name, prev_close, open}}
+    """codes: ['000504.SZ', ...] -> {code: {name, prev_close, open, last}}
+    last=现价(集合竞价后=开盘价, 盘中=实时价, 收盘后=收盘价)。
     主源(腾讯)失败/空返回自动重试3次(9:26窗口网络抖动常见), 仍缺的交由备源(新浪)补齐。"""
     quotes = {}
-    # 主源: 腾讯(自动重试)
+    # 主源: 腾讯(自动重试) 字段: f[1]名称 f[3]现价 f[4]昨收 f[5]今开
     q = codes and "q=" + ",".join(("sh" if c.endswith(".SH") else "sz") + c[:6] for c in codes)
     for attempt in range(1, 4):
         try:
@@ -41,7 +42,8 @@ def fetch_quotes(codes):
                 f = m.group(2).split("~")
                 if len(f) > 5 and float(f[4] or 0) > 0:
                     quotes[f"{m.group(1)}.{'SH' if m.group(1).startswith(('6', '9')) else 'SZ'}"] = {
-                        "name": f[1], "prev_close": float(f[4]), "open": float(f[5])}
+                        "name": f[1], "prev_close": float(f[4]), "open": float(f[5]),
+                        "last": float(f[3]) if len(f) > 3 and float(f[3] or 0) > 0 else None}
             if quotes or not codes:
                 break
             print(f"腾讯源第{attempt}次返回空", flush=True)
@@ -49,7 +51,7 @@ def fetch_quotes(codes):
             print(f"腾讯源第{attempt}次失败: {e}", flush=True)
         if attempt < 3:
             time.sleep(2)
-    # 备源: 新浪(补缺)
+    # 备源: 新浪(补缺) 字段: f[0]名称 f[1]今开 f[2]昨收 f[3]现价
     miss = [c for c in codes if c not in quotes]
     if miss:
         try:
@@ -60,7 +62,8 @@ def fetch_quotes(codes):
                 f = m.group(2).split(",")
                 if len(f) > 2 and float(f[2] or 0) > 0:
                     quotes[f"{m.group(1)}.{'SH' if m.group(1).startswith(('6', '9')) else 'SZ'}"] = {
-                        "name": f[0], "open": float(f[1]), "prev_close": float(f[2])}
+                        "name": f[0], "open": float(f[1]), "prev_close": float(f[2]),
+                        "last": float(f[3]) if len(f) > 3 and float(f[3] or 0) > 0 else None}
         except Exception as e:
             print(f"新浪源失败: {e}", flush=True)
     return quotes
@@ -190,13 +193,15 @@ def main():
                 q = fetch_quotes(hold_codes)
                 for e in hold_recs:
                     cur = q.get(e["code"], {})
-                    px = cur.get("open", cur.get("prev_close"))
+                    # 现价优先级: last(9:26=开盘价/盘中=实时价/盘后=收盘价) -> open -> prev_close
+                    px = cur.get("last") or cur.get("open") or cur.get("prev_close")
                     fl = round((px / e["buy_px"] - 1) * 100, 2) if (px and e.get("buy_px")) else None
                     positions.append({"code": e["code"], "name": e.get("name", ""),
                                       "buy_px": e.get("buy_px"), "buy_date": e.get("buy_date"),
                                       "cur_px": px, "float_pct": fl})
         if positions:
             result["positions"] = positions
+            result["positions_time"] = now
             print("持仓浮盈:", [(p["name"], p["float_pct"]) for p in positions])
     except Exception as e:
         print(f"持仓浮盈计算失败(不影响确认): {e}", flush=True)

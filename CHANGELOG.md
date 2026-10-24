@@ -869,3 +869,26 @@
   display:grid 且无自身溢出, 表头全部隐藏, ::before 字段名非空, 数据渲染
   完整(候选池首行代码 300192.SZ), 全文档 0 个溢出元素, 控制台无报错
 - 策略参数零改动, 回测基准2943.53%/128笔/-14.14%不变
+
+## 持仓现价口径修复+卖出日历修复(2026-10-24 第三十七轮, 用户报"收盘后运行持仓价格没有变成收盘价格")
+- 问题1: 持仓浮盈"现价"恒等于买入开盘价(浮盈恒0)。根因: tools/auction_confirm.py
+  的 fetch_quotes 只解析行情的今开字段(腾讯f[5]), 持仓现价取 cur.get("open")——
+  9:26时=开盘价(正确), 但盘后运行时开盘价即买入价, 收盘价从未被解析
+  (实测10-24 00:38盘后运行: cur_px=19.02=买入价, float_pct=0.0)
+- 修复1(auction_confirm.py): fetch_quotes 增解析现价字段 last(腾讯f[3]/新浪f[3],
+  集合竞价后=开盘价/盘中=实时价/盘后=收盘价), 持仓现价优先级 last→open→prev_close;
+  写入 positions_time 标记现价时点
+- 修复2(daily_run.py): 晚间运行新增 6.5 步, 用T日收盘价刷新 auction.json 的
+  positions(收盘价口径), 网页盘后显示收盘浮盈而非开盘价
+- 修复3(site/index.html): 竞价卡持仓行显示"现价截至 {positions_time}"
+- 连带发现并修复 bug2: 持仓记录 sell_date 为空。根因: trade_days(days=N)只返回
+  已过去交易日, 最新发布日的T+2卖出日越界为None → 竞价确认卖出侧(周一10-26
+  开盘卖出卡)将永不触发
+  * data_api.py 新增 trade_calendar(start, end): 区间查询含未来日历
+  * daily_run.py: 信号日确定后 cal 合并未来20自然日交易日(不影响panel_dates)
+  * 存量数据修复: history.json 中 300192.SZ 持仓 sell_date '' → '2026-10-26'
+- 验证: 实跑 auction_confirm(周六行情=周五收盘快照): cur_px 19.02→19.29,
+  浮盈 0.00%→+1.42%, 与 zzshare 10-23 收盘价 19.29 交叉一致; 日历合并推算
+  10-22记录 T+1=10-23/T+2=10-26、10-23记录 T+1=10-26/T+2=10-27 均正确;
+  _refresh_auction_positions 单测(正常票+停牌NaN票)通过; 三文件 py_compile 通过
+- 策略参数零改动, 回测基准2943.53%/128笔/-14.14%不变

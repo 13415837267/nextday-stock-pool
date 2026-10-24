@@ -1,11 +1,12 @@
 {
- "confirm_time": "2026-10-24 00:38:18",
+ "confirm_time": "2026-10-24 14:22:08",
  "buy_date": "2026-10-26",
  "signal_date": "2026-10-23",
  "for_today": false,
  "allow_buy": true,
  "floor_pct": -2.75,
  "position_pct": 95.0,
+ "data_ok": true,
  "action": "skip",
  "name": "",
  "code": "",
@@ -20,8 +21,9 @@
    "name": "科德教育",
    "buy_px": 19.02,
    "buy_date": "2026-10-23",
-   "cur_px": 19.02,
-   "float_pct": 0.0
+   "cur_px": 19.29,
+   "float_pct": 1.42
   }
- ]
+ ],
+ "positions_time": "2026-10-24 14:22:08"
 }

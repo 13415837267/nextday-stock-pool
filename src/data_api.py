@@ -125,6 +125,18 @@ class ZZClient:
         rows = self._call(self.api.trade_days, day_start=ds, day_end=ds)
         return d in {str(x).replace("-", "") for x in list(rows)}
 
+    def trade_calendar(self, start: str, end: str) -> list[str]:
+        """返回[start, end]闭区间内全部A股交易日(升序YYYYMMDD)。
+
+        区间查询含未来日历(trade_days(days=N)只含已过去交易日), 用于推算
+        最新信号日的T+1买入日/T+2卖出日。
+        """
+        def _dash(x: str) -> str:
+            x = str(x).replace("-", "")
+            return f"{x[:4]}-{x[4:6]}-{x[6:]}" if len(x) == 8 else x
+        rows = self._call(self.api.trade_days, day_start=_dash(start), day_end=_dash(end))
+        return sorted(str(d).replace("-", "") for d in list(rows))
+
     # ------------------------------------------------------------------
     _PANEL_DTYPES = {"trade_date": str, "is_paused": "int8", "is_st": "int8"}
     # 数值列合理精度(消除 float 长尾, 显著提升 parquet 压缩率):

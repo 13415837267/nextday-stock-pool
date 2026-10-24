@@ -15,8 +15,8 @@
   },
   {
    "publish_date": "2026-10-22",
-   "buy_date": "",
-   "sell_date": "",
+   "buy_date": "2026-10-23",
+   "sell_date": "2026-10-26",
    "regime_ok": false,
    "picks": [
     {
@@ -97,7 +97,7 @@
     "name": "科德教育",
     "buy_date": "2026-10-23",
     "buy_px": 19.02,
-    "sell_date": "",
+    "sell_date": "2026-10-26",
     "sell_px": null,
     "ret_pct": null,
     "position_pct": 100.0,

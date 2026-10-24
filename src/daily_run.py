@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -48,6 +48,38 @@ def _position_note(ex: dict) -> str:
     return pos
 
 
+def _refresh_auction_positions(out_dir: Path, day_df: pd.DataFrame, now_str: str) -> None:
+    """盘后将 auction.json 的持仓浮盈刷新为收盘价口径。
+
+    9:26竞价确认写入的positions为实时现价(9:26时=开盘价, 即买入价, 浮盈恒0);
+    收盘后应以T日收盘价刷新, 避免网页盘后一直显示买入开盘价。
+    auction.json 不存在时跳过(不伪造竞价确认数据)。
+    """
+    ap = out_dir / "auction.json"
+    if not ap.exists():
+        return
+    try:
+        a = json.loads(ap.read_text(encoding="utf-8"))
+        hist = json.loads((out_dir / "history.json").read_text(encoding="utf-8"))
+        holds = [(r.get("executed") or {}) for r in hist.get("records", [])
+                 if (r.get("executed") or {}).get("holding") and (r.get("executed") or {}).get("code")]
+        close_of = day_df.set_index("ts_code")["close"].to_dict() if day_df is not None and len(day_df) else {}
+        positions = []
+        for e in holds:
+            close = close_of.get(e["code"])
+            ok = close is not None and pd.notna(close) and close > 0 and e.get("buy_px")
+            positions.append({"code": e["code"], "name": e.get("name", ""),
+                              "buy_px": e.get("buy_px"), "buy_date": e.get("buy_date"),
+                              "cur_px": round(float(close), 2) if ok else None,
+                              "float_pct": round((close / e["buy_px"] - 1) * 100, 2) if ok else None})
+        a["positions"] = positions
+        a["positions_time"] = now_str
+        ap.write_text(json.dumps(a, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"持仓浮盈已刷新为收盘价口径({len(positions)}只, 截至 {now_str})")
+    except Exception as e:  # noqa: BLE001 刷新失败不影响主流程
+        print(f"auction.json持仓浮盈刷新失败(不影响主流程): {e}")
+
+
 def main():
     cfg = load_config()
     client = ZZClient(cfg)
@@ -66,6 +98,9 @@ def main():
     print(f"今日{_fmt(_today)}为A股交易日, 开始运行")
 
     # ---- 1. 最新完整交易日 ----
+    # 历史: trade_days只含已过去交易日; 未来: 确定信号日后用区间查询补齐——
+    # 否则最新发布日的T+1/T+2越界为None → 持仓sell_date为空,
+    # 竞价确认卖出侧永不触发(2026-10-24修复)
     cal = client.trade_days(days=cfg["regime"].get("warmup_days", 30) + 45)
     signal_date = None
     day_df = None
@@ -77,6 +112,11 @@ def main():
             break
     if signal_date is None:
         raise RuntimeError("近8个交易日均无完整行情数据, 终止")
+    try:
+        _fut = client.trade_calendar(_today, (_now + timedelta(days=20)).strftime("%Y%m%d"))
+        cal = sorted(set(cal) | set(_fut))
+    except Exception as _e:  # noqa: BLE001 未来日历失败退回旧行为(仅最新一期卖出日为空)
+        print(f"⚠ 未来交易日历获取失败(最新持仓卖出日可能为空): {_e}")
     pos = cal.index(signal_date)
     print(f"信号日(最新完整交易日): {_fmt(signal_date)}")
 
@@ -512,6 +552,9 @@ def main():
     }
     hist_path.write_text(json.dumps({"summary": summary, "records": history[:keep]},
                                     ensure_ascii=False, indent=1), encoding="utf-8")
+
+    # ---- 6.5 盘后刷新 auction.json 持仓浮盈为收盘价口径 ----
+    _refresh_auction_positions(out_dir, day_df, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     # ---- 7. CHANGELOG 追加运行记录 ----
     cl = ROOT / "CHANGELOG.md"
