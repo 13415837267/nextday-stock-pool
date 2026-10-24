@@ -430,6 +430,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         "equity": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in nav.items()],
         "benchmark": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in bench_norm.items()] if len(bench_norm) else [],
         "trades_recent": trades[-60:],
+        # 已执行成交单列(2026-10-24第三十九轮): skip密度高(全窗3777条), 混排尾部窗口
+        # 装不下成交记录, 失效监测回溯(tools/monitor_retro)需要独立的成交序列
+        "trades_executed_recent": [t for t in trades if t.get("ret_pct") is not None][-200:],
         **({"trades_all": trades} if __import__("os").environ.get("BT_FULL_TRADES") else {}),
         **({"open_positions": open_positions} if open_positions else {}),
         "monthly": _monthly(nav),

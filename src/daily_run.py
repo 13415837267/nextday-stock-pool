@@ -21,6 +21,7 @@ import pandas as pd
 
 from .config import ROOT, load_config
 from .data_api import ZZClient
+from .monitor import compute_monitor
 from .selector import build_indicators, regime_series, select_stocks, split_by_date
 from .backtest import fetch_panel
 
@@ -396,6 +397,20 @@ def main():
         rec["status"] = "已结算" if rets else "无成交"
         rec["skipped_codes"] = skipped
 
+    # ---- 5.5 滚动失效监测(纯告警层, 2026-10-24第三十九轮) ----
+    # 数据源: 实盘账本 output/history.json 已结算记录的单笔净收益(与summary口径一致,
+    # 仅统计风控通过的可开仓池); 阈值事前注册于 config.monitor, 不做任何拟合。
+    mon_cfg = cfg.get("monitor") or {}
+    monitor_info = None
+    if mon_cfg.get("enabled"):
+        _settled_rets = [float(r["realized"]["avg_ret_pct"]) for r in history
+                         if r.get("status") == "已结算" and r.get("realized")
+                         and r.get("regime_ok", True) is not False]
+        monitor_info = compute_monitor(_settled_rets, mon_cfg)
+        print(f"失效监测: {monitor_info['level']} | {monitor_info['note']}")
+        if str(monitor_info["level"]).startswith("红") or str(monitor_info["level"]).startswith("深红"):
+            print("⚠⚠ 失效监测告警 —— 请人工复检后再决定是否继续按既有纪律执行")
+
     # ---- 6. 写出候选池与历史(空仓时也展示观察池, 并明确标注风控状态) ----
     reg_row = reg.loc[signal_date] if signal_date in reg.index else None
     # 最大连续空仓上限: 统计截至信号日的连续风控天数, 超限后按小仓位参与
@@ -532,6 +547,7 @@ def main():
         "stats": {k: v for k, v in stats.items()},
         "picks": verified,
         "t1_decision": t1_decision,
+        "monitor": monitor_info,
         "audit": _audit_vs_auction(out_dir, _fmt(signal_date), history),
         "data_quality": {"anomalies": anomalies, "rows": int(len(day_df))},
         "disclaimer": DISCLAIMER,
