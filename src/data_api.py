@@ -214,6 +214,38 @@ class ZZClient:
             offset += _STOCK_PAGE
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
+    def lhb_day(self, date: str, use_cache: bool = True) -> pd.DataFrame:
+        """龙虎榜每日上榜股票概览(lhb_list)。
+
+        注意(实测): date1 参数必须为 YYYY-MM-DD 横杠格式; 数据深度自 2025-05 起
+        (更早日期返回空); 收盘后榜单发布有时滞, 当日 15:30 运行可能为空。
+        持久缓存 data/lhb/{date}.csv.gz; 空结果不落盘(下次运行自动重试补齐)。
+        stock_code 为 6 位纯数字, 此处统一补 ts_code 后缀(.SH/.SZ/.BJ)。
+        """
+        d = str(date).replace("-", "")
+        path = ROOT / "data" / "lhb" / f"{d}.csv.gz"
+        if use_cache and path.exists():
+            return pd.read_csv(path, compression="gzip", dtype={"stock_code": str})
+        ds = f"{d[:4]}-{d[4:6]}-{d[6:]}"
+        res = self._call(self.api.lhb_list, date1=ds)
+        df = pd.DataFrame(res) if isinstance(res, list) else res
+        if df is None or not len(df):
+            return pd.DataFrame()
+
+        def _suf(c) -> str:
+            c = str(c).split(".")[0].zfill(6)
+            if c[0] == "6":
+                return c + ".SH"
+            if c[0] in ("0", "3"):
+                return c + ".SZ"
+            return c + ".BJ"
+        df = df.copy()
+        df["ts_code"] = df["stock_code"].map(_suf)
+        df["trade_date"] = d
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(path, index=False, compression="gzip")
+        return df
+
     def stock_names(self) -> pd.DataFrame:
         """全市场代码-名称表(带7天缓存)。"""
         cache = self.cache_dir / "stock_names.pkl"
