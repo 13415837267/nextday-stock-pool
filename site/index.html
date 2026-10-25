@@ -108,7 +108,10 @@
   <div class="panel" style="margin-top:12px" id="bt-chart"></div>
   <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2>五、策略规则与披露</h2>
+  <h2>五、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
+  <div id="health"><div class="loading">加载中...</div></div>
+
+  <h2>六、策略规则与披露</h2>
   <div class="panel">
     <b>执行时点</b>
     <ul class="rules">
@@ -414,9 +417,47 @@ function drawChart(eq, bench) {
   </svg><div class="muted" style="font-size:12px;margin-top:4px">区间 ${eq[0].d} ~ ${eq[eq.length - 1].d} · 初始资金100万 · 每日收盘估值</div>`;
 }
 
+/* ---------- 五: 策略体检(第四十七轮, 数据源 output/health.json) ---------- */
+async function loadHealth() {
+  const el = document.getElementById("health");
+  let h;
+  try { h = await jget("./data/health.json"); }
+  catch (e) { el.innerHTML = `<div class="loading">体检数据未部署(output/health.json)</div>`; return; }
+  const p = h.probe || {};
+  const lv = String(p.level || "");
+  const mc = lv.startsWith("绿") ? "var(--green)"
+    : lv.startsWith("黄") ? "#b8860b"
+    : (lv.startsWith("红") || lv.startsWith("深红")) ? "var(--red)" : "var(--muted)";
+  const meanStr = p.mean_pct == null ? "—" : pctStr(p.mean_pct);
+  const qs = (h.quarters || []).map(q =>
+    `<tr><td data-label="季度">${q.q}</td><td data-label="笔数">${q.n}</td>
+     <td class="${pctCls(q.avg)}" data-label="均值/笔">${pctStr(q.avg)}</td>
+     <td data-label="胜率">${q.wr}%</td>
+     <td class="${pctCls(q.comp)}" data-label="季度复利">${(q.comp > 0 ? "+" : "") + q.comp}%</td></tr>`).join("");
+  el.innerHTML = `
+    <div class="plan-grid">
+      <div class="panel">
+        <b>失效探针（回测口径）</b>
+        <span class="badge" style="color:${mc};border-color:${mc};margin-left:8px">${esc(lv || "样本不足")}</span>
+        <div class="row" style="margin-top:8px;font-size:13px">滚动${p.window ?? 20}笔均值 <b>${meanStr}</b>（截至 ${fmtDate(p.asof)}）· 峰值 <b>${pctStr(p.peak_pct)}</b>（${fmtDate(p.peak_date)}）</div>
+        <div class="row muted" style="font-size:12px">${esc(p.note || "")}</div>
+      </div>
+      <div class="panel">
+        <b>era 判定与反证结论</b>
+        <div class="row muted" style="margin-top:8px;font-size:12px">${esc(h.era || "")}</div>
+      </div>
+    </div>
+    <div class="tscroll"><table class="rtable" style="margin-top:12px">
+      <tr class="h"><th>季度</th><th>笔数</th><th>均值/笔</th><th>胜率</th><th>季度复利</th></tr>${qs}</table></div>
+    <div class="row" style="margin-top:10px;font-size:12px"><b>观察级苗头（不接入执行，随样本积累重验）：</b>
+      <span class="muted">${esc((h.recheck || []).map(x => x.name + "（" + x.state + "）").join("；"))}</span></div>
+    <div class="legend">${esc(h.sources || "")} · 更新于 ${fmtDate(h.updated)}</div>`;
+}
+
 loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class="loading">候选池加载失败: ${esc(e.message)}</div>`);
 loadExecHistory();
 loadBacktest();
+loadHealth();
 </script>
 </body>
 </html>

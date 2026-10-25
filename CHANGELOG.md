@@ -1,5 +1,14 @@
 # 更新日志
 
+## 策略体检上网页: health.json + 前端体检面板(2026-10-25 第四十七轮)
+- **背景**: 项目要求"用户打开网页就看到当天情况", 但第43~46轮诊断结论(黄带预警/era判定/季度退潮/监测器状态)此前只躺在CHANGELOG与JSON里, 网页用户不可见。本轮把体检结论搬上网页, 零策略参数变更。
+- **云端管道健康核查**: 今日3次自动数据提交(d13126c/396ff4f/6e00b83), 4个workflow齐全(daily/auction/backtest/backfill); daily.yml链路: 选股->回测刷新->提交output/CHANGELOG/data->cp output/*.json deploy/data/->部署Pages, 失败自动建Issue——"打开网页即见当天情况"链路闭环。
+- **新增 tools/make_health.py**(可重复运行刷新): 生成 output/health.json。探针口径=复用 src.monitor.compute_monitor 对十年回测(backtest_long.json)结算序的滚动终态——与第46轮滚动20笔均值完全一致, 由compute_monitor给出标准化level/note(第39轮注册阈值); 静态结论块(era判定/苗头清单)注明来源轮次; 依赖缺失时降级为仅静态结论版, 网页仍可渲染。
+- **output/health.json 当前值**: 探针=黄-观察带, 滚动20笔均值+0.63%(截至20261020), 峰值+9.85%(20260618); era判定(2016-2023八年连亏/参数12组反证不可调/风控era后贡献+1183pp/监测器era前90%告警era后85%正常); 季度剖面10桶(2024Q3~2026Q4); 观察级苗头4项(基差斜率t1.64/营收同比[-10,0)n55/热度冷门桶n8/龙虎榜n2)。
+- **site/index.html 新增"五、策略体检"区**(原"五、策略规则与披露"顺延为"六"): 失效探针徽章(绿/黄/红/深红着色, 与监测灯同色系)+滚动均值与峰值+era判定面板+季度剖面表(mobile卡片式布局)+观察级苗头一行+来源脚注; loadHealth()数据缺失时显示"体检数据未部署"占位。本地起服+浏览器实测: 体检区5项渲染全通过, console零报错, 其余区块不受影响。
+- 注意: health.json 探针为"回测口径"(假设2016年起连续执行), 与实盘监测灯(实际已结算笔)互补, 页面note已注明; workflow的 `cp output/*.json deploy/data/` 会自动把 health.json 部署上网页, 无需改workflow。
+- 影响: 零策略参数变更, 回测基准不变; 新增tools/make_health.py与output/health.json, site/index.html加一个展示区块。
+
 ## 风控拆解补全+edge季度退潮探针(2026-10-25 第四十六轮)
 - **背景**: 第四十五轮风控贡献矩阵缺趋势条件单独贡献; 同时需要一个比20笔滚动窗口更直观的"edge退潮"聚合探针。tools/edge_profile.py(事前注册, 零参数变更)
 - **检验A 趋势条件单独贡献**(market_ma=1 -> rolling(1)=自身 -> trend_ok恒真, 等效关闭趋势):
