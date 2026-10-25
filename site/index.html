@@ -337,7 +337,7 @@ async function loadExecHistory() {
           <td data-label="发布日">${fmtDate(r.publish_date)}</td><td data-label="买入日">${fmtDate(e.buy_date)}</td>
           <td class="full" data-label="买入标的"><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
           <td class="muted" data-label="名次">第${e.rank}名</td>
-          <td data-label="买入价">${e.buy_px}</td><td data-label="卖出日">${fmtDate(e.sell_date)}</td><td data-label="卖出价">${e.sell_px}</td>
+          <td data-label="买入价">${e.buy_px}</td><td data-label="卖出日">${fmtDate(e.sell_date)}${e.sell_note ? `<br><span class="muted" style="font-size:11px">${esc(e.sell_note)}</span>` : ""}</td><td data-label="卖出价">${e.sell_px}</td>
           <td class="muted" data-label="仓位">${e.position_pct}%</td>
           <td class="muted" data-label="实盘买价">${e.actual_buy_px ?? "-"}</td><td class="muted" data-label="实盘卖价">${e.actual_sell_px ?? "-"}</td>
           <td class="${pctCls(e.ret_pct)}" data-label="单期收益"><b>${pctStr(e.ret_pct)}</b></td>
