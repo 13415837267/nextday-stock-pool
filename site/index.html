@@ -442,6 +442,15 @@ async function loadHealth() {
      <td class="${pctCls(q.avg)}" data-label="均值/笔">${pctStr(q.avg)}</td>
      <td data-label="胜率">${q.wr}%</td>
      <td class="${pctCls(q.comp)}" data-label="季度复利">${(q.comp > 0 ? "+" : "") + q.comp}%</td></tr>`).join("");
+  // 风控价值画像(第五十一轮, 数据源 blocked_shadow.json 经 make_health.py 提炼): 空仓日放行对照的十年基线
+  const rv = h.regime_value || {}, rvo = rv.overall || {};
+  const rvHtml = rvo.n ? `
+      <div class="panel">
+        <b>风控价值画像 <span class="sub">十年空仓日放行对照(第50轮)</span></b>
+        <div class="row" style="margin-top:8px;font-size:13px">十年${rv.zero_days ?? "—"}个空仓日若放行: <b class="${pctCls(rvo.avg_pct)}">${pctStr(rvo.avg_pct)}</b>/笔（${rvo.n}笔, 胜率${rvo.win_pct}%）vs 同期基准 ${pctStr(rvo.bench_avg_pct)}</div>
+        <div class="row muted" style="font-size:12px">era前 ${pctStr((rv.era_before || {}).avg_pct)}/笔 · era后 ${pctStr((rv.era_after || {}).avg_pct)}/笔（不显著, 期望≈0）</div>
+        <div class="row muted" style="font-size:12px">${esc(rv.note || "")}</div>
+      </div>` : "";
   el.innerHTML = `
     ${stale}
     <div class="plan-grid">
@@ -456,6 +465,7 @@ async function loadHealth() {
         <b>era 判定与反证结论</b>
         <div class="row muted" style="margin-top:8px;font-size:12px">${esc(h.era || "")}</div>
       </div>
+      ${rvHtml}
     </div>
     <div class="tscroll"><table class="rtable" style="margin-top:12px">
       <tr class="h"><th>季度</th><th>笔数</th><th>均值/笔</th><th>胜率</th><th>季度复利</th></tr>${qs}</table></div>

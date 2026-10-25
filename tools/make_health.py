@@ -42,9 +42,9 @@ RECHECK = [
     {"name": "苗头② 同花顺热度冷门桶", "state": "n=8, 观察级"},
     {"name": "苗头① 龙虎榜T-5上榜", "state": "n=2, 观察级"},
 ]
-SOURCES = ("来源: 第43轮(edge稳健性)/44(参数反证)/45(防线审计)/46(退潮探针), "
-           "详见仓库 CHANGELOG.md; 均为事前注册诊断, 零参数变更; "
-           "探针/季度剖面随每日回测自动刷新(第48轮)")
+SOURCES = ("来源: 第43轮(edge稳健性)/44(参数反证)/45(防线审计)/46(退潮探针)"
+           "/50(空仓对照十年重放), 详见仓库 CHANGELOG.md; 均为事前注册诊断, "
+           "零参数变更; 探针/季度剖面随每日回测自动刷新(第48轮)")
 
 
 def _settled(trades: list) -> list:
@@ -105,6 +105,30 @@ def _rolling_peak(settled: list, window: int) -> tuple[float | None, str]:
     return (round(best, 2) if best is not None else None), best_d
 
 
+def _regime_value() -> dict:
+    """第50轮风控价值画像: 读 blocked_shadow.json 提炼空仓对照十年基线(静态, 不随日更变)。"""
+    p = ROOT / "output" / "blocked_shadow.json"
+    if not p.exists():
+        return {}
+    try:
+        bs = json.loads(p.read_text())
+    except Exception:  # noqa: BLE001 画像缺失不影响体检主数据
+        return {}
+    ov, eb, ea = bs.get("overall") or {}, (bs.get("era") or {}).get("before_20240901") or {}, \
+        (bs.get("era") or {}).get("after_20240901") or {}
+    if not ov.get("n"):
+        return {}
+    def _slim(d: dict) -> dict:
+        return {k: d[k] for k in ("n", "avg_pct", "win_pct", "bench_avg_pct") if k in d}
+    return {
+        "overall": _slim(ov), "era_before": _slim(eb), "era_after": _slim(ea),
+        "zero_days": (bs.get("meta") or {}).get("zero_days"),
+        "note": ("完全放行风控、其余闸不变的虚拟top1十年重放(单日独立口径); "
+                 "era后被拦日若放行期望≈0(+0.18%,不显著)→当前空仓不构成显著错失; "
+                 "风控过滤的是弱市中dip信号失效, 而非市场下跌本身(第50轮)"),
+    }
+
+
 def main() -> None:
     cfg = load_config()
     mon = cfg.get("monitor") or {"window": 20}
@@ -124,6 +148,7 @@ def main() -> None:
 
     health = {"updated": date.today().isoformat(), "probe": probe,
               "quarters": quarters, "era": ERA_VERDICT,
+              "regime_value": _regime_value(),
               "recheck": RECHECK, "sources": SOURCES}
     out = ROOT / "output" / "health.json"
     out.write_text(json.dumps(health, ensure_ascii=False, indent=1), encoding="utf-8")
