@@ -195,10 +195,17 @@ async function loadLatest() {
   const t1 = d.picks[0] || {};
   const td = d.t1_decision || {};
   const allow = td.allow_buy !== false && d.picks.length > 0;
+  // 月度盈利熔断状态(第五十三轮实盘对齐): 触发时金色警示, 未触发时灰色小字展示当月增益
+  const capLine = td.month_cap_active
+    ? `<div class="row" style="color:var(--gold)"><b>⚠ 月度盈利熔断：</b>${esc(td.cap_note || "")}</div>`
+    : (td.month_gain_pct != null
+      ? `<div class="row" style="color:var(--muted);font-size:12px">当月净值增益 +${td.month_gain_pct}%，月度熔断未触发</div>`
+      : "");
   const judgeHead = allow
     ? `<div class="big" style="color:var(--up)">✅ 明日可买入 · 仓位 ${td.position_pct ?? 100}%</div>
        <div class="row"><b>判定：</b>${esc(td.buy_note || "")}</div>
-       <div class="row"><b>承接线：</b>开盘缺口 ≤ <b>${td.floor_pct ?? "-"}%</b> 才买（高开≥9%/一字/停牌放弃并顺延）</div>`
+       <div class="row"><b>承接线：</b>开盘缺口 ≤ <b>${td.floor_pct ?? "-"}%</b> 才买（高开≥9%/一字/停牌放弃并顺延）</div>
+       ${capLine}`
     : `<div class="big" style="color:var(--muted)">⛔ 明日不买入（空仓）</div>
        <div class="row"><b>判定：</b>${esc(td.buy_note || (d.picks.length === 0 ? "今日无合格候选" : "风控限制"))}</div>`;
   const stepsHtml = (td.steps || []).filter(s => s.rank > 0).map(s =>

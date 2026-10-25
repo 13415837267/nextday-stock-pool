@@ -1,5 +1,5 @@
 {
- "update_time": "2026-10-25 16:35:32",
+ "update_time": "2026-10-25 18:10:17",
  "signal_date": "2026-10-23",
  "plan": {
   "buy_date": "2026-10-26",
@@ -33,6 +33,9 @@
   "panic_day": false,
   "floor_pct": -2.75,
   "position_pct": 100.0,
+  "month_gain_pct": 1.4,
+  "month_cap_active": false,
+  "cap_note": "",
   "steps": [
    {
     "rank": 0,

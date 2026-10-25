@@ -70,6 +70,48 @@ def _position_note(ex: dict) -> str:
     return pos
 
 
+def _month_gain_state(led_exec: list, history: list, ym: str, close_of: dict | None,
+                      cfg: dict, include_hold: bool = True) -> tuple[float, float, str]:
+    """当月净值增益与月度盈利熔断状态(第五十三轮, 回测 risk.month_profit_cap 的实盘对齐)。
+
+    背景: 回测买入端有"当月净值增益超cap_pct%后买入仓位×cut_frac"(第八轮引入),
+    此前实盘指引缺失该机制 —— 回测收益数字包含降仓行为(500日窗口NO_CAP对照
+    +985pp), 网页指引却恒显示全仓, 实盘照做将与回测口径分叉。
+    口径对齐回测"买入时点equity/月初nav-1"(单吊先卖后买, 买入时点无持仓):
+      include_hold=True(指引侧, T晚为T+1买入准备): 当月已结算复利 × (1+当前持仓浮盈)
+        —— 当前持仓将于T+1开盘卖出实现浮盈, 恰好计入买入时点;
+      include_hold=False(结算侧, 买入日当天重算): 仅已结算复利 —— 昨日浮盈已实现入账,
+        唯一持仓即本记录自身, 其浮盈不属于买入时点状态。
+    已结算源: 持久账本exec优先(不随history裁剪), 空则回退history已结算记录
+    (与监测器同款回退)。返回 (month_gain_pct, cap_frac, note)。
+    """
+    _mcap = (cfg.get("risk") or {}).get("month_profit_cap") or {}
+    mc_cap, mc_cut = float(_mcap.get("cap_pct", 0) or 0), float(_mcap.get("cut_frac", 1.0) or 1.0)
+    if mc_cap <= 0 or mc_cut >= 1.0:
+        return 0.0, 1.0, ""
+    rets = [float(s["ret_pct"]) for s in led_exec
+            if str(s.get("publish_date", "")).replace("-", "")[:6] == ym]
+    if not rets:
+        rets = [float(r["realized"]["avg_ret_pct"]) for r in history
+                if r.get("status") == "已结算" and r.get("realized")
+                and str(r.get("publish_date", "")).replace("-", "")[:6] == ym
+                and r.get("regime_ok", True) is not False]
+    gain = 1.0   # 净值倍数起步(空样本=0%增益); 此前误用100起步导致空样本虚增9900%
+    for r in rets:
+        gain *= (1 + r / 100)
+    # 未平仓浮盈(单吊口径: 持仓市值波动直接计入当月净值; 浮盈按最新可得收盘价)
+    if include_hold:
+        hold = next((r["executed"] for r in history
+                     if (r.get("executed") or {}).get("holding")
+                     and str((r["executed"].get("buy_date") or "")).replace("-", "")[:6] == ym), None)
+        if hold and close_of and close_of.get(hold.get("code")) and hold.get("buy_px"):
+            gain *= (1 + (float(close_of[hold["code"]]) / float(hold["buy_px"]) - 1))
+    gain = (gain - 1) * 100
+    if gain > mc_cap:
+        return gain, mc_cut, f"月度盈利熔断生效: 当月净值+{gain:.1f}%>{mc_cap:g}%, 买入仓位×{mc_cut:g}"
+    return gain, 1.0, ""
+
+
 def _refresh_auction_positions(out_dir: Path, day_df: pd.DataFrame, now_str: str) -> None:
     """盘后将 auction.json 的持仓浮盈刷新为收盘价口径。
 
@@ -345,12 +387,14 @@ def main():
             if reason:
                 chain.append(f"第{rank_i}名 {p.get('name', p['code'])}: {reason}")
                 continue
+            # 第五十三轮: 买入日仓位含月度盈利熔断系数(仅已结算口径, 本记录浮盈不属买入时点)
+            _, _cf, _ = _month_gain_state([], history, (buy_d or "")[:6], None, cfg, include_hold=False)
             return {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
                 "sell_date": _fmt(sell_d) if sell_d else "", "sell_px": None,
                 "ret_pct": None,
-                "position_pct": round(bfrac * ex.get("alloc_frac_pct", 100.0), 1),
+                "position_pct": round(bfrac * _cf * ex.get("alloc_frac_pct", 100.0), 1),
                 "gap_pct": round(gap, 2),
                 "chain": chain,
                 "holding": True,
@@ -424,12 +468,14 @@ def main():
                 continue  # 卖出日停牌: 留待后续结算
             r = (rs["open_adj"] / rb["open_adj"]) * gap_fee - 1
             rets.append(float(r))
+            # 第五十三轮: 结算仓位含月度盈利熔断系数(买入日口径, 仅已结算复利)
+            _, _cf, _ = _month_gain_state([], history, (buy_d or "")[:6], None, cfg, include_hold=False)
             executed = {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
                 "sell_date": _fmt(sell_d), "sell_px": round(float(rs["open"]), 2),
                 "ret_pct": round(float(r) * 100, 2),
-                "position_pct": round(bfrac * ex.get("alloc_frac_pct", 100.0), 1),
+                "position_pct": round(bfrac * _cf * ex.get("alloc_frac_pct", 100.0), 1),
                 "gap_pct": round(gap, 2),
                 "chain": chain,
             }
@@ -547,6 +593,11 @@ def main():
         print(f"交易日历无未来日, 推算买入日{buy_d}/卖出日{sell_d}(遇节假日顺延)")
 
     # ---- T+1 执行判定卡(每晚生成, 次日照卡执行) ----
+    # 月度盈利熔断状态(第五十三轮实盘对齐): 回测买入端有"当月净值增益超cap后仓位×cut",
+    # 指引此前缺失 —— 回测收益含降仓行为, 网页指引恒全仓, 实盘照做将与回测口径分叉
+    close_of = day_df.set_index("ts_code")["close"].to_dict() if day_df is not None and len(day_df) else {}
+    month_gain_pct, cap_frac, cap_note = _month_gain_state(
+        led["exec"], history, signal_date[:6], close_of, cfg)
     regime_ok_now = bool(reg_row["trade_ok"]) if reg_row is not None else True
     over_limit_now = over_limit
     panic_day = False
@@ -567,7 +618,10 @@ def main():
     else:
         allow_buy = False
         buy_note = f"大盘风控中(连续第{consec}日): 空仓观望"
+    if allow_buy and cap_frac < 1.0:
+        buy_note += f"; {cap_note}"
 
+    plan_frac = (over_frac if (over_limit_now and not regime_ok_now) else 1.0) * cap_frac
     floor_now = ex.get("buy_gap_below", 0)
     if allow_buy and not regime_ok_now:
         floor_now = ex.get("block_gap_below", floor_now)
@@ -576,7 +630,7 @@ def main():
         steps.append({
             "rank": i, "code": p["code"], "name": p["name"], "score": p.get("score"),
             "close": p.get("close"), "pct": p.get("pct"),
-            "rule": f"9:25竞价缺口 ≤ {floor_now}% 且 < 9% 且未停牌未一字 → 买入全仓",
+            "rule": f"9:25竞价缺口 ≤ {floor_now}% 且 < 9% 且未停牌未一字 → 按{plan_frac:.0%}仓位买入",
             "fallback": f"不达标 → 顺延第{i+1}名" if i < min(5, len(verified)) else "",
         })
     if not verified:
@@ -586,7 +640,10 @@ def main():
         "buy_note": buy_note,
         "panic_day": panic_day,
         "floor_pct": floor_now if allow_buy else None,
-        "position_pct": round((over_frac if (over_limit_now and not regime_ok_now) else 1.0) * ex.get("alloc_frac_pct", 100.0), 1),
+        "position_pct": round(plan_frac * ex.get("alloc_frac_pct", 100.0), 1),
+        "month_gain_pct": round(month_gain_pct, 1),
+        "month_cap_active": cap_frac < 1.0,
+        "cap_note": cap_note,
         "steps": steps,
         "sell_plan": "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)",
         "empty_funnel": ({"全市场": stats.get("universe"), "流动性/次新": stats.get("liquidity"),
