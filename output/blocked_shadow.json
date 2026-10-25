@@ -1,0 +1,1949 @@
+{
+ "meta": {
+  "run_time": "2026-10-25 15:43:51",
+  "window_days": 2500,
+  "days": 2500,
+  "zero_days": 542,
+  "no_pick_days": 64,
+  "unfilled_days": 293,
+  "口径": "买入日day_frac==0全额空仓日; 信号日=前一交易日; 完全放行风控、五道非风控闸不变(承接线=buy_gap_below); top1顺延虚拟成交; T+2开盘卖; 与daily_run第49轮blocked对照同口径; 只记录不参与决策"
+ },
+ "overall": {
+  "n": 185,
+  "avg_pct": -0.577,
+  "win_pct": 47.0,
+  "sum_pct": -106.7,
+  "median_pct": -0.15,
+  "p25_pct": -3.47,
+  "p75_pct": 1.95,
+  "worst_pct": -14.71,
+  "best_pct": 15.86,
+  "bench_avg_pct": 0.056
+ },
+ "era": {
+  "before_20240901": {
+   "n": 152,
+   "avg_pct": -0.741,
+   "win_pct": 47.4,
+   "sum_pct": -112.6,
+   "median_pct": -0.08,
+   "p25_pct": -3.52,
+   "p75_pct": 1.95,
+   "worst_pct": -14.71,
+   "best_pct": 15.4,
+   "bench_avg_pct": 0.053
+  },
+  "after_20240901": {
+   "n": 33,
+   "avg_pct": 0.18,
+   "win_pct": 45.5,
+   "sum_pct": 5.9,
+   "median_pct": -0.3,
+   "p25_pct": -2.51,
+   "p75_pct": 2.04,
+   "worst_pct": -11.17,
+   "best_pct": 15.86,
+   "bench_avg_pct": 0.069
+  }
+ },
+ "by_year": {
+  "2016": {
+   "n": 5,
+   "avg_pct": 3.416,
+   "win_pct": 80.0,
+   "sum_pct": 17.1,
+   "median_pct": 0.81,
+   "p25_pct": 0.28,
+   "p75_pct": 2.78,
+   "worst_pct": -1.44,
+   "best_pct": 14.65,
+   "bench_avg_pct": 0.418
+  },
+  "2017": {
+   "n": 8,
+   "avg_pct": -1.895,
+   "win_pct": 50.0,
+   "sum_pct": -15.2,
+   "median_pct": 1.28,
+   "p25_pct": -5.83,
+   "p75_pct": 2.81,
+   "worst_pct": -7.47,
+   "best_pct": 2.84,
+   "bench_avg_pct": 0.024
+  },
+  "2018": {
+   "n": 28,
+   "avg_pct": -1.22,
+   "win_pct": 53.6,
+   "sum_pct": -34.1,
+   "median_pct": 0.3,
+   "p25_pct": -3.03,
+   "p75_pct": 2.12,
+   "worst_pct": -11.62,
+   "best_pct": 5.92,
+   "bench_avg_pct": 0.339
+  },
+  "2019": {
+   "n": 19,
+   "avg_pct": -1.702,
+   "win_pct": 36.8,
+   "sum_pct": -32.3,
+   "median_pct": -0.79,
+   "p25_pct": -5.89,
+   "p75_pct": 1.31,
+   "worst_pct": -14.71,
+   "best_pct": 8.57,
+   "bench_avg_pct": -0.471
+  },
+  "2020": {
+   "n": 25,
+   "avg_pct": -1.289,
+   "win_pct": 36.0,
+   "sum_pct": -32.2,
+   "median_pct": -1.61,
+   "p25_pct": -4.77,
+   "p75_pct": 2.37,
+   "worst_pct": -13.96,
+   "best_pct": 15.4,
+   "bench_avg_pct": 0.028
+  },
+  "2021": {
+   "n": 8,
+   "avg_pct": -0.62,
+   "win_pct": 25.0,
+   "sum_pct": -5.0,
+   "median_pct": -0.02,
+   "p25_pct": -3.13,
+   "p75_pct": 0.29,
+   "worst_pct": -5.66,
+   "best_pct": 9.87,
+   "bench_avg_pct": 0.608
+  },
+  "2022": {
+   "n": 26,
+   "avg_pct": -0.505,
+   "win_pct": 46.2,
+   "sum_pct": -13.1,
+   "median_pct": -0.3,
+   "p25_pct": -3.52,
+   "p75_pct": 2.31,
+   "worst_pct": -10.0,
+   "best_pct": 12.95,
+   "bench_avg_pct": 0.067
+  },
+  "2023": {
+   "n": 14,
+   "avg_pct": 0.686,
+   "win_pct": 64.3,
+   "sum_pct": 9.6,
+   "median_pct": 1.47,
+   "p25_pct": -1.48,
+   "p75_pct": 1.66,
+   "worst_pct": -8.2,
+   "best_pct": 12.57,
+   "bench_avg_pct": -0.02
+  },
+  "2024": {
+   "n": 21,
+   "avg_pct": 0.231,
+   "win_pct": 52.4,
+   "sum_pct": 4.9,
+   "median_pct": 0.34,
+   "p25_pct": -2.87,
+   "p75_pct": 1.9,
+   "worst_pct": -10.61,
+   "best_pct": 15.86,
+   "bench_avg_pct": -0.133
+  },
+  "2025": {
+   "n": 13,
+   "avg_pct": -0.477,
+   "win_pct": 46.2,
+   "sum_pct": -6.2,
+   "median_pct": -0.01,
+   "p25_pct": -1.88,
+   "p75_pct": 1.26,
+   "worst_pct": -11.17,
+   "best_pct": 7.6,
+   "bench_avg_pct": -0.038
+  },
+  "2026": {
+   "n": 18,
+   "avg_pct": -0.004,
+   "win_pct": 44.4,
+   "sum_pct": -0.1,
+   "median_pct": -0.6,
+   "p25_pct": -2.6,
+   "p75_pct": 2.04,
+   "worst_pct": -5.88,
+   "best_pct": 8.2,
+   "bench_avg_pct": 0.213
+  }
+ },
+ "top5_win": [
+  {
+   "signal_date": "20241225",
+   "buy_date": "20241226",
+   "sell_date": "20241227",
+   "code": "002350.SZ",
+   "name": "北京科锐",
+   "ret_pct": 15.86,
+   "bench_pct": 0.85
+  },
+  {
+   "signal_date": "20200207",
+   "buy_date": "20200210",
+   "sell_date": "20200211",
+   "code": "300230.SZ",
+   "name": "永利股份",
+   "ret_pct": 15.4,
+   "bench_pct": -0.53
+  },
+  {
+   "signal_date": "20160801",
+   "buy_date": "20160802",
+   "sell_date": "20160803",
+   "code": "600843.SH",
+   "name": "上工申贝",
+   "ret_pct": 14.65,
+   "bench_pct": 0.64
+  },
+  {
+   "signal_date": "20220308",
+   "buy_date": "20220309",
+   "sell_date": "20220310",
+   "code": "600996.SH",
+   "name": "贵广网络",
+   "ret_pct": 12.95,
+   "bench_pct": 1.8
+  },
+  {
+   "signal_date": "20231016",
+   "buy_date": "20231017",
+   "sell_date": "20231018",
+   "code": "600895.SH",
+   "name": "张江高科",
+   "ret_pct": 12.57,
+   "bench_pct": -1.74
+  }
+ ],
+ "top5_loss": [
+  {
+   "signal_date": "20190426",
+   "buy_date": "20190429",
+   "sell_date": "20190430",
+   "code": "002565.SZ",
+   "name": "顺灏股份",
+   "ret_pct": -14.71,
+   "bench_pct": 1.11
+  },
+  {
+   "signal_date": "20200122",
+   "buy_date": "20200123",
+   "sell_date": "20200203",
+   "code": "600802.SH",
+   "name": "福建水泥",
+   "ret_pct": -13.96,
+   "bench_pct": -8.93
+  },
+  {
+   "signal_date": "20180615",
+   "buy_date": "20180619",
+   "sell_date": "20180620",
+   "code": "002264.SZ",
+   "name": "新华都",
+   "ret_pct": -11.62,
+   "bench_pct": 1.22
+  },
+  {
+   "signal_date": "20250402",
+   "buy_date": "20250403",
+   "sell_date": "20250407",
+   "code": "600105.SH",
+   "name": "永鼎股份",
+   "ret_pct": -11.17,
+   "bench_pct": -11.47
+  },
+  {
+   "signal_date": "20240415",
+   "buy_date": "20240416",
+   "sell_date": "20240417",
+   "code": "002578.SZ",
+   "name": "闽发铝业",
+   "ret_pct": -10.61,
+   "bench_pct": 6.07
+  }
+ ],
+ "cross_check": {
+  "no_regime_era_after_total_pct": 2366.2,
+  "base_era_after_total_pct": 3549.6,
+  "note": "互验参照: 第45轮 no_regime(整体关风控重跑) era后 2366.2% vs BASE 3549.6%(关风控更差 -> 风控era后净贡献+1183pp, 复利口径); 本脚本为单日独立均值口径, 两者方向应互洽"
+ },
+ "samples": [
+  {
+   "signal_date": "20160727",
+   "buy_date": "20160728",
+   "sell_date": "20160729",
+   "code": "000926.SZ",
+   "name": "福星股份",
+   "ret_pct": 0.28,
+   "bench_pct": -0.73
+  },
+  {
+   "signal_date": "20160729",
+   "buy_date": "20160801",
+   "sell_date": "20160802",
+   "code": "000711.SZ",
+   "name": "京蓝科技",
+   "ret_pct": 0.81,
+   "bench_pct": 1.05
+  },
+  {
+   "signal_date": "20160801",
+   "buy_date": "20160802",
+   "sell_date": "20160803",
+   "code": "600843.SH",
+   "name": "上工申贝",
+   "ret_pct": 14.65,
+   "bench_pct": 0.64
+  },
+  {
+   "signal_date": "20160909",
+   "buy_date": "20160912",
+   "sell_date": "20160913",
+   "code": "600353.SH",
+   "name": "旭光电子",
+   "ret_pct": -1.44,
+   "bench_pct": 0.86
+  },
+  {
+   "signal_date": "20161202",
+   "buy_date": "20161205",
+   "sell_date": "20161206",
+   "code": "002346.SZ",
+   "name": "柘中股份",
+   "ret_pct": 2.78,
+   "bench_pct": 0.27
+  },
+  {
+   "signal_date": "20170329",
+   "buy_date": "20170330",
+   "sell_date": "20170331",
+   "code": "002793.SZ",
+   "name": "罗欣药业",
+   "ret_pct": -5.83,
+   "bench_pct": 0.11
+  },
+  {
+   "signal_date": "20170331",
+   "buy_date": "20170405",
+   "sell_date": "20170406",
+   "code": "600888.SH",
+   "name": "新疆众和",
+   "ret_pct": 2.84,
+   "bench_pct": 0.39
+  },
+  {
+   "signal_date": "20170714",
+   "buy_date": "20170717",
+   "sell_date": "20170718",
+   "code": "000801.SZ",
+   "name": "四川九洲",
+   "ret_pct": -7.47,
+   "bench_pct": 0.93
+  },
+  {
+   "signal_date": "20170804",
+   "buy_date": "20170807",
+   "sell_date": "20170808",
+   "code": "002802.SZ",
+   "name": "洪汇新材",
+   "ret_pct": -4.3,
+   "bench_pct": 0.31
+  },
+  {
+   "signal_date": "20170810",
+   "buy_date": "20170811",
+   "sell_date": "20170814",
+   "code": "600362.SH",
+   "name": "江西铜业",
+   "ret_pct": -6.44,
+   "bench_pct": 2.02
+  },
+  {
+   "signal_date": "20171016",
+   "buy_date": "20171017",
+   "sell_date": "20171018",
+   "code": "002355.SZ",
+   "name": "兴民智通",
+   "ret_pct": 1.95,
+   "bench_pct": -0.99
+  },
+  {
+   "signal_date": "20171026",
+   "buy_date": "20171027",
+   "sell_date": "20171030",
+   "code": "002803.SZ",
+   "name": "吉宏股份",
+   "ret_pct": 2.81,
+   "bench_pct": -2.77
+  },
+  {
+   "signal_date": "20171030",
+   "buy_date": "20171031",
+   "sell_date": "20171101",
+   "code": "000697.SZ",
+   "name": "炼石航空",
+   "ret_pct": 1.28,
+   "bench_pct": 0.19
+  },
+  {
+   "signal_date": "20180112",
+   "buy_date": "20180115",
+   "sell_date": "20180116",
+   "code": "002587.SZ",
+   "name": "奥拓电子",
+   "ret_pct": -2.95,
+   "bench_pct": 0.84
+  },
+  {
+   "signal_date": "20180115",
+   "buy_date": "20180116",
+   "sell_date": "20180117",
+   "code": "000573.SZ",
+   "name": "粤宏远Ａ",
+   "ret_pct": 3.98,
+   "bench_pct": 0.15
+  },
+  {
+   "signal_date": "20180118",
+   "buy_date": "20180119",
+   "sell_date": "20180122",
+   "code": "300536.SZ",
+   "name": "农尚环境",
+   "ret_pct": -4.01,
+   "bench_pct": 0.56
+  },
+  {
+   "signal_date": "20180201",
+   "buy_date": "20180202",
+   "sell_date": "20180205",
+   "code": "600684.SH",
+   "name": "珠江股份",
+   "ret_pct": -2.55,
+   "bench_pct": -0.78
+  },
+  {
+   "signal_date": "20180322",
+   "buy_date": "20180323",
+   "sell_date": "20180326",
+   "code": "600588.SH",
+   "name": "用友网络",
+   "ret_pct": 1.54,
+   "bench_pct": 1.58
+  },
+  {
+   "signal_date": "20180323",
+   "buy_date": "20180326",
+   "sell_date": "20180327",
+   "code": "002419.SZ",
+   "name": "天虹股份",
+   "ret_pct": 5.92,
+   "bench_pct": 2.79
+  },
+  {
+   "signal_date": "20180419",
+   "buy_date": "20180420",
+   "sell_date": "20180423",
+   "code": "300469.SZ",
+   "name": "信息发展",
+   "ret_pct": -0.28,
+   "bench_pct": -0.72
+  },
+  {
+   "signal_date": "20180420",
+   "buy_date": "20180423",
+   "sell_date": "20180424",
+   "code": "600354.SH",
+   "name": "敦煌种业",
+   "ret_pct": -6.32,
+   "bench_pct": 2.5
+  },
+  {
+   "signal_date": "20180511",
+   "buy_date": "20180514",
+   "sell_date": "20180515",
+   "code": "002371.SZ",
+   "name": "北方华创",
+   "ret_pct": 0.3,
+   "bench_pct": 1.24
+  },
+  {
+   "signal_date": "20180528",
+   "buy_date": "20180529",
+   "sell_date": "20180530",
+   "code": "300675.SZ",
+   "name": "建科院",
+   "ret_pct": -7.3,
+   "bench_pct": -4.07
+  },
+  {
+   "signal_date": "20180529",
+   "buy_date": "20180530",
+   "sell_date": "20180531",
+   "code": "300611.SZ",
+   "name": "美力科技",
+   "ret_pct": 2.12,
+   "bench_pct": 1.87
+  },
+  {
+   "signal_date": "20180615",
+   "buy_date": "20180619",
+   "sell_date": "20180620",
+   "code": "002264.SZ",
+   "name": "新华都",
+   "ret_pct": -11.62,
+   "bench_pct": 1.22
+  },
+  {
+   "signal_date": "20180621",
+   "buy_date": "20180622",
+   "sell_date": "20180625",
+   "code": "600847.SH",
+   "name": "万里股份",
+   "ret_pct": 4.62,
+   "bench_pct": -0.27
+  },
+  {
+   "signal_date": "20180625",
+   "buy_date": "20180626",
+   "sell_date": "20180627",
+   "code": "002110.SZ",
+   "name": "三钢闽光",
+   "ret_pct": -2.02,
+   "bench_pct": -0.55
+  },
+  {
+   "signal_date": "20180703",
+   "buy_date": "20180704",
+   "sell_date": "20180705",
+   "code": "002083.SZ",
+   "name": "孚日股份",
+   "ret_pct": 0.43,
+   "bench_pct": -2.8
+  },
+  {
+   "signal_date": "20180713",
+   "buy_date": "20180716",
+   "sell_date": "20180717",
+   "code": "300522.SZ",
+   "name": "世名科技",
+   "ret_pct": 4.39,
+   "bench_pct": 0.29
+  },
+  {
+   "signal_date": "20180731",
+   "buy_date": "20180801",
+   "sell_date": "20180802",
+   "code": "000011.SZ",
+   "name": "深物业A",
+   "ret_pct": 1.15,
+   "bench_pct": -2.77
+  },
+  {
+   "signal_date": "20180803",
+   "buy_date": "20180806",
+   "sell_date": "20180807",
+   "code": "600596.SH",
+   "name": "新安股份",
+   "ret_pct": -6.87,
+   "bench_pct": 2.73
+  },
+  {
+   "signal_date": "20180928",
+   "buy_date": "20181008",
+   "sell_date": "20181009",
+   "code": "300103.SZ",
+   "name": "达刚控股",
+   "ret_pct": 0.97,
+   "bench_pct": 0.36
+  },
+  {
+   "signal_date": "20181010",
+   "buy_date": "20181011",
+   "sell_date": "20181012",
+   "code": "000760.SZ",
+   "name": "000760.SZ",
+   "ret_pct": -3.03,
+   "bench_pct": -0.86
+  },
+  {
+   "signal_date": "20181016",
+   "buy_date": "20181017",
+   "sell_date": "20181018",
+   "code": "601069.SH",
+   "name": "西部黄金",
+   "ret_pct": -2.58,
+   "bench_pct": -3.18
+  },
+  {
+   "signal_date": "20181017",
+   "buy_date": "20181018",
+   "sell_date": "20181019",
+   "code": "603856.SH",
+   "name": "东宏股份",
+   "ret_pct": -9.49,
+   "bench_pct": 2.17
+  },
+  {
+   "signal_date": "20181018",
+   "buy_date": "20181019",
+   "sell_date": "20181022",
+   "code": "300103.SZ",
+   "name": "达刚控股",
+   "ret_pct": -7.77,
+   "bench_pct": 5.05
+  },
+  {
+   "signal_date": "20181024",
+   "buy_date": "20181025",
+   "sell_date": "20181026",
+   "code": "002877.SZ",
+   "name": "智能自控",
+   "ret_pct": 2.38,
+   "bench_pct": 0.48
+  },
+  {
+   "signal_date": "20181101",
+   "buy_date": "20181102",
+   "sell_date": "20181105",
+   "code": "600448.SH",
+   "name": "华纺股份",
+   "ret_pct": 0.42,
+   "bench_pct": 0.83
+  },
+  {
+   "signal_date": "20181207",
+   "buy_date": "20181210",
+   "sell_date": "20181211",
+   "code": "002703.SZ",
+   "name": "浙江世宝",
+   "ret_pct": 2.72,
+   "bench_pct": 0.96
+  },
+  {
+   "signal_date": "20181214",
+   "buy_date": "20181217",
+   "sell_date": "20181218",
+   "code": "002089.SZ",
+   "name": "002089.SZ",
+   "ret_pct": 0.15,
+   "bench_pct": -0.66
+  },
+  {
+   "signal_date": "20181218",
+   "buy_date": "20181219",
+   "sell_date": "20181220",
+   "code": "000571.SZ",
+   "name": "新大洲A",
+   "ret_pct": 1.55,
+   "bench_pct": 0.52
+  },
+  {
+   "signal_date": "20190128",
+   "buy_date": "20190129",
+   "sell_date": "20190130",
+   "code": "300356.SZ",
+   "name": "300356.SZ",
+   "ret_pct": -9.3,
+   "bench_pct": -1.53
+  },
+  {
+   "signal_date": "20190129",
+   "buy_date": "20190130",
+   "sell_date": "20190131",
+   "code": "002596.SZ",
+   "name": "海南瑞泽",
+   "ret_pct": -0.15,
+   "bench_pct": -1.86
+  },
+  {
+   "signal_date": "20190130",
+   "buy_date": "20190131",
+   "sell_date": "20190201",
+   "code": "300317.SZ",
+   "name": "珈伟新能",
+   "ret_pct": -7.09,
+   "bench_pct": 2.81
+  },
+  {
+   "signal_date": "20190424",
+   "buy_date": "20190425",
+   "sell_date": "20190426",
+   "code": "000533.SZ",
+   "name": "顺钠股份",
+   "ret_pct": -7.21,
+   "bench_pct": -1.24
+  },
+  {
+   "signal_date": "20190425",
+   "buy_date": "20190426",
+   "sell_date": "20190429",
+   "code": "300679.SZ",
+   "name": "电连技术",
+   "ret_pct": 6.75,
+   "bench_pct": -3.68
+  },
+  {
+   "signal_date": "20190426",
+   "buy_date": "20190429",
+   "sell_date": "20190430",
+   "code": "002565.SZ",
+   "name": "顺灏股份",
+   "ret_pct": -14.71,
+   "bench_pct": 1.11
+  },
+  {
+   "signal_date": "20190429",
+   "buy_date": "20190430",
+   "sell_date": "20190506",
+   "code": "002761.SZ",
+   "name": "浙江建投",
+   "ret_pct": 8.57,
+   "bench_pct": -7.54
+  },
+  {
+   "signal_date": "20190430",
+   "buy_date": "20190506",
+   "sell_date": "20190507",
+   "code": "600738.SH",
+   "name": "丽尚国潮",
+   "ret_pct": -5.89,
+   "bench_pct": 1.66
+  },
+  {
+   "signal_date": "20190516",
+   "buy_date": "20190517",
+   "sell_date": "20190520",
+   "code": "600775.SH",
+   "name": "南京熊猫",
+   "ret_pct": 0.24,
+   "bench_pct": -0.27
+  },
+  {
+   "signal_date": "20190523",
+   "buy_date": "20190524",
+   "sell_date": "20190527",
+   "code": "300573.SZ",
+   "name": "兴齐眼药",
+   "ret_pct": 1.31,
+   "bench_pct": 2.8
+  },
+  {
+   "signal_date": "20190529",
+   "buy_date": "20190530",
+   "sell_date": "20190531",
+   "code": "600410.SH",
+   "name": "华胜天成",
+   "ret_pct": -3.51,
+   "bench_pct": 0.1
+  },
+  {
+   "signal_date": "20190530",
+   "buy_date": "20190531",
+   "sell_date": "20190603",
+   "code": "002877.SZ",
+   "name": "智能自控",
+   "ret_pct": -0.79,
+   "bench_pct": -1.42
+  },
+  {
+   "signal_date": "20190531",
+   "buy_date": "20190603",
+   "sell_date": "20190604",
+   "code": "002299.SZ",
+   "name": "圣农发展",
+   "ret_pct": -1.89,
+   "bench_pct": -1.57
+  },
+  {
+   "signal_date": "20190709",
+   "buy_date": "20190710",
+   "sell_date": "20190711",
+   "code": "603817.SH",
+   "name": "海峡环保",
+   "ret_pct": 1.1,
+   "bench_pct": 0.07
+  },
+  {
+   "signal_date": "20190711",
+   "buy_date": "20190712",
+   "sell_date": "20190715",
+   "code": "002036.SZ",
+   "name": "联创电子",
+   "ret_pct": -0.08,
+   "bench_pct": 0.93
+  },
+  {
+   "signal_date": "20190717",
+   "buy_date": "20190718",
+   "sell_date": "20190719",
+   "code": "300260.SZ",
+   "name": "新莱应材",
+   "ret_pct": -4.48,
+   "bench_pct": 0.56
+  },
+  {
+   "signal_date": "20190930",
+   "buy_date": "20191008",
+   "sell_date": "20191009",
+   "code": "002941.SZ",
+   "name": "新疆交建",
+   "ret_pct": 2.64,
+   "bench_pct": 0.98
+  },
+  {
+   "signal_date": "20191029",
+   "buy_date": "20191030",
+   "sell_date": "20191031",
+   "code": "300297.SZ",
+   "name": "300297.SZ",
+   "ret_pct": -1.09,
+   "bench_pct": -1.13
+  },
+  {
+   "signal_date": "20191031",
+   "buy_date": "20191101",
+   "sell_date": "20191104",
+   "code": "603078.SH",
+   "name": "江化微",
+   "ret_pct": 3.25,
+   "bench_pct": 0.28
+  },
+  {
+   "signal_date": "20200122",
+   "buy_date": "20200123",
+   "sell_date": "20200203",
+   "code": "600802.SH",
+   "name": "福建水泥",
+   "ret_pct": -13.96,
+   "bench_pct": -8.93
+  },
+  {
+   "signal_date": "20200123",
+   "buy_date": "20200203",
+   "sell_date": "20200204",
+   "code": "002041.SZ",
+   "name": "登海种业",
+   "ret_pct": -9.08,
+   "bench_pct": -0.66
+  },
+  {
+   "signal_date": "20200203",
+   "buy_date": "20200204",
+   "sell_date": "20200205",
+   "code": "002880.SZ",
+   "name": "卫光生物",
+   "ret_pct": 8.72,
+   "bench_pct": 2.72
+  },
+  {
+   "signal_date": "20200207",
+   "buy_date": "20200210",
+   "sell_date": "20200211",
+   "code": "300230.SZ",
+   "name": "永利股份",
+   "ret_pct": 15.4,
+   "bench_pct": -0.53
+  },
+  {
+   "signal_date": "20200210",
+   "buy_date": "20200211",
+   "sell_date": "20200212",
+   "code": "002644.SZ",
+   "name": "佛慈制药",
+   "ret_pct": -0.67,
+   "bench_pct": 1.62
+  },
+  {
+   "signal_date": "20200227",
+   "buy_date": "20200228",
+   "sell_date": "20200302",
+   "code": "600866.SH",
+   "name": "星湖科技",
+   "ret_pct": -1.4,
+   "bench_pct": 4.19
+  },
+  {
+   "signal_date": "20200316",
+   "buy_date": "20200317",
+   "sell_date": "20200318",
+   "code": "000990.SZ",
+   "name": "诚志股份",
+   "ret_pct": -4.18,
+   "bench_pct": -1.6
+  },
+  {
+   "signal_date": "20200318",
+   "buy_date": "20200319",
+   "sell_date": "20200320",
+   "code": "603863.SH",
+   "name": "松炀资源",
+   "ret_pct": -1.61,
+   "bench_pct": 1.46
+  },
+  {
+   "signal_date": "20200320",
+   "buy_date": "20200323",
+   "sell_date": "20200324",
+   "code": "300263.SZ",
+   "name": "隆华科技",
+   "ret_pct": -2.76,
+   "bench_pct": 1.95
+  },
+  {
+   "signal_date": "20200325",
+   "buy_date": "20200326",
+   "sell_date": "20200327",
+   "code": "002178.SZ",
+   "name": "延华智能",
+   "ret_pct": -2.85,
+   "bench_pct": -0.37
+  },
+  {
+   "signal_date": "20200327",
+   "buy_date": "20200330",
+   "sell_date": "20200331",
+   "code": "600203.SH",
+   "name": "福日电子",
+   "ret_pct": -2.7,
+   "bench_pct": 0.03
+  },
+  {
+   "signal_date": "20200331",
+   "buy_date": "20200401",
+   "sell_date": "20200402",
+   "code": "002529.SZ",
+   "name": "海源复材",
+   "ret_pct": -8.67,
+   "bench_pct": 2.1
+  },
+  {
+   "signal_date": "20200409",
+   "buy_date": "20200410",
+   "sell_date": "20200413",
+   "code": "300026.SZ",
+   "name": "红日药业",
+   "ret_pct": 0.11,
+   "bench_pct": -0.81
+  },
+  {
+   "signal_date": "20200410",
+   "buy_date": "20200413",
+   "sell_date": "20200414",
+   "code": "002873.SZ",
+   "name": "新天药业",
+   "ret_pct": 4.5,
+   "bench_pct": 1.8
+  },
+  {
+   "signal_date": "20200414",
+   "buy_date": "20200415",
+   "sell_date": "20200416",
+   "code": "002282.SZ",
+   "name": "博深股份",
+   "ret_pct": -4.13,
+   "bench_pct": 0.43
+  },
+  {
+   "signal_date": "20200415",
+   "buy_date": "20200416",
+   "sell_date": "20200417",
+   "code": "300573.SZ",
+   "name": "兴齐眼药",
+   "ret_pct": 2.37,
+   "bench_pct": -0.04
+  },
+  {
+   "signal_date": "20200427",
+   "buy_date": "20200428",
+   "sell_date": "20200429",
+   "code": "300287.SZ",
+   "name": "飞利信",
+   "ret_pct": -5.68,
+   "bench_pct": -0.09
+  },
+  {
+   "signal_date": "20200428",
+   "buy_date": "20200429",
+   "sell_date": "20200430",
+   "code": "600645.SH",
+   "name": "中源协和",
+   "ret_pct": -6.67,
+   "bench_pct": 2.17
+  },
+  {
+   "signal_date": "20200522",
+   "buy_date": "20200525",
+   "sell_date": "20200526",
+   "code": "002300.SZ",
+   "name": "太阳电缆",
+   "ret_pct": -7.99,
+   "bench_pct": 2.03
+  },
+  {
+   "signal_date": "20200908",
+   "buy_date": "20200909",
+   "sell_date": "20200910",
+   "code": "002594.SZ",
+   "name": "比亚迪",
+   "ret_pct": -0.49,
+   "bench_pct": -3.88
+  },
+  {
+   "signal_date": "20200910",
+   "buy_date": "20200911",
+   "sell_date": "20200914",
+   "code": "300630.SZ",
+   "name": "300630.SZ",
+   "ret_pct": 5.63,
+   "bench_pct": 1.6
+  },
+  {
+   "signal_date": "20201023",
+   "buy_date": "20201026",
+   "sell_date": "20201027",
+   "code": "000547.SZ",
+   "name": "航天发展",
+   "ret_pct": 3.14,
+   "bench_pct": -0.02
+  },
+  {
+   "signal_date": "20201028",
+   "buy_date": "20201029",
+   "sell_date": "20201030",
+   "code": "300013.SZ",
+   "name": "新宁物流",
+   "ret_pct": 1.33,
+   "bench_pct": -2.74
+  },
+  {
+   "signal_date": "20201209",
+   "buy_date": "20201210",
+   "sell_date": "20201211",
+   "code": "300626.SZ",
+   "name": "华瑞股份",
+   "ret_pct": 4.18,
+   "bench_pct": -1.66
+  },
+  {
+   "signal_date": "20201211",
+   "buy_date": "20201214",
+   "sell_date": "20201215",
+   "code": "601001.SH",
+   "name": "晋控煤业",
+   "ret_pct": -4.77,
+   "bench_pct": -0.07
+  },
+  {
+   "signal_date": "20210308",
+   "buy_date": "20210309",
+   "sell_date": "20210310",
+   "code": "000798.SZ",
+   "name": "中水渔业",
+   "ret_pct": -3.13,
+   "bench_pct": -1.19
+  },
+  {
+   "signal_date": "20210428",
+   "buy_date": "20210429",
+   "sell_date": "20210430",
+   "code": "600855.SH",
+   "name": "航天长峰",
+   "ret_pct": -0.02,
+   "bench_pct": -0.76
+  },
+  {
+   "signal_date": "20210507",
+   "buy_date": "20210510",
+   "sell_date": "20210511",
+   "code": "603919.SH",
+   "name": "金徽酒",
+   "ret_pct": 0.29,
+   "bench_pct": 0.43
+  },
+  {
+   "signal_date": "20210727",
+   "buy_date": "20210728",
+   "sell_date": "20210729",
+   "code": "601969.SH",
+   "name": "海南矿业",
+   "ret_pct": -3.47,
+   "bench_pct": 2.48
+  },
+  {
+   "signal_date": "20210924",
+   "buy_date": "20210927",
+   "sell_date": "20210928",
+   "code": "300055.SZ",
+   "name": "万邦达",
+   "ret_pct": -5.66,
+   "bench_pct": 0.44
+  },
+  {
+   "signal_date": "20210928",
+   "buy_date": "20210929",
+   "sell_date": "20210930",
+   "code": "300329.SZ",
+   "name": "海伦钢琴",
+   "ret_pct": -2.84,
+   "bench_pct": 2.12
+  },
+  {
+   "signal_date": "20210929",
+   "buy_date": "20210930",
+   "sell_date": "20211008",
+   "code": "601101.SH",
+   "name": "昊华能源",
+   "ret_pct": 9.87,
+   "bench_pct": 1.56
+  },
+  {
+   "signal_date": "20210930",
+   "buy_date": "20211008",
+   "sell_date": "20211011",
+   "code": "300813.SZ",
+   "name": "泰林生物",
+   "ret_pct": -0.0,
+   "bench_pct": -0.22
+  },
+  {
+   "signal_date": "20220120",
+   "buy_date": "20220121",
+   "sell_date": "20220124",
+   "code": "002907.SZ",
+   "name": "华森制药",
+   "ret_pct": -2.16,
+   "bench_pct": -0.28
+  },
+  {
+   "signal_date": "20220121",
+   "buy_date": "20220124",
+   "sell_date": "20220125",
+   "code": "000597.SZ",
+   "name": "东北制药",
+   "ret_pct": -3.73,
+   "bench_pct": -4.14
+  },
+  {
+   "signal_date": "20220124",
+   "buy_date": "20220125",
+   "sell_date": "20220126",
+   "code": "600866.SH",
+   "name": "星湖科技",
+   "ret_pct": -1.01,
+   "bench_pct": 0.71
+  },
+  {
+   "signal_date": "20220304",
+   "buy_date": "20220307",
+   "sell_date": "20220308",
+   "code": "002637.SZ",
+   "name": "赞宇科技",
+   "ret_pct": -2.77,
+   "bench_pct": -3.24
+  },
+  {
+   "signal_date": "20220308",
+   "buy_date": "20220309",
+   "sell_date": "20220310",
+   "code": "600996.SH",
+   "name": "贵广网络",
+   "ret_pct": 12.95,
+   "bench_pct": 1.8
+  },
+  {
+   "signal_date": "20220310",
+   "buy_date": "20220311",
+   "sell_date": "20220314",
+   "code": "600797.SH",
+   "name": "浙大网新",
+   "ret_pct": 1.5,
+   "bench_pct": -2.69
+  },
+  {
+   "signal_date": "20220317",
+   "buy_date": "20220318",
+   "sell_date": "20220321",
+   "code": "600096.SH",
+   "name": "云天化",
+   "ret_pct": 0.47,
+   "bench_pct": 1.33
+  },
+  {
+   "signal_date": "20220422",
+   "buy_date": "20220425",
+   "sell_date": "20220426",
+   "code": "600693.SH",
+   "name": "东百集团",
+   "ret_pct": -3.17,
+   "bench_pct": -3.41
+  },
+  {
+   "signal_date": "20220425",
+   "buy_date": "20220426",
+   "sell_date": "20220427",
+   "code": "002029.SZ",
+   "name": "七匹狼",
+   "ret_pct": -10.0,
+   "bench_pct": 3.12
+  },
+  {
+   "signal_date": "20220426",
+   "buy_date": "20220427",
+   "sell_date": "20220428",
+   "code": "603906.SH",
+   "name": "龙蟠科技",
+   "ret_pct": 6.9,
+   "bench_pct": -1.66
+  },
+  {
+   "signal_date": "20220505",
+   "buy_date": "20220506",
+   "sell_date": "20220509",
+   "code": "600295.SH",
+   "name": "鄂尔多斯",
+   "ret_pct": -3.52,
+   "bench_pct": 1.74
+  },
+  {
+   "signal_date": "20220506",
+   "buy_date": "20220509",
+   "sell_date": "20220510",
+   "code": "600256.SH",
+   "name": "广汇能源",
+   "ret_pct": -7.04,
+   "bench_pct": 1.71
+  },
+  {
+   "signal_date": "20220518",
+   "buy_date": "20220519",
+   "sell_date": "20220520",
+   "code": "603906.SH",
+   "name": "龙蟠科技",
+   "ret_pct": -0.3,
+   "bench_pct": 1.18
+  },
+  {
+   "signal_date": "20220714",
+   "buy_date": "20220715",
+   "sell_date": "20220718",
+   "code": "603030.SH",
+   "name": "全筑股份",
+   "ret_pct": -8.49,
+   "bench_pct": 2.65
+  },
+  {
+   "signal_date": "20220801",
+   "buy_date": "20220802",
+   "sell_date": "20220803",
+   "code": "605286.SH",
+   "name": "同力天启",
+   "ret_pct": 0.01,
+   "bench_pct": -0.56
+  },
+  {
+   "signal_date": "20220802",
+   "buy_date": "20220803",
+   "sell_date": "20220804",
+   "code": "300300.SZ",
+   "name": "海峡创新",
+   "ret_pct": 4.82,
+   "bench_pct": 1.37
+  },
+  {
+   "signal_date": "20220803",
+   "buy_date": "20220804",
+   "sell_date": "20220805",
+   "code": "002686.SZ",
+   "name": "亿利达",
+   "ret_pct": 1.95,
+   "bench_pct": 1.06
+  },
+  {
+   "signal_date": "20220826",
+   "buy_date": "20220829",
+   "sell_date": "20220830",
+   "code": "300331.SZ",
+   "name": "苏大维格",
+   "ret_pct": 1.17,
+   "bench_pct": -0.33
+  },
+  {
+   "signal_date": "20220909",
+   "buy_date": "20220913",
+   "sell_date": "20220914",
+   "code": "603757.SH",
+   "name": "大元泵业",
+   "ret_pct": -0.88,
+   "bench_pct": -0.9
+  },
+  {
+   "signal_date": "20220913",
+   "buy_date": "20220914",
+   "sell_date": "20220915",
+   "code": "000421.SZ",
+   "name": "南京公用",
+   "ret_pct": 4.82,
+   "bench_pct": -2.31
+  },
+  {
+   "signal_date": "20221018",
+   "buy_date": "20221019",
+   "sell_date": "20221020",
+   "code": "002490.SZ",
+   "name": "山东墨龙",
+   "ret_pct": -6.19,
+   "bench_pct": -0.37
+  },
+  {
+   "signal_date": "20221019",
+   "buy_date": "20221020",
+   "sell_date": "20221021",
+   "code": "002685.SZ",
+   "name": "华东重机",
+   "ret_pct": -1.16,
+   "bench_pct": 0.04
+  },
+  {
+   "signal_date": "20221024",
+   "buy_date": "20221025",
+   "sell_date": "20221026",
+   "code": "600230.SH",
+   "name": "沧州大化",
+   "ret_pct": -7.55,
+   "bench_pct": 1.95
+  },
+  {
+   "signal_date": "20221027",
+   "buy_date": "20221028",
+   "sell_date": "20221031",
+   "code": "603985.SH",
+   "name": "恒润股份",
+   "ret_pct": 4.38,
+   "bench_pct": 1.02
+  },
+  {
+   "signal_date": "20221028",
+   "buy_date": "20221031",
+   "sell_date": "20221101",
+   "code": "002403.SZ",
+   "name": "爱仕达",
+   "ret_pct": 2.31,
+   "bench_pct": 2.63
+  },
+  {
+   "signal_date": "20221219",
+   "buy_date": "20221220",
+   "sell_date": "20221221",
+   "code": "000715.SZ",
+   "name": "中兴商业",
+   "ret_pct": 3.57,
+   "bench_pct": -0.67
+  },
+  {
+   "signal_date": "20230111",
+   "buy_date": "20230112",
+   "sell_date": "20230113",
+   "code": "002336.SZ",
+   "name": "002336.SZ",
+   "ret_pct": -8.2,
+   "bench_pct": 0.43
+  },
+  {
+   "signal_date": "20230314",
+   "buy_date": "20230315",
+   "sell_date": "20230316",
+   "code": "301073.SZ",
+   "name": "君亭酒店",
+   "ret_pct": 1.61,
+   "bench_pct": -1.58
+  },
+  {
+   "signal_date": "20230315",
+   "buy_date": "20230316",
+   "sell_date": "20230317",
+   "code": "300590.SZ",
+   "name": "移为通信",
+   "ret_pct": 0.25,
+   "bench_pct": 0.74
+  },
+  {
+   "signal_date": "20230404",
+   "buy_date": "20230406",
+   "sell_date": "20230407",
+   "code": "603466.SH",
+   "name": "风语筑",
+   "ret_pct": -1.48,
+   "bench_pct": 0.92
+  },
+  {
+   "signal_date": "20230407",
+   "buy_date": "20230410",
+   "sell_date": "20230411",
+   "code": "600557.SH",
+   "name": "康缘药业",
+   "ret_pct": -4.37,
+   "bench_pct": 0.22
+  },
+  {
+   "signal_date": "20230421",
+   "buy_date": "20230424",
+   "sell_date": "20230425",
+   "code": "002153.SZ",
+   "name": "石基信息",
+   "ret_pct": -2.9,
+   "bench_pct": -2.03
+  },
+  {
+   "signal_date": "20230621",
+   "buy_date": "20230626",
+   "sell_date": "20230627",
+   "code": "301013.SZ",
+   "name": "利和兴",
+   "ret_pct": 1.47,
+   "bench_pct": 1.95
+  },
+  {
+   "signal_date": "20230721",
+   "buy_date": "20230724",
+   "sell_date": "20230725",
+   "code": "000506.SZ",
+   "name": "招金黄金",
+   "ret_pct": -0.06,
+   "bench_pct": 1.71
+  },
+  {
+   "signal_date": "20230811",
+   "buy_date": "20230814",
+   "sell_date": "20230815",
+   "code": "000890.SZ",
+   "name": "法尔胜",
+   "ret_pct": 2.14,
+   "bench_pct": -0.55
+  },
+  {
+   "signal_date": "20230915",
+   "buy_date": "20230918",
+   "sell_date": "20230919",
+   "code": "603803.SH",
+   "name": "瑞斯康达",
+   "ret_pct": 1.66,
+   "bench_pct": -1.02
+  },
+  {
+   "signal_date": "20231016",
+   "buy_date": "20231017",
+   "sell_date": "20231018",
+   "code": "600895.SH",
+   "name": "张江高科",
+   "ret_pct": 12.57,
+   "bench_pct": -1.74
+  },
+  {
+   "signal_date": "20231017",
+   "buy_date": "20231018",
+   "sell_date": "20231019",
+   "code": "003015.SZ",
+   "name": "日久光电",
+   "ret_pct": 0.77,
+   "bench_pct": -0.98
+  },
+  {
+   "signal_date": "20231207",
+   "buy_date": "20231208",
+   "sell_date": "20231211",
+   "code": "300255.SZ",
+   "name": "常山药业",
+   "ret_pct": 4.59,
+   "bench_pct": 1.11
+  },
+  {
+   "signal_date": "20231208",
+   "buy_date": "20231211",
+   "sell_date": "20231212",
+   "code": "600159.SH",
+   "name": "大龙地产",
+   "ret_pct": 1.56,
+   "bench_pct": 0.54
+  },
+  {
+   "signal_date": "20240129",
+   "buy_date": "20240130",
+   "sell_date": "20240131",
+   "code": "600844.SH",
+   "name": "金煤科技",
+   "ret_pct": -1.26,
+   "bench_pct": -4.68
+  },
+  {
+   "signal_date": "20240131",
+   "buy_date": "20240201",
+   "sell_date": "20240202",
+   "code": "002523.SZ",
+   "name": "天桥起重",
+   "ret_pct": 2.24,
+   "bench_pct": -4.16
+  },
+  {
+   "signal_date": "20240228",
+   "buy_date": "20240229",
+   "sell_date": "20240301",
+   "code": "000151.SZ",
+   "name": "中成股份",
+   "ret_pct": 4.59,
+   "bench_pct": 1.14
+  },
+  {
+   "signal_date": "20240410",
+   "buy_date": "20240411",
+   "sell_date": "20240412",
+   "code": "002997.SZ",
+   "name": "瑞鹄模具",
+   "ret_pct": 1.9,
+   "bench_pct": -0.72
+  },
+  {
+   "signal_date": "20240412",
+   "buy_date": "20240415",
+   "sell_date": "20240416",
+   "code": "600505.SH",
+   "name": "西昌电力",
+   "ret_pct": -5.45,
+   "bench_pct": -6.44
+  },
+  {
+   "signal_date": "20240415",
+   "buy_date": "20240416",
+   "sell_date": "20240417",
+   "code": "002578.SZ",
+   "name": "闽发铝业",
+   "ret_pct": -10.61,
+   "bench_pct": 6.07
+  },
+  {
+   "signal_date": "20240422",
+   "buy_date": "20240423",
+   "sell_date": "20240424",
+   "code": "300887.SZ",
+   "name": "谱尼测试",
+   "ret_pct": 1.06,
+   "bench_pct": 1.88
+  },
+  {
+   "signal_date": "20240423",
+   "buy_date": "20240424",
+   "sell_date": "20240425",
+   "code": "000682.SZ",
+   "name": "东方电子",
+   "ret_pct": 8.98,
+   "bench_pct": 0.44
+  },
+  {
+   "signal_date": "20240425",
+   "buy_date": "20240426",
+   "sell_date": "20240429",
+   "code": "300778.SZ",
+   "name": "新城市",
+   "ret_pct": 2.37,
+   "bench_pct": 2.76
+  },
+  {
+   "signal_date": "20240507",
+   "buy_date": "20240508",
+   "sell_date": "20240509",
+   "code": "600490.SH",
+   "name": "鹏欣资源",
+   "ret_pct": -2.87,
+   "bench_pct": 1.41
+  },
+  {
+   "signal_date": "20240527",
+   "buy_date": "20240528",
+   "sell_date": "20240529",
+   "code": "300543.SZ",
+   "name": "朗科智能",
+   "ret_pct": 0.74,
+   "bench_pct": 0.37
+  },
+  {
+   "signal_date": "20240528",
+   "buy_date": "20240529",
+   "sell_date": "20240530",
+   "code": "300786.SZ",
+   "name": "国林科技",
+   "ret_pct": -0.69,
+   "bench_pct": -0.73
+  },
+  {
+   "signal_date": "20240802",
+   "buy_date": "20240805",
+   "sell_date": "20240806",
+   "code": "301488.SZ",
+   "name": "豪恩汽电",
+   "ret_pct": -1.02,
+   "bench_pct": 1.87
+  },
+  {
+   "signal_date": "20240809",
+   "buy_date": "20240812",
+   "sell_date": "20240813",
+   "code": "301213.SZ",
+   "name": "观想科技",
+   "ret_pct": -2.45,
+   "bench_pct": 0.71
+  },
+  {
+   "signal_date": "20240813",
+   "buy_date": "20240814",
+   "sell_date": "20240815",
+   "code": "600576.SH",
+   "name": "祥源文旅",
+   "ret_pct": 1.09,
+   "bench_pct": 0.91
+  },
+  {
+   "signal_date": "20240816",
+   "buy_date": "20240819",
+   "sell_date": "20240820",
+   "code": "300281.SZ",
+   "name": "金明精机",
+   "ret_pct": 1.19,
+   "bench_pct": -1.68
+  },
+  {
+   "signal_date": "20240820",
+   "buy_date": "20240821",
+   "sell_date": "20240822",
+   "code": "002366.SZ",
+   "name": "融发核电",
+   "ret_pct": -3.47,
+   "bench_pct": -1.55
+  },
+  {
+   "signal_date": "20240821",
+   "buy_date": "20240822",
+   "sell_date": "20240823",
+   "code": "300092.SZ",
+   "name": "科新机电",
+   "ret_pct": -4.03,
+   "bench_pct": -0.41
+  },
+  {
+   "signal_date": "20240822",
+   "buy_date": "20240823",
+   "sell_date": "20240826",
+   "code": "002599.SZ",
+   "name": "盛通股份",
+   "ret_pct": 0.34,
+   "bench_pct": 1.09
+  },
+  {
+   "signal_date": "20241223",
+   "buy_date": "20241224",
+   "sell_date": "20241225",
+   "code": "300256.SZ",
+   "name": "星星科技",
+   "ret_pct": -3.65,
+   "bench_pct": -1.92
+  },
+  {
+   "signal_date": "20241225",
+   "buy_date": "20241226",
+   "sell_date": "20241227",
+   "code": "002350.SZ",
+   "name": "北京科锐",
+   "ret_pct": 15.86,
+   "bench_pct": 0.85
+  },
+  {
+   "signal_date": "20250324",
+   "buy_date": "20250325",
+   "sell_date": "20250326",
+   "code": "300904.SZ",
+   "name": "威力传动",
+   "ret_pct": -0.3,
+   "bench_pct": 1.0
+  },
+  {
+   "signal_date": "20250328",
+   "buy_date": "20250331",
+   "sell_date": "20250401",
+   "code": "603716.SH",
+   "name": "塞力医疗",
+   "ret_pct": -0.01,
+   "bench_pct": 1.08
+  },
+  {
+   "signal_date": "20250331",
+   "buy_date": "20250401",
+   "sell_date": "20250402",
+   "code": "002996.SZ",
+   "name": "顺博合金",
+   "ret_pct": 4.91,
+   "bench_pct": 0.19
+  },
+  {
+   "signal_date": "20250402",
+   "buy_date": "20250403",
+   "sell_date": "20250407",
+   "code": "600105.SH",
+   "name": "永鼎股份",
+   "ret_pct": -11.17,
+   "bench_pct": -11.47
+  },
+  {
+   "signal_date": "20250403",
+   "buy_date": "20250407",
+   "sell_date": "20250408",
+   "code": "301225.SZ",
+   "name": "恒勃股份",
+   "ret_pct": -9.45,
+   "bench_pct": 0.25
+  },
+  {
+   "signal_date": "20250418",
+   "buy_date": "20250421",
+   "sell_date": "20250422",
+   "code": "002991.SZ",
+   "name": "甘源食品",
+   "ret_pct": 6.05,
+   "bench_pct": 0.18
+  },
+  {
+   "signal_date": "20250428",
+   "buy_date": "20250429",
+   "sell_date": "20250430",
+   "code": "600865.SH",
+   "name": "百大集团",
+   "ret_pct": 0.37,
+   "bench_pct": 0.78
+  },
+  {
+   "signal_date": "20250903",
+   "buy_date": "20250904",
+   "sell_date": "20250905",
+   "code": "300619.SZ",
+   "name": "金银河",
+   "ret_pct": -1.88,
+   "bench_pct": 2.22
+  },
+  {
+   "signal_date": "20250925",
+   "buy_date": "20250926",
+   "sell_date": "20250929",
+   "code": "301178.SZ",
+   "name": "天亿马",
+   "ret_pct": 0.25,
+   "bench_pct": 0.89
+  },
+  {
+   "signal_date": "20251120",
+   "buy_date": "20251121",
+   "sell_date": "20251124",
+   "code": "002160.SZ",
+   "name": "常铝股份",
+   "ret_pct": -2.21,
+   "bench_pct": 1.39
+  },
+  {
+   "signal_date": "20251121",
+   "buy_date": "20251124",
+   "sell_date": "20251125",
+   "code": "002679.SZ",
+   "name": "福建金森",
+   "ret_pct": 7.6,
+   "bench_pct": 1.31
+  },
+  {
+   "signal_date": "20251203",
+   "buy_date": "20251204",
+   "sell_date": "20251205",
+   "code": "300568.SZ",
+   "name": "星源材质",
+   "ret_pct": 1.26,
+   "bench_pct": 1.41
+  },
+  {
+   "signal_date": "20251216",
+   "buy_date": "20251217",
+   "sell_date": "20251218",
+   "code": "000678.SZ",
+   "name": "襄阳轴承",
+   "ret_pct": -1.62,
+   "bench_pct": 0.28
+  },
+  {
+   "signal_date": "20260303",
+   "buy_date": "20260304",
+   "sell_date": "20260305",
+   "code": "603533.SH",
+   "name": "掌阅科技",
+   "ret_pct": 8.2,
+   "bench_pct": 1.15
+  },
+  {
+   "signal_date": "20260306",
+   "buy_date": "20260309",
+   "sell_date": "20260310",
+   "code": "002009.SZ",
+   "name": "天奇股份",
+   "ret_pct": 4.2,
+   "bench_pct": 1.61
+  },
+  {
+   "signal_date": "20260312",
+   "buy_date": "20260313",
+   "sell_date": "20260316",
+   "code": "600590.SH",
+   "name": "泰豪科技",
+   "ret_pct": -1.18,
+   "bench_pct": 0.09
+  },
+  {
+   "signal_date": "20260316",
+   "buy_date": "20260317",
+   "sell_date": "20260318",
+   "code": "600426.SH",
+   "name": "华鲁恒升",
+   "ret_pct": -2.6,
+   "bench_pct": 0.96
+  },
+  {
+   "signal_date": "20260326",
+   "buy_date": "20260327",
+   "sell_date": "20260330",
+   "code": "300936.SZ",
+   "name": "中英科技",
+   "ret_pct": 1.31,
+   "bench_pct": 0.36
+  },
+  {
+   "signal_date": "20260327",
+   "buy_date": "20260330",
+   "sell_date": "20260331",
+   "code": "000020.SZ",
+   "name": "深华发Ａ",
+   "ret_pct": -1.1,
+   "bench_pct": -1.4
+  },
+  {
+   "signal_date": "20260403",
+   "buy_date": "20260407",
+   "sell_date": "20260408",
+   "code": "000968.SZ",
+   "name": "蓝焰控股",
+   "ret_pct": -5.88,
+   "bench_pct": 3.72
+  },
+  {
+   "signal_date": "20260408",
+   "buy_date": "20260409",
+   "sell_date": "20260410",
+   "code": "300981.SZ",
+   "name": "中红医疗",
+   "ret_pct": -3.5,
+   "bench_pct": 0.87
+  },
+  {
+   "signal_date": "20260410",
+   "buy_date": "20260413",
+   "sell_date": "20260414",
+   "code": "301226.SZ",
+   "name": "祥明智能",
+   "ret_pct": 2.04,
+   "bench_pct": 0.89
+  },
+  {
+   "signal_date": "20260525",
+   "buy_date": "20260526",
+   "sell_date": "20260527",
+   "code": "002757.SZ",
+   "name": "南兴股份",
+   "ret_pct": -2.51,
+   "bench_pct": -1.96
+  },
+  {
+   "signal_date": "20260527",
+   "buy_date": "20260528",
+   "sell_date": "20260529",
+   "code": "301379.SZ",
+   "name": "天山电子",
+   "ret_pct": 3.2,
+   "bench_pct": -2.14
+  },
+  {
+   "signal_date": "20260724",
+   "buy_date": "20260727",
+   "sell_date": "20260728",
+   "code": "000990.SZ",
+   "name": "诚志股份",
+   "ret_pct": 0.52,
+   "bench_pct": -0.56
+  },
+  {
+   "signal_date": "20260730",
+   "buy_date": "20260731",
+   "sell_date": "20260803",
+   "code": "300759.SZ",
+   "name": "康龙化成",
+   "ret_pct": 5.34,
+   "bench_pct": 1.42
+  },
+  {
+   "signal_date": "20260910",
+   "buy_date": "20260911",
+   "sell_date": "20260914",
+   "code": "002578.SZ",
+   "name": "闽发铝业",
+   "ret_pct": -1.8,
+   "bench_pct": 0.45
+  },
+  {
+   "signal_date": "20260911",
+   "buy_date": "20260914",
+   "sell_date": "20260915",
+   "code": "002769.SZ",
+   "name": "普路通",
+   "ret_pct": -0.6,
+   "bench_pct": -1.46
+  },
+  {
+   "signal_date": "20260924",
+   "buy_date": "20260928",
+   "sell_date": "20260929",
+   "code": "300291.SZ",
+   "name": "百纳千成",
+   "ret_pct": -3.56,
+   "bench_pct": 0.72
+  },
+  {
+   "signal_date": "20260930",
+   "buy_date": "20261008",
+   "sell_date": "20261009",
+   "code": "603316.SH",
+   "name": "诚邦股份",
+   "ret_pct": -3.19,
+   "bench_pct": 0.63
+  },
+  {
+   "signal_date": "20261008",
+   "buy_date": "20261009",
+   "sell_date": "20261012",
+   "code": "600719.SH",
+   "name": "大连热电",
+   "ret_pct": 1.04,
+   "bench_pct": -1.51
+  }
+ ]
+}
