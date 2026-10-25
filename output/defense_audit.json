@@ -1,0 +1,652 @@
+{
+ "meta": {
+  "era": "20240901",
+  "days": 2500,
+  "note": "事前注册诊断, 零参数变更"
+ },
+ "part_a_regime": [
+  {
+   "key": "BASE(全开)",
+   "tr_n": 356,
+   "tr_avg": -0.578,
+   "tr_wr": 45.2,
+   "tr_comp": -91.1,
+   "va_n": 128,
+   "va_avg": 3.142,
+   "va_wr": 57.8,
+   "va_comp": 3549.6,
+   "mdd": -91.12,
+   "prep_s": 0,
+   "sim_s": 0
+  },
+  {
+   "key": "no_regime(regime.enabled:True->False) [全关(均线+宽度+恐慌熔断)]",
+   "tr_n": 525,
+   "tr_avg": -0.594,
+   "tr_wr": 49.5,
+   "tr_comp": -97.6,
+   "va_n": 175,
+   "va_avg": 2.154,
+   "va_wr": 55.4,
+   "va_comp": 2366.2,
+   "mdd": -98.0,
+   "prep_s": 73,
+   "sim_s": 117
+  },
+  {
+   "key": "no_panic(regime.vol_max:2.0->0) [仅关恐慌熔断]",
+   "tr_n": 381,
+   "tr_avg": -0.599,
+   "tr_wr": 45.9,
+   "tr_comp": -93.1,
+   "va_n": 134,
+   "va_avg": 3.04,
+   "va_wr": 59.7,
+   "va_comp": 3728.8,
+   "mdd": -93.12,
+   "prep_s": 75,
+   "sim_s": 104
+  },
+  {
+   "key": "no_breadth(regime.breadth_min:0.25->-1.0) [仅关市场宽度]",
+   "tr_n": 356,
+   "tr_avg": -0.578,
+   "tr_wr": 45.2,
+   "tr_comp": -91.1,
+   "va_n": 128,
+   "va_avg": 3.142,
+   "va_wr": 57.8,
+   "va_comp": 3549.6,
+   "mdd": -91.12,
+   "prep_s": 74,
+   "sim_s": 100
+  }
+ ],
+ "part_b_monitor": {
+  "n": 484,
+  "window": 20,
+  "changes": [
+   {
+    "i": 1,
+    "sell_date": "20160713",
+    "level": "样本不足",
+    "era_after": false
+   },
+   {
+    "i": 20,
+    "sell_date": "20170509",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 38,
+    "sell_date": "20180207",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 47,
+    "sell_date": "20180417",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 48,
+    "sell_date": "20180503",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 51,
+    "sell_date": "20180530",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 52,
+    "sell_date": "20180611",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 53,
+    "sell_date": "20180615",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 62,
+    "sell_date": "20180911",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 63,
+    "sell_date": "20180918",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 64,
+    "sell_date": "20181121",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 67,
+    "sell_date": "20181226",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 68,
+    "sell_date": "20190107",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 87,
+    "sell_date": "20190415",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 88,
+    "sell_date": "20190417",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 90,
+    "sell_date": "20190424",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 91,
+    "sell_date": "20190425",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 94,
+    "sell_date": "20190705",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 102,
+    "sell_date": "20190903",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 105,
+    "sell_date": "20191029",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 115,
+    "sell_date": "20200123",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 116,
+    "sell_date": "20200203",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 118,
+    "sell_date": "20200228",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 122,
+    "sell_date": "20200310",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 123,
+    "sell_date": "20200311",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 128,
+    "sell_date": "20200602",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 133,
+    "sell_date": "20200701",
+    "level": "绿-正常",
+    "era_after": false
+   },
+   {
+    "i": 135,
+    "sell_date": "20200710",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 136,
+    "sell_date": "20200714",
+    "level": "绿-正常",
+    "era_after": false
+   },
+   {
+    "i": 137,
+    "sell_date": "20200716",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 148,
+    "sell_date": "20200821",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 153,
+    "sell_date": "20200918",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 157,
+    "sell_date": "20201103",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 160,
+    "sell_date": "20201207",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 166,
+    "sell_date": "20210113",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 167,
+    "sell_date": "20210115",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 181,
+    "sell_date": "20210407",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 184,
+    "sell_date": "20210416",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 191,
+    "sell_date": "20210607",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 192,
+    "sell_date": "20210608",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 207,
+    "sell_date": "20210811",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 216,
+    "sell_date": "20210901",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 217,
+    "sell_date": "20210903",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 224,
+    "sell_date": "20210927",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 227,
+    "sell_date": "20211014",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 231,
+    "sell_date": "20211101",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 234,
+    "sell_date": "20211116",
+    "level": "绿-正常",
+    "era_after": false
+   },
+   {
+    "i": 238,
+    "sell_date": "20211129",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 243,
+    "sell_date": "20211215",
+    "level": "绿-正常",
+    "era_after": false
+   },
+   {
+    "i": 244,
+    "sell_date": "20211221",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 246,
+    "sell_date": "20211227",
+    "level": "绿-正常",
+    "era_after": false
+   },
+   {
+    "i": 254,
+    "sell_date": "20220308",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 256,
+    "sell_date": "20220328",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 257,
+    "sell_date": "20220329",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 264,
+    "sell_date": "20220418",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 265,
+    "sell_date": "20220419",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 266,
+    "sell_date": "20220421",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 273,
+    "sell_date": "20220621",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 281,
+    "sell_date": "20220726",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 283,
+    "sell_date": "20220809",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 289,
+    "sell_date": "20220927",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 293,
+    "sell_date": "20221118",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 294,
+    "sell_date": "20221122",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 295,
+    "sell_date": "20221124",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 298,
+    "sell_date": "20221212",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 301,
+    "sell_date": "20230109",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 303,
+    "sell_date": "20230220",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 309,
+    "sell_date": "20230511",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 310,
+    "sell_date": "20230517",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 311,
+    "sell_date": "20230523",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 313,
+    "sell_date": "20230614",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 317,
+    "sell_date": "20230717",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 320,
+    "sell_date": "20230926",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 324,
+    "sell_date": "20231103",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 330,
+    "sell_date": "20231226",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 332,
+    "sell_date": "20240131",
+    "level": "深红-建议停机复检",
+    "era_after": false
+   },
+   {
+    "i": 334,
+    "sell_date": "20240327",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 345,
+    "sell_date": "20240612",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 346,
+    "sell_date": "20240618",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 353,
+    "sell_date": "20240815",
+    "level": "黄-观察带",
+    "era_after": false
+   },
+   {
+    "i": 355,
+    "sell_date": "20240828",
+    "level": "红-失效警报",
+    "era_after": false
+   },
+   {
+    "i": 359,
+    "sell_date": "20241017",
+    "level": "黄-观察带",
+    "era_after": true
+   },
+   {
+    "i": 360,
+    "sell_date": "20241025",
+    "level": "红-失效警报",
+    "era_after": true
+   },
+   {
+    "i": 361,
+    "sell_date": "20241031",
+    "level": "黄-观察带",
+    "era_after": true
+   },
+   {
+    "i": 363,
+    "sell_date": "20241108",
+    "level": "绿-正常",
+    "era_after": true
+   },
+   {
+    "i": 365,
+    "sell_date": "20241114",
+    "level": "黄-观察带",
+    "era_after": true
+   },
+   {
+    "i": 368,
+    "sell_date": "20241126",
+    "level": "绿-正常",
+    "era_after": true
+   },
+   {
+    "i": 403,
+    "sell_date": "20250829",
+    "level": "黄-观察带",
+    "era_after": true
+   },
+   {
+    "i": 404,
+    "sell_date": "20250902",
+    "level": "绿-正常",
+    "era_after": true
+   },
+   {
+    "i": 475,
+    "sell_date": "20260903",
+    "level": "黄-观察带",
+    "era_after": true
+   },
+   {
+    "i": 482,
+    "sell_date": "20261014",
+    "level": "绿-正常",
+    "era_after": true
+   },
+   {
+    "i": 483,
+    "sell_date": "20261016",
+    "level": "黄-观察带",
+    "era_after": true
+   }
+  ],
+  "era": {
+   "era前": {
+    "样本不足": 5.3,
+    "深红": 28.4,
+    "红": 40.2,
+    "黄": 21.6,
+    "绿": 4.5
+   },
+   "era后": {
+    "红": 2.3,
+    "黄": 12.5,
+    "绿": 85.2
+   }
+  },
+  "first_warn": {
+   "i": 38,
+   "sell_date": "20180207",
+   "lag_bars": 37
+  },
+  "first_halt": {
+   "i": 20,
+   "sell_date": "20170509",
+   "lag_bars": 19
+  },
+  "counterfactual_halt": {
+   "halt_i": 20,
+   "avoided_trades": 336,
+   "avoided_loss_pct": 83.9
+  }
+ }
+}

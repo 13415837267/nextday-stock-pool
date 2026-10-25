@@ -143,7 +143,9 @@ def apply_regime(reg_base: pd.DataFrame, cfg: dict) -> pd.DataFrame:
             ok = ok & ~panic
     reg["trade_ok"] = ok
     # panic 标记: 供回测引擎区分"恐慌日"(不计入连续风控天数, 防止被超限参与机制绕过)
-    if cfg["regime"].get("vol_max"):
+    # 注意: enabled=False时panic计算块被跳过, 此处必须同时检查enabled(2026-10-25修复:
+    # 否则enabled=False且vol_max>0的组合触发UnboundLocalError)
+    if cfg["regime"].get("enabled", True) and cfg["regime"].get("vol_max"):
         reg["panic"] = panic
     else:
         reg["panic"] = False
