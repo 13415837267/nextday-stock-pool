@@ -1,5 +1,19 @@
 # 更新日志
 
+## 体检探针云端日更: 双源择新 + workflow接入 + 网页新鲜度自检(2026-10-25 第四十八轮)
+- **背景**: 第四十七轮 health.json 为本地手动生成, 云端workflow不重算 —— 网页体检面板会逐日变旧(更新于/截至日期冻结), 违背"打开网页即见当天情况"。本轮让体检数据随每日云端管道自动刷新, 零策略参数变更。
+- **tools/make_health.py 双源择新改造**:
+  - 数据源优先级: 取"最后一笔结算日"更新者——①output/backtest_long.json 十年回测(2500日, 484笔已结算, 本地权威); ②output/backtest.json 每日500日回测的 trades_all(存在时)或 trades_executed_recent(已结算上限200笔)。云端没有十年重跑, 靠每日500日回测保鲜; 平局取十年。
+  - 季度剖面与滚动峰值改为自所选成交序列现算(era过滤 buy_date>=20240901 按buy_date季度分桶; 滚动20笔均值轨迹取最大), 不再读 edge_profile.json(该文件保留为第46轮证据产物)。
+  - health.json 新增 probe.source / probe.source_n 字段, 网页探针面板展示数据源。
+- **双路径等价性实测**(关键验证):
+  - 十年源: 探针=黄-观察带+0.63%(win40.0, 截至20261020), 峰值+9.85%@20260618, 484笔 —— 与第47轮逐值一致; 季度剖面10桶与第46轮edge_profile **逐值一致**(OK x10)。
+  - 500日源(隐藏十年文件模拟云端): 探针**逐值一致**(末20笔已结算同一策略同一数据), 峰值一致; 季度剖面9桶逐值一致, 仅缺2024Q3(n=1, 窗口起点略晚于2024-09) —— 可接受, 已由probe.source注明口径。
+- **daily.yml 接入**: 回测步骤后新增"刷新策略体检数据"步(python tools/make_health.py, 无网络依赖秒级完成), 位于提交与Pages部署之前 —— health.json 随每日管道自动落盘并上网页, `git add -A output` 自动带走。
+- **网页新鲜度自检**(site/index.html loadHealth): health.updated 距今>10天时顶部显示"体检数据滞后N天, 请检查每日workflow"(金色提示); 探针面板新增数据源行(十年回测2500日/日更回测500日+已结算笔数)。
+- 口径提醒: 每日500日回测的 trades_executed_recent 上限200笔, 当前127笔远未触及; 数年后若era后成交超200笔, 早期季度将尾部截断 —— 届时十年口径仍以本地/手动重跑的 backtest_long 为权威。
+- 影响: 零策略参数变更, 回测基准不变; make_health.py 重构+daily.yml 加一步+前端体检区两处小改; health.json 结构新增2字段(向后兼容, 前端对缺失字段有默认值)。
+
 ## 策略体检上网页: health.json + 前端体检面板(2026-10-25 第四十七轮)
 - **背景**: 项目要求"用户打开网页就看到当天情况", 但第43~46轮诊断结论(黄带预警/era判定/季度退潮/监测器状态)此前只躺在CHANGELOG与JSON里, 网页用户不可见。本轮把体检结论搬上网页, 零策略参数变更。
 - **云端管道健康核查**: 今日3次自动数据提交(d13126c/396ff4f/6e00b83), 4个workflow齐全(daily/auction/backtest/backfill); daily.yml链路: 选股->回测刷新->提交output/CHANGELOG/data->cp output/*.json deploy/data/->部署Pages, 失败自动建Issue——"打开网页即见当天情况"链路闭环。

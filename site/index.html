@@ -429,17 +429,21 @@ async function loadHealth() {
     : lv.startsWith("黄") ? "#b8860b"
     : (lv.startsWith("红") || lv.startsWith("深红")) ? "var(--red)" : "var(--muted)";
   const meanStr = p.mean_pct == null ? "—" : pctStr(p.mean_pct);
+  const staleDays = Math.floor((Date.now() - new Date(h.updated)) / 864e5);
+  const stale = staleDays > 10 ? `<div class="row" style="color:#b8860b;font-size:12px">体检数据滞后${staleDays}天(更新于 ${fmtDate(h.updated)}), 请检查每日workflow是否正常</div>` : "";
   const qs = (h.quarters || []).map(q =>
     `<tr><td data-label="季度">${q.q}</td><td data-label="笔数">${q.n}</td>
      <td class="${pctCls(q.avg)}" data-label="均值/笔">${pctStr(q.avg)}</td>
      <td data-label="胜率">${q.wr}%</td>
      <td class="${pctCls(q.comp)}" data-label="季度复利">${(q.comp > 0 ? "+" : "") + q.comp}%</td></tr>`).join("");
   el.innerHTML = `
+    ${stale}
     <div class="plan-grid">
       <div class="panel">
         <b>失效探针（回测口径）</b>
         <span class="badge" style="color:${mc};border-color:${mc};margin-left:8px">${esc(lv || "样本不足")}</span>
         <div class="row" style="margin-top:8px;font-size:13px">滚动${p.window ?? 20}笔均值 <b>${meanStr}</b>（截至 ${fmtDate(p.asof)}）· 峰值 <b>${pctStr(p.peak_pct)}</b>（${fmtDate(p.peak_date)}）</div>
+        <div class="row muted" style="font-size:12px">数据源: ${esc(p.source || "—")}（已结算${p.source_n ?? "—"}笔）</div>
         <div class="row muted" style="font-size:12px">${esc(p.note || "")}</div>
       </div>
       <div class="panel">

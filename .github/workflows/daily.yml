@@ -53,6 +53,11 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python -m src.backtest
 
+      - name: 刷新策略体检数据(探针/季度剖面随每日回测日更, 第48轮)
+        env:
+          TZ: Asia/Shanghai
+        run: python tools/make_health.py
+
       - name: 提交更新记录(中文留痕)
         run: |
           git config user.name "github-actions[bot]"
