@@ -112,6 +112,38 @@ def _month_gain_state(led_exec: list, history: list, ym: str, close_of: dict | N
     return gain, 1.0, ""
 
 
+def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict):
+    """卖出日退出判定(第五十四轮, 与回测 do_sell 逐条对齐):
+    T+2停牌 -> 向后顺延最多5个交易日开盘卖; 开盘触及跌停且sell_limit_down_fallback
+    (config已启用) -> 保守按当日收盘卖。返回 (sell_row, sell_dd, sold_at_close, note);
+    None = 顺延窗口内无可交易行(未恢复/无数据), 留待后续结算 —— 实盘每日重跑天然
+    顺延, 与回测"模拟内即时顺延"语义等价。差异说明: 回测"退市按末收盘"强平在实盘
+    端不可复刻(daily_run面板仅近期窗口, 无全史末收盘); 十年回测该情形0笔、停牌顺延
+    0笔、跌停保守2笔(002881.SZ/002612.SZ), 影响面见CHANGELOG第五十四轮量化。
+    """
+    row, dd, sold_close, note = rs, sell_d, False, ""
+    if row is not None and (row["is_paused"] == 1 or row["vol"] <= 0):
+        row = None
+    if row is None:
+        sd = str(sell_d).replace("-", "")
+        if sd in cal:
+            pos = cal.index(sd)
+            for j in range(1, 6):
+                if pos + j >= len(cal):
+                    break
+                r2 = row_of(cal[pos + j], code)
+                if r2 is not None and r2["is_paused"] == 0 and r2["vol"] > 0:
+                    row, dd, note = r2, cal[pos + j], "停牌顺延"
+                    break
+        if row is None:
+            return None
+    if ex.get("sell_at_open", True) and ex.get("sell_limit_down_fallback", True) \
+            and float(row["open"]) <= float(row["low_limit"]) + 1e-9:
+        sold_close = True
+        note = (note + " 开盘跌停按收盘").strip()
+    return row, dd, sold_close, note
+
+
 def _refresh_auction_positions(out_dir: Path, day_df: pd.DataFrame, now_str: str) -> None:
     """盘后将 auction.json 的持仓浮盈刷新为收盘价口径。
 
@@ -435,6 +467,7 @@ def main():
             # 超限小仓参与日(风控期但允许小仓): 用专属承接线, 与回测口径一致
             floor = ex.get("block_gap_below", floor)
         rets, skipped, chain = [], [], []
+        last_sell_dd = sell_d   # 第五十四轮: 实际卖出日(停牌顺延/收盘卖时≠T+2)
         vrets, vpick = [], None   # 第49轮: 风控空仓日虚拟对照(除风控闸外同口径)
         executed = None
         maxn = int(ex.get("max_buy_per_day", 0))
@@ -464,24 +497,33 @@ def main():
                 chain.append(f"第{rank_i}名 {p.get('name', p['code'])}: {reason}")
                 skipped.append(p["code"])
                 continue
-            if rs is None or rs["is_paused"] == 1 or rs["vol"] <= 0:
-                continue  # 卖出日停牌: 留待后续结算
-            r = (rs["open_adj"] / rb["open_adj"]) * gap_fee - 1
+            # 第五十四轮: 卖出端对齐回测 do_sell(停牌顺延5日+开盘跌停保守收盘卖),
+            # 原实现sell_d固定T+2且无条件按开盘价 —— 跌停日按开盘高估收益,
+            # 停牌日真实成交回报永久丢失(记录卡"无成交")。顺延后每日重跑自然续结。
+            sx = _sell_exit(rs, row_of, cal, sell_d, p["code"], ex)
+            if sx is None:
+                continue  # 顺延窗口内未恢复: 留待后续结算
+            sell_row, sell_dd, sold_close, sell_note = sx
+            r = (float(sell_row["close_adj" if sold_close else "open_adj"]) / rb["open_adj"]) * gap_fee - 1
             rets.append(float(r))
+            last_sell_dd = sell_dd
             # 第五十三轮: 结算仓位含月度盈利熔断系数(买入日口径, 仅已结算复利)
             _, _cf, _ = _month_gain_state([], history, (buy_d or "")[:6], None, cfg, include_hold=False)
             executed = {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
-                "sell_date": _fmt(sell_d), "sell_px": round(float(rs["open"]), 2),
+                "sell_date": _fmt(sell_dd),
+                "sell_px": round(float(sell_row["close" if sold_close else "open"]), 2),
                 "ret_pct": round(float(r) * 100, 2),
                 "position_pct": round(bfrac * _cf * ex.get("alloc_frac_pct", 100.0), 1),
                 "gap_pct": round(gap, 2),
                 "chain": chain,
             }
+            if sell_note:
+                executed["sell_note"] = sell_note
         if rets:
             rec["realized"] = {
-                "buy_date": _fmt(buy_d), "sell_date": _fmt(sell_d),
+                "buy_date": _fmt(buy_d), "sell_date": _fmt(last_sell_dd),
                 "n_traded": len(rets), "n_skipped": len(skipped),
                 "avg_ret_pct": round(sum(rets) / len(rets) * 100, 2),
                 "win": sum(1 for r in rets if r > 0),
@@ -497,7 +539,7 @@ def main():
         # 第49轮: 样本入账 —— exec与回测trades_executed_recent同口径(实际执行,
         # 含超限小仓参与日); blocked为空仓日虚拟对照, 只记录不参与决策
         if rets and executed:
-            new_exec.append({"publish_date": rec["publish_date"], "sell_date": _fmt(sell_d),
+            new_exec.append({"publish_date": rec["publish_date"], "sell_date": _fmt(last_sell_dd),
                              "code": executed["code"], "name": executed["name"],
                              "ret_pct": round(sum(rets) / len(rets) * 100, 2)})
         elif not day_ok and vrets:
