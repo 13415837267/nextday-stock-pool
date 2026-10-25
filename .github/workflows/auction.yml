@@ -41,7 +41,7 @@ jobs:
       - name: 组装 Pages 站点
         run: |
           mkdir -p site/data
-          cp output/latest.json output/history.json output/backtest.json output/auction.json site/data/ 2>/dev/null || true
+          cp output/latest.json output/history.json output/backtest.json output/auction.json output/health.json site/data/ 2>/dev/null || true
 
       - name: 上传 Pages 产物
         uses: actions/upload-pages-artifact@v3
