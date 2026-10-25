@@ -1,0 +1,165 @@
+{
+ "meta": {
+  "era": "20240901",
+  "days": 2500,
+  "criterion": "训练段连乘复利(事前注册)"
+ },
+ "rows": [
+  {
+   "key": "BASE(当前参数)",
+   "tr_n": 356,
+   "tr_avg": -0.578,
+   "tr_wr": 45.2,
+   "tr_comp": -91.1,
+   "va_n": 128,
+   "va_avg": 3.142,
+   "va_wr": 57.8,
+   "va_comp": 3549.6,
+   "sim_s": 0
+  },
+  {
+   "key": "gap_loose(execution.buy_gap_below:-2.4->-1.5)",
+   "tr_n": 612,
+   "tr_avg": -0.151,
+   "tr_wr": 46.1,
+   "tr_comp": -75.9,
+   "va_n": 217,
+   "va_avg": 1.019,
+   "va_wr": 49.8,
+   "va_comp": 534.7,
+   "sim_s": 98
+  },
+  {
+   "key": "gap_tight(execution.buy_gap_below:-2.4->-3.5)",
+   "tr_n": 214,
+   "tr_avg": -0.556,
+   "tr_wr": 46.3,
+   "tr_comp": -75.8,
+   "va_n": 83,
+   "va_avg": 3.55,
+   "va_wr": 55.4,
+   "va_comp": 1190.6,
+   "sim_s": 69
+  },
+  {
+   "key": "pct_shallow(selection.dip_pct_min:-6.0->-4.5)",
+   "tr_n": 261,
+   "tr_avg": -0.376,
+   "tr_wr": 45.6,
+   "tr_comp": -70.5,
+   "va_n": 104,
+   "va_avg": 2.005,
+   "va_wr": 58.7,
+   "va_comp": 537.1,
+   "sim_s": 57
+  },
+  {
+   "key": "pct_deep(selection.dip_pct_max:-3.0->-4.0)",
+   "tr_n": 234,
+   "tr_avg": -0.367,
+   "tr_wr": 46.6,
+   "tr_comp": -66.0,
+   "va_n": 91,
+   "va_avg": 2.429,
+   "va_wr": 49.5,
+   "va_comp": 555.1,
+   "sim_s": 49
+  },
+  {
+   "key": "volratio_tight(selection.dip_vol_ratio_max:3.0->2.0)",
+   "tr_n": 335,
+   "tr_avg": -0.576,
+   "tr_wr": 45.4,
+   "tr_comp": -89.6,
+   "va_n": 127,
+   "va_avg": 3.278,
+   "va_wr": 57.5,
+   "va_comp": 4055.8,
+   "sim_s": 68
+  },
+  {
+   "key": "closepos_tight(selection.dip_close_pos_max:0.32->0.25)",
+   "tr_n": 323,
+   "tr_avg": -0.588,
+   "tr_wr": 44.0,
+   "tr_comp": -89.1,
+   "va_n": 123,
+   "va_avg": 2.771,
+   "va_wr": 56.1,
+   "va_comp": 2081.9,
+   "sim_s": 65
+  },
+  {
+   "key": "dlow_tight(selection.dip_dist_low20_min:5.0->8.0)",
+   "tr_n": 341,
+   "tr_avg": -0.581,
+   "tr_wr": 44.6,
+   "tr_comp": -90.2,
+   "va_n": 126,
+   "va_avg": 2.821,
+   "va_wr": 56.3,
+   "va_comp": 2240.2,
+   "sim_s": 65
+  },
+  {
+   "key": "price5(universe.price_min:3.0->5.0)",
+   "tr_n": 337,
+   "tr_avg": -0.653,
+   "tr_wr": 45.7,
+   "tr_comp": -92.2,
+   "va_n": 123,
+   "va_avg": 3.185,
+   "va_wr": 57.7,
+   "va_comp": 3193.6,
+   "sim_s": 66
+  },
+  {
+   "key": "turnover10(universe.turnover_max:15.0->10.0)",
+   "tr_n": 311,
+   "tr_avg": -0.616,
+   "tr_wr": 44.4,
+   "tr_comp": -89.3,
+   "va_n": 114,
+   "va_avg": 2.587,
+   "va_wr": 56.1,
+   "va_comp": 1304.9,
+   "sim_s": 65
+  },
+  {
+   "key": "skipgain6(execution.skip_open_gain:9.0->6.0)",
+   "tr_n": 356,
+   "tr_avg": -0.578,
+   "tr_wr": 45.2,
+   "tr_comp": -91.1,
+   "va_n": 128,
+   "va_avg": 3.142,
+   "va_wr": 57.8,
+   "va_comp": 3549.6,
+   "sim_s": 69
+  },
+  {
+   "key": "mom20_tight(selection.dip_mom20_max:25.0->15.0)",
+   "tr_n": 284,
+   "tr_avg": 0.005,
+   "tr_wr": 48.9,
+   "tr_comp": -21.0,
+   "va_n": 103,
+   "va_avg": 2.436,
+   "va_wr": 59.2,
+   "va_comp": 783.9,
+   "sim_s": 59
+  },
+  {
+   "key": "bias_tight(selection.bias20_max:8.0->6.0)",
+   "tr_n": 305,
+   "tr_avg": -0.645,
+   "tr_wr": 45.6,
+   "tr_comp": -89.8,
+   "va_n": 112,
+   "va_avg": 2.907,
+   "va_wr": 58.9,
+   "va_comp": 1783.5,
+   "sim_s": 63
+  }
+ ]
+}
