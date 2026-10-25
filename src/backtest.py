@@ -382,6 +382,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 frac *= day_frac.get(d, 0.0)  # 连续空仓超限后的降仓参与系数
             else:
                 frac *= ex.get("blocked_frac", 0.0)  # 大盘风控期参与系数: 0=空仓(默认), 0.5=半仓
+        if frac <= 0:
+            return   # 第五十二轮修复: 信号日可买但买入日突发风控/恐慌(frac==0)时,
+                     # 原实现alloc=0且"0<0"不拦截, 产生units=0的幽灵成交(ret_pct=0.0,
+                     # 污染交易次数/胜率/连亏计数; 资金路径本就无影响, 此处不产生任何记录)
         equity = cash + sum(
             h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
             for h in holding if d in per_code[h["code"]].index

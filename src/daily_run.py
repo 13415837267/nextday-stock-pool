@@ -521,15 +521,19 @@ def main():
                 break
             consec += 1
     over_limit = max_block > 0 and reenter > 0 and consec > max_block
+    # 第五十二轮口径修正: 回测rf_ramp公式为min(1, reenter+0.05*(consec-max_block)),
+    # 首个超限日(consec=max_block+1)即 0.95+0.05=1.0 封顶 —— "95%仓位"从未实际生效,
+    # 回测中超限参与日实为"全额参与+严承接线"。此处按买入日(明日, consec+1)对齐同款公式。
+    over_frac = min(1.0, reenter + 0.05 * (consec + 1 - max_block)) if over_limit else 1.0
     regime_info = {
         "ok": bool(reg_row["trade_ok"]) if reg_row is not None else True,
         "breadth": round(float(reg_row["breadth"]), 3) if reg_row is not None else None,
         "mkt_above_ma": bool(reg_row["mkt_idx"] >= reg_row["mkt_ma"]) if reg_row is not None else None,
         "block_days": consec,
         "max_block_days": max_block,
-        "reenter_frac": reenter if over_limit else None,
+        "reenter_frac": over_frac if over_limit else None,
         "note": "宽度/市场指数达标, 可正常开仓" if (reg_row is not None and reg_row["trade_ok"])
-                else (f"大盘风控连续第{consec}日, 超过{max_block}日上限: 次日按{reenter:.0%}仓位参与候选池"
+                else (f"大盘风控连续第{consec}日, 超过{max_block}日上限: 次日按{over_frac:.0%}仓位参与候选池"
                       f"(执行承接线{cfg['execution'].get('block_gap_below', cfg['execution'].get('buy_gap_below'))}%)"
                       if over_limit else
                       (f"大盘风控触发(连续第{consec}日): 次日建议空仓观望" if reg_row is not None else "")),
@@ -559,7 +563,7 @@ def main():
         buy_note = "风控通过: 可正常开仓(承接线见下)"
     elif over_limit_now:
         allow_buy = True
-        buy_note = f"超限参与日(连续风控第{consec}日): 按{reenter:.0%}仓位参与, 执行更严承接线"
+        buy_note = f"超限参与日(连续风控第{consec}日): 按{over_frac:.0%}仓位参与, 执行更严承接线"
     else:
         allow_buy = False
         buy_note = f"大盘风控中(连续第{consec}日): 空仓观望"
@@ -582,7 +586,7 @@ def main():
         "buy_note": buy_note,
         "panic_day": panic_day,
         "floor_pct": floor_now if allow_buy else None,
-        "position_pct": round((reenter if (over_limit_now and not regime_ok_now) else 1.0) * ex.get("alloc_frac_pct", 100.0), 1),
+        "position_pct": round((over_frac if (over_limit_now and not regime_ok_now) else 1.0) * ex.get("alloc_frac_pct", 100.0), 1),
         "steps": steps,
         "sell_plan": "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)",
         "empty_funnel": ({"全市场": stats.get("universe"), "流动性/次新": stats.get("liquidity"),
@@ -686,7 +690,7 @@ def main():
     if regime_info["ok"]:
         regime_tag = "风控通过"
     elif regime_info.get("reenter_frac") is not None:
-        regime_tag = f"超限小仓参与({regime_info['reenter_frac']:.0%})"
+        regime_tag = f"超限复参与({regime_info['reenter_frac']:.0%})"
     else:
         regime_tag = "触发空仓"
     line = (f"- {datetime.now().strftime('%Y-%m-%d %H:%M')} 自动运行: 信号日 {_fmt(signal_date)}, "
