@@ -181,6 +181,12 @@ async function loadLatest() {
       : (lv.startsWith("红") || lv.startsWith("深红")) ? "var(--red)" : "var(--muted)";
     badges.push(`<span class="badge" style="color:${mc};border-color:${mc}">失效监测: ${esc(lv)}</span>`);
   }
+  // 风控空仓对照(第四十九轮): 空仓日虚拟top1收益的前瞻累计, 验证风控机会成本方向(仅提示)
+  const ob = d.observe;
+  if (ob && ob.n > 0) {
+    const oc = ob.avg_pct > 0 ? "var(--gold)" : "var(--green)";
+    badges.push(`<span class="badge" style="color:${oc};border-color:${oc}">空仓对照: n=${ob.n} ${ob.avg_pct > 0 ? "+" : ""}${ob.avg_pct}%/笔</span>`);
+  }
   badges.push(`<span class="badge gold">候选 ${d.picks.length} 只</span>`);
   document.getElementById("badges").innerHTML = badges.join("");
 

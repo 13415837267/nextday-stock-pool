@@ -7,12 +7,14 @@
   2. 抓取近 regime.warmup_days 个交易日全市场日线 -> 计算指标与大盘风控
   3. 在 T 日横截面上执行选股, 得到"次日(T+1)计划候选池"
   4. 对最终候选逐票核查上市天数(过滤次新股)
-  5. 结算 T-2 日发布池的实盘战绩(T-1开盘买入, T开盘卖出)
+  5. 结算 T-2 日发布池的实盘战绩(T-1开盘买入, T开盘卖出), 同步落持久账本:
+     监测样本(append-only, 不受history 60条展示裁剪限制) + 风控空仓日虚拟对照
   6. 输出 output/latest.json / output/history.json, 并在 CHANGELOG.md 追加记录
 """
 from __future__ import annotations
 
 import json
+import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -30,6 +32,25 @@ DISCLAIMER = "本候选池为量化模型自动生成, 仅供研究参考, 不�
 
 def _fmt(d: str) -> str:
     return f"{d[:4]}-{d[4:6]}-{d[6:]}"
+
+
+def _exec_gate(rb, gap: float, ex: dict, floor: float) -> str | None:
+    """非风控执行闸(与回测口径一致, 第49轮自内联elif链提取复用): 返回拦截原因, None=放行。
+
+    语义与提取前逐条一致: 停牌/一字涨停/高开放弃/低开过深/缺口未达承接线。
+    供实盘结算与风控空仓日虚拟对照共用 —— 对照口径="完全放行风控, 其余闸不变"。
+    """
+    if rb is None or rb["is_paused"] == 1 or rb["vol"] <= 0:
+        return "停牌/无成交"
+    if rb["open"] >= rb["high_limit"] - 1e-9:
+        return "开盘一字涨停"
+    if gap >= ex["skip_open_gain"]:
+        return f"高开{gap:.1f}%放弃"
+    if ex.get("skip_open_loss", 0) and gap <= -abs(ex["skip_open_loss"]):
+        return f"低开{gap:.1f}%过深"
+    if floor and gap > floor:
+        return f"缺口{gap:.1f}%未达承接线{floor}%"
+    return None
 
 
 def _position_note(ex: dict) -> str:
@@ -93,7 +114,9 @@ def main():
     except Exception:  # noqa: BLE001 时区库不可用时退回系统本地时间
         _now = datetime.now()
     _today = _now.strftime("%Y%m%d")
-    if not client.is_trading_day(_today):
+    # DAILY_RUN_FORCE=1: 旁路非交易日闸门, 供人工补算/恢复(如周末重建账本);
+    # 仅手动设置, workflow不设此变量 —— 信号日仍取"最新完整交易日", 结算/选股口径不变
+    if not client.is_trading_day(_today) and not os.environ.get("DAILY_RUN_FORCE"):
         print(f"今日{_fmt(_today)}非A股交易日(周末或法定假日), 按交易日历跳过")
         return
     print(f"今日{_fmt(_today)}为A股交易日, 开始运行")
@@ -335,6 +358,7 @@ def main():
         rec["skip_chain"] = chain   # 总是覆盖: 顺延链为空即清空, 防历史运行残留与executed矛盾
         return None
 
+    new_exec, new_blocked = [], []   # 第49轮: 本轮结算新产生的监测样本/空仓对照
     for rec in history:
         if rec.get("status") == "已结算":
             continue
@@ -367,8 +391,11 @@ def main():
             # 超限小仓参与日(风控期但允许小仓): 用专属承接线, 与回测口径一致
             floor = ex.get("block_gap_below", floor)
         rets, skipped, chain = [], [], []
+        vrets, vpick = [], None   # 第49轮: 风控空仓日虚拟对照(除风控闸外同口径)
         executed = None
         maxn = int(ex.get("max_buy_per_day", 0))
+        gap_fee = (1 - ex["slippage"]) * (1 - ex["commission_rate"] - ex["stamp_tax"]) \
+                  / ((1 + ex["slippage"]) * (1 + ex["commission_rate"]))
         for rank_i, p in enumerate(rec.get("picks", []), 1):
             if maxn > 0 and len(rets) >= maxn:
                 break  # 与回测口径一致: 竞价过滤后仅按评分买入前 maxn 只
@@ -377,27 +404,24 @@ def main():
             rp = row_of(pdate, p["code"])
             gap = (rb["open_adj"] / rp["close_adj"] - 1) * 100 \
                 if (rb is not None and rp is not None and rp["close_adj"] > 0) else 999
-            reason = None
             if not day_ok:
                 reason = "大盘风控空仓"
-            elif rb is None or rb["is_paused"] == 1 or rb["vol"] <= 0:
-                reason = "停牌/无成交"
-            elif rb["open"] >= rb["high_limit"] - 1e-9:
-                reason = "开盘一字涨停"
-            elif gap >= ex["skip_open_gain"]:
-                reason = f"高开{gap:.1f}%放弃"
-            elif ex.get("skip_open_loss", 0) and gap <= -abs(ex["skip_open_loss"]):
-                reason = f"低开{gap:.1f}%过深"
-            elif floor and gap > floor:
-                reason = f"缺口{gap:.1f}%未达承接线{floor}%"
+                # 第49轮: 空仓日虚拟结算 —— 若当日完全放行(承接线等其余执行闸不变),
+                # top1虚拟收益逐日入账, 前瞻验证风控机会成本(第45轮回顾: era后贡献+1183pp),
+                # 只记录不参与决策。
+                if maxn <= 0 or len(vrets) < maxn:
+                    if _exec_gate(rb, gap, ex, floor) is None \
+                            and rs is not None and rs["is_paused"] != 1 and rs["vol"] > 0:
+                        vrets.append(float((rs["open_adj"] / rb["open_adj"]) * gap_fee - 1))
+                        vpick = vpick or p
+            else:
+                reason = _exec_gate(rb, gap, ex, floor)
             if reason:
                 chain.append(f"第{rank_i}名 {p.get('name', p['code'])}: {reason}")
                 skipped.append(p["code"])
                 continue
             if rs is None or rs["is_paused"] == 1 or rs["vol"] <= 0:
                 continue  # 卖出日停牌: 留待后续结算
-            gap_fee = (1 - ex["slippage"]) * (1 - ex["commission_rate"] - ex["stamp_tax"]) \
-                      / ((1 + ex["slippage"]) * (1 + ex["commission_rate"]))
             r = (rs["open_adj"] / rb["open_adj"]) * gap_fee - 1
             rets.append(float(r))
             executed = {
@@ -424,20 +448,66 @@ def main():
             rec.pop("skip_chain", None)
         rec["status"] = "已结算" if rets else "无成交"
         rec["skipped_codes"] = skipped
+        # 第49轮: 样本入账 —— exec与回测trades_executed_recent同口径(实际执行,
+        # 含超限小仓参与日); blocked为空仓日虚拟对照, 只记录不参与决策
+        if rets and executed:
+            new_exec.append({"publish_date": rec["publish_date"], "sell_date": _fmt(sell_d),
+                             "code": executed["code"], "name": executed["name"],
+                             "ret_pct": round(sum(rets) / len(rets) * 100, 2)})
+        elif not day_ok and vrets:
+            new_blocked.append({"publish_date": rec["publish_date"], "sell_date": _fmt(sell_d),
+                                "code": (vpick or {}).get("code", ""),
+                                "name": (vpick or {}).get("name", ""),
+                                "ret_pct": round(sum(vrets) / len(vrets) * 100, 2)})
+
+    # ---- 5.45 持久账本落盘(第49轮): 监测样本append-only + 风控空仓对照 ----
+    # 此前监测样本直接取自history.json, 而history仅保留最近60条展示记录 —— 执行日
+    # 占比低时(风控连续空仓/候选稀疏), 滚动窗口内可能永远攒不满window笔, 实盘监测灯
+    # 形同虚设。账本按publish_date去重追加(同信号日重算幂等覆盖), 不随history裁剪,
+    # 为监测器提供全量样本源。
+    led_path = out_dir / "monitor_samples.json"
+    led = {"exec": [], "blocked": []}
+    if led_path.exists():
+        try:
+            _led = json.loads(led_path.read_text(encoding="utf-8"))
+            led = {"exec": _led.get("exec") or [], "blocked": _led.get("blocked") or []}
+        except Exception:  # noqa: BLE001 账本损坏时重建
+            pass
+    for _key, _items in (("exec", new_exec), ("blocked", new_blocked)):
+        _idx = {s.get("publish_date"): s for s in led[_key]}
+        for it in _items:
+            _idx[it["publish_date"]] = it
+        led[_key] = sorted(_idx.values(), key=lambda s: s.get("sell_date", ""))
+    led["updated"] = _fmt(signal_date)
+    led_path.write_text(json.dumps(led, ensure_ascii=False, indent=1), encoding="utf-8")
 
     # ---- 5.5 滚动失效监测(纯告警层, 2026-10-24第三十九轮) ----
-    # 数据源: 实盘账本 output/history.json 已结算记录的单笔净收益(与summary口径一致,
-    # 仅统计风控通过的可开仓池); 阈值事前注册于 config.monitor, 不做任何拟合。
+    # 数据源(第49轮起): 持久账本 monitor_samples.json 的exec样本(全量, 不随history
+    # 展示裁剪丢失, 与回测trades_executed_recent同口径); 账本为空时回退history口径。
+    # 阈值事前注册于 config.monitor, 不做任何拟合。
     mon_cfg = cfg.get("monitor") or {}
     monitor_info = None
+    observe_info = None
     if mon_cfg.get("enabled"):
-        _settled_rets = [float(r["realized"]["avg_ret_pct"]) for r in history
-                         if r.get("status") == "已结算" and r.get("realized")
-                         and r.get("regime_ok", True) is not False]
+        _settled_rets = [float(s["ret_pct"]) for s in led["exec"]]
+        if not _settled_rets:
+            _settled_rets = [float(r["realized"]["avg_ret_pct"]) for r in history
+                             if r.get("status") == "已结算" and r.get("realized")
+                             and r.get("regime_ok", True) is not False]
         monitor_info = compute_monitor(_settled_rets, mon_cfg)
         print(f"失效监测: {monitor_info['level']} | {monitor_info['note']}")
         if str(monitor_info["level"]).startswith("红") or str(monitor_info["level"]).startswith("深红"):
             print("⚠⚠ 失效监测告警 —— 请人工复检后再决定是否继续按既有纪律执行")
+        # 空仓对照前瞻指标(第49轮): 验证风控过滤器的机会成本方向, 仅记录不参与决策
+        if led["blocked"]:
+            _b = [float(s["ret_pct"]) for s in led["blocked"]]
+            observe_info = {"n": len(_b), "avg_pct": round(sum(_b) / len(_b), 2),
+                            "win_pct": round(100 * sum(r > 0 for r in _b) / len(_b), 1),
+                            "note": ("风控空仓日对照: 若当日完全放行(其余执行闸不变)的虚拟top1"
+                                     "收益, 前瞻验证风控机会成本(第45轮回顾: era后贡献+1183pp), "
+                                     "不参与决策")}
+            print(f"空仓对照: n={observe_info['n']} 均值{observe_info['avg_pct']:+.2f}%/笔 "
+                  f"胜率{observe_info['win_pct']:.0f}%")
 
     # ---- 6. 写出候选池与历史(空仓时也展示观察池, 并明确标注风控状态) ----
     reg_row = reg.loc[signal_date] if signal_date in reg.index else None
@@ -576,6 +646,7 @@ def main():
         "picks": verified,
         "t1_decision": t1_decision,
         "monitor": monitor_info,
+        "observe": observe_info,
         "audit": _audit_vs_auction(out_dir, _fmt(signal_date), history),
         "data_quality": {"anomalies": anomalies, "rows": int(len(day_df))},
         "disclaimer": DISCLAIMER,
