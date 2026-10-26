@@ -332,10 +332,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         nonlocal cash, fee_total
         if not picks:
             return
-        # 顺延深度截断(第五十八轮诊断用, BT_TOPK环境变量): 回测默认遍历全池(top_n=500),
-        # 实盘可执行池仅前10名(verified)/steps前5 —— 该口径差是本轮核心发现;
-        # BT_TOPK=N 时 picks 截前N名, 用于量化"实盘可达口径"的诚实基准
-        _topk = int(os.environ.get("BT_TOPK", "0") or 0)
+        # 顺延深度截断(第六十一轮起默认启用, 配置驱动): 回测资金部署口径=实盘可达池
+        # (selection.exec_top_n, 与网页展示池display_top_n/竞价顺延指引三端一致);
+        # top_n=500仅作观察池诊断(rank字段), 非资金部署口径;
+        # BT_TOPK环境变量可覆盖(诊断用): BT_TOPK=0 复现旧全池口径, BT_TOPK=N 截前N名
+        _env_k = os.environ.get("BT_TOPK")
+        _topk = int(_env_k) if _env_k is not None else int((cfg.get("selection") or {}).get("exec_top_n") or 0)
         if _topk > 0:
             picks = picks[:_topk]
         # 当日风控状态与承接线: 超限小仓参与日可用专属承接线 block_gap_below

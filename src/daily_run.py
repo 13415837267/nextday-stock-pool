@@ -668,12 +668,14 @@ def main():
     if allow_buy and not regime_ok_now:
         floor_now = ex.get("block_gap_below", floor_now)
     steps = []
-    for i, p in enumerate(verified[:5], 1):
+    # 顺延指引覆盖整个发布池(第六十一轮: 5→display_top_n只): 网页展示N只=指引N只=回测exec_top_n,
+    # 三端一致——回测在发布池内顺延, 实盘按指引在发布池内顺延, 口径不再分叉
+    for i, p in enumerate(verified[:disp_n], 1):
         steps.append({
             "rank": i, "code": p["code"], "name": p["name"], "score": p.get("score"),
             "close": p.get("close"), "pct": p.get("pct"),
             "rule": f"9:25竞价缺口 ≤ {floor_now}% 且 < 9% 且未停牌未一字 → 按{plan_frac:.0%}仓位买入",
-            "fallback": f"不达标 → 顺延第{i+1}名" if i < min(5, len(verified)) else "",
+            "fallback": f"不达标 → 顺延第{i+1}名" if i < min(disp_n, len(verified)) else "",
         })
     if not verified:
         steps.append({"rank": 0, "code": "", "name": "（今日无合格候选）", "rule": "明日空仓, 无需操作", "fallback": ""})
