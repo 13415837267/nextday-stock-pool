@@ -1,5 +1,13 @@
 {
- "exec": [],
+ "exec": [
+  {
+   "publish_date": "2026-10-22",
+   "sell_date": "2026-10-26",
+   "code": "300192.SZ",
+   "name": "科德教育",
+   "ret_pct": -0.4
+  }
+ ],
  "blocked": [],
- "updated": "2026-10-23"
+ "updated": "2026-10-26"
 }
