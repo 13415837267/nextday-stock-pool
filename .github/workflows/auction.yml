@@ -10,6 +10,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  issues: write    # 失败告警自动建Issue需要(2026-10-26 14:39竞价重试槽失败但告警因缺权限静默)
 
 concurrency:
   group: pages
@@ -27,6 +28,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: 安装依赖(竞价判定需 pyyaml; 仅用stdlib+src.config, 不装全量requirements)
+        run: pip install -q pyyaml
 
       - name: 竞价确认(9:25竞价数据自动判定)
         run: python tools/auction_confirm.py

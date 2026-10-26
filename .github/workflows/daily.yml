@@ -4,6 +4,8 @@ name: 每日选股更新
 on:
   schedule:
     - cron: "0 10 * * 1-5"   # 北京时间周一至周五 18:00 每交易日自动更新一次(免费数据源当日数据此时已完整)
+    - cron: "0 12 * * 1-5"   # 自愈重试1(北京20:00): GitHub schedule 高峰延迟可达数小时(2026-10-26实测延迟6.3h,
+    - cron: "0 14 * * 1-5"   # 自愈重试2(北京22:00): 页面当晚不更新); 双备用槽兜底, 幂等守卫保证只跑一遍
   push:
     branches: [main]          # main 一有更新(策略优化/数据提交)即重新部署网页, 保证站点与 main 始终一致
     paths-ignore:             # 竞价确认只改 auction.json, 由 auction.yml 自行部署, 不触发每日全量
@@ -30,35 +32,53 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 备用槽幂等检查(当日已有数据更新提交则跳过全量重跑)
+        id: guard
+        run: |
+          today=$(TZ=Asia/Shanghai date +%F)
+          if [ "${{ github.event_name }}" = "schedule" ] && \
+             git log --since="$today 00:00 +0800" --grep="数据更新: $today" --oneline | grep -q .; then
+            echo "今日($today)数据更新已存在, 备用槽跳过"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 配置 Python
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
       - name: 安装依赖
+        if: steps.guard.outputs.skip != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: 运行每日选股
+        if: steps.guard.outputs.skip != 'true'
         env:
           TZ: Asia/Shanghai
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}   # 可选, 提升访问频率
         run: python -m src.daily_run
 
       - name: 每日回测刷新网页绩效(复用当日增量数据)
+        if: steps.guard.outputs.skip != 'true'
         env:
           TZ: Asia/Shanghai
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python -m src.backtest
 
       - name: 刷新策略体检数据(探针/季度剖面随每日回测日更, 第48轮)
+        if: steps.guard.outputs.skip != 'true'
         env:
           TZ: Asia/Shanghai
         run: python tools/make_health.py
 
       - name: 提交更新记录(中文留痕)
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -71,17 +91,20 @@ jobs:
           fi
 
       - name: 组装 Pages 站点
+        if: steps.guard.outputs.skip != 'true'
         run: |
           mkdir -p deploy/data
           cp site/index.html deploy/
           cp output/*.json deploy/data/ 2>/dev/null || true
 
       - name: 上传 Pages 产物
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: deploy
 
       - name: 部署 GitHub Pages
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/deploy-pages@v4
 
       - name: 失败告警(自动建Issue, 防静默漏更)
