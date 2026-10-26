@@ -1,7 +1,7 @@
 {
- "generated": "2026-10-26 10:15:22",
+ "generated": "2026-10-26 17:08:33",
  "era": "20240901",
- "executed_total": 442,
+ "executed_total": 359,
  "buckets": {
   "early(era前)|rank1-5": {
    "n": 118,
@@ -28,16 +28,13 @@
    "comp_pct": -1.85
   },
   "early(era前)|rank31+": {
-   "n": 52,
-   "avg_pct": 0.034,
-   "win_pct": 53.8,
-   "comp_pct": -2.85
+   "n": 0
   },
   "early(era前)|all": {
-   "n": 323,
-   "avg_pct": -0.637,
-   "win_pct": 49.8,
-   "comp_pct": -91.06
+   "n": 271,
+   "avg_pct": -0.766,
+   "win_pct": 49.1,
+   "comp_pct": -90.79
   },
   "recent(era后)|rank1-5": {
    "n": 38,
@@ -64,16 +61,13 @@
    "comp_pct": 45.62
   },
   "recent(era后)|rank31+": {
-   "n": 31,
-   "avg_pct": 1.448,
-   "win_pct": 64.5,
-   "comp_pct": 52.69
+   "n": 0
   },
   "recent(era后)|all": {
-   "n": 119,
-   "avg_pct": 3.38,
-   "win_pct": 62.2,
-   "comp_pct": 3549.59
+   "n": 88,
+   "avg_pct": 4.06,
+   "win_pct": 61.4,
+   "comp_pct": 2290.23
   }
  },
  "gradient_500d": {

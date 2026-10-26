@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run_time": "2026-10-25 15:43:51",
+  "run_time": "2026-10-27 01:04:40",
   "window_days": 2500,
   "days": 2500,
   "zero_days": 542,
@@ -1815,7 +1815,7 @@
    "buy_date": "20260317",
    "sell_date": "20260318",
    "code": "600426.SH",
-   "name": "华鲁恒升",
+   "name": "XD华鲁恒",
    "ret_pct": -2.6,
    "bench_pct": 0.96
   },

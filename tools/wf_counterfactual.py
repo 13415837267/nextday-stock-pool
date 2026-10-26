@@ -15,6 +15,9 @@
 输出: 控制台逐组进度 + output/wf_counterfactual.json
 """
 from __future__ import annotations
+import os
+os.environ.setdefault("BT_FULL_TRADES", "1")   # 第六十四轮修复: R58起run_backtest仅在BT_FULL_TRADES下返回trades_all, 本脚本变体统计依赖逐笔成交, 未设则静默空桶(写于门控引入之前)
+
 
 import copy
 import json

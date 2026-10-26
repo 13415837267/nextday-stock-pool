@@ -1,11 +1,11 @@
 {
-  "universe_n": 86,
+  "universe_n": 68,
   "universe": {
-    "n": 86,
-    "avg_pct": 3.851,
-    "median_pct": 1.16,
-    "win_pct": 64.0,
-    "comp_pct": 1764.82
+    "n": 68,
+    "avg_pct": 4.689,
+    "median_pct": 1.59,
+    "win_pct": 64.7,
+    "comp_pct": 1574.34
   },
   "missing_files": 0,
   "h_split": "20260306",
@@ -18,11 +18,11 @@
       "comp_pct": 17.98
     },
     "off": {
-      "n": 77,
-      "avg_pct": 4.077,
+      "n": 59,
+      "avg_pct": 5.112,
       "median_pct": 1.0,
-      "win_pct": 64.9,
-      "comp_pct": 1480.67
+      "win_pct": 66.1,
+      "comp_pct": 1319.21
     },
     "seg": {
       "h1": {
@@ -34,11 +34,11 @@
           "comp_pct": 9.45
         },
         "off": {
-          "n": 36,
-          "avg_pct": 3.276,
+          "n": 27,
+          "avg_pct": 3.447,
           "median_pct": 2.18,
-          "win_pct": 69.4,
-          "comp_pct": 206.22
+          "win_pct": 66.7,
+          "comp_pct": 140.88
         }
       },
       "h2": {
@@ -50,11 +50,11 @@
           "comp_pct": 7.79
         },
         "off": {
-          "n": 41,
-          "avg_pct": 4.781,
-          "median_pct": 0.84,
-          "win_pct": 61.0,
-          "comp_pct": 416.19
+          "n": 32,
+          "avg_pct": 6.517,
+          "median_pct": 0.94,
+          "win_pct": 65.6,
+          "comp_pct": 489.19
         }
       }
     }
@@ -68,11 +68,11 @@
       "comp_pct": 16.76
     },
     "off": {
-      "n": 76,
-      "avg_pct": 4.144,
-      "median_pct": 1.16,
-      "win_pct": 65.8,
-      "comp_pct": 1497.12
+      "n": 58,
+      "avg_pct": 5.218,
+      "median_pct": 1.59,
+      "win_pct": 67.2,
+      "comp_pct": 1333.98
     },
     "seg": {
       "h1": {
@@ -84,11 +84,11 @@
           "comp_pct": 9.45
         },
         "off": {
-          "n": 36,
-          "avg_pct": 3.276,
+          "n": 27,
+          "avg_pct": 3.447,
           "median_pct": 2.18,
-          "win_pct": 69.4,
-          "comp_pct": 206.22
+          "win_pct": 66.7,
+          "comp_pct": 140.88
         }
       },
       "h2": {
@@ -100,11 +100,11 @@
           "comp_pct": 6.68
         },
         "off": {
-          "n": 40,
-          "avg_pct": 4.926,
-          "median_pct": 0.88,
-          "win_pct": 62.5,
-          "comp_pct": 421.56
+          "n": 31,
+          "avg_pct": 6.76,
+          "median_pct": 0.94,
+          "win_pct": 67.7,
+          "comp_pct": 495.32
         }
       }
     }
