@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -331,6 +332,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         nonlocal cash, fee_total
         if not picks:
             return
+        # 顺延深度截断(第五十八轮诊断用, BT_TOPK环境变量): 回测默认遍历全池(top_n=500),
+        # 实盘可执行池仅前10名(verified)/steps前5 —— 该口径差是本轮核心发现;
+        # BT_TOPK=N 时 picks 截前N名, 用于量化"实盘可达口径"的诚实基准
+        _topk = int(os.environ.get("BT_TOPK", "0") or 0)
+        if _topk > 0:
+            picks = picks[:_topk]
         # 当日风控状态与承接线: 超限小仓参与日可用专属承接线 block_gap_below
         # (弱市环境参与时要求更深承接, 提高胜率; 缺省沿用常规承接线)
         reg_row = reg.loc[d] if d in reg.index else None
@@ -339,8 +346,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         if (not day_ok) and day_frac and day_frac.get(d, 0) > 0:
             floor = ex.get("block_gap_below", floor)
         # 第一遍: 先按竞价条件筛出实际可买名单(保持评分排序, 与实盘一致)
+        # _rank=当日信号池评分名次(1起, 第五十八轮诊断字段): 用于审计回测顺延深度 vs 实盘(verified前10)
         qualified = []
-        for p in picks:
+        for _rk, p in enumerate(picks, 1):
+            p = {**p, "_rank": _rk}
             sub = per_code.get(p["code"])
             row = sub.loc[d] if sub is not None and d in sub.index else None
             if row is None or row["is_paused"] == 1 or row["vol"] <= 0:
@@ -498,6 +507,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             r = proceeds / denom - 1 if denom and denom > 0 else 0.0
             trades.append({
                 "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
+                "rank": h.get("_rank"),
                 "buy_date": h["buy_date"], "buy_px": h["buy_px_raw"],
                 "sell_date": sell_d, "sell_px": float(row["close" if sold_at_close else "open"]),
                 "ret_pct": round(r * 100, 2), "note": note,
@@ -629,6 +639,7 @@ def sced_lbl(x):
 
 def _trade(p: dict, kind: str, d: str, note: str = "") -> dict:
     return {"signal_date": p.get("signal_date", ""), "code": p["code"], "name": p.get("name", ""),
+            "rank": p.get("_rank"),
             "buy_date": d, "buy_px": None, "sell_date": None, "sell_px": None,
             "ret_pct": None, "note": note}
 
