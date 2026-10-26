@@ -1,5 +1,11 @@
 # 更新日志
 
+## 竞价确认卡运维补救: 今晨09:26 auction无产出, 盘中补跑生成今日卖出确认(2026-10-26)
+- **现象**: 用户反馈开盘后网页未更新——远端 auction.json 仍是 10-24 旧卡(for_today=false), 今晨 09:26 的 auction workflow 无产出(具体原因待查: GitHub API 匿名限流无法查 Actions 日志; 可能与 09:33 第五十八轮推送触发的 daily run 撞 pages 并发队列或 schedule 延迟/失败)。
+- **影响面核实(账本无损)**: daily.yml push 触发的 92c8861(09:35)未动 history.json, 300192.SZ 仍"持仓中"; 18:00 权威结算不受影响, 缺的只是早盘展示(卖出确认卡+浮盈刷新)。
+- **补救**: 盘中 09:44 本地补跑 tools/auction_confirm.py(开盘价已定, est_ret_pct 精确): 科德教育(300192.SZ)今日开盘 19.00 卖出, 预计收益 **-0.4%**(含费用, 非跌停), 实时浮盈 +0.47%(现价 19.11); 买入侧空池日→今日空仓(与 10-23 信号 picks=0 一致)。提交推送后 push 触发 daily 重新部署网页。
+- 待办: 若 workflow_runs 确认失败原因(行情源/并发/触发丢失), 下轮针对性加固(如 auction 增加重试或与 daily 错峰)。
+
 ## 买入端顺延深度口径审计: 回测全池500名vs实盘前10名, 80/118笔实盘不可达(2026-10-26 第五十八轮, 零参数变更纯诊断)
 - **起因**: 第五十七轮补充发现 auction.json 的 position_pct=95.0 与 latest.json 的 100.0 不一致, 怀疑 auction_confirm.py 漏了第52轮 rf_ramp 展示层对齐 —— 顺势做买入端两端一致性审计(对照第54轮卖出端清点)。核查确认: auction_confirm.py 第90~91行**透传** t1_decision 的 floor_pct/position_pct, 不自行计算(rf_ramp/熔断/承接线源头在 daily_run, 第52轮已对齐), auction.json 里 95 是 10-24 旧透传残留数据, **非bug**。
 - **买入端机制清点(回测 do_buy vs 实盘)**: 承接线buy_gap_below(-2.40)/严承接线block_gap_below(-2.75)/skip_open_gain(9.0)/skip_open_loss(未启用)/一字涨停/停牌/月度熔断/rf_ramp 逐项两端一致; 回测特有的 skip_gap_deep(崩塌线)/min_top1_score(评分门槛)/loss_streak_pause 均未配置, 无分叉。**唯一重大分叉是顺延深度**: 回测 do_buy 遍历全池(select_stocks 默认 top_n=500), 实盘发布池仅前10名(display_top_n: 10)、竞价顺延指引 steps 前5名。
