@@ -301,6 +301,13 @@ async function loadExecHistory() {
   try {
     const d = await jget("./data/history.json");
     const recs = d.records || [];
+    // 早盘确认收益(第五十七轮补充): 持仓行接入竞价确认卡数据 —— 今日卖出日显示预计实现收益,
+    // 未到卖出日显示实时浮盈; 正式账仍以晚间panel结算为准, 此处仅展示
+    let au = null;
+    try { au = await jget("./data/auction.json"); } catch (e) { /* 早盘未生成时静默, 行为与旧版一致 */ }
+    const sellMap = {}, posMap = {};
+    if (au && au.sell_today) au.sell_today.forEach(s => { sellMap[s.code] = s; });
+    if (au && au.positions) au.positions.forEach(p => { posMap[p.code] = p; });
     const det = recs.filter(r => r.executed);
     let cum = 1;
     det.slice().reverse().forEach(r => { cum *= (1 + r.executed.ret_pct / 100); });
@@ -321,17 +328,23 @@ async function loadExecHistory() {
       if (r.publish_date < CUTOFF) return;   // 旧口径记录硬性排除
       const e = r.executed;
       if (e && e.holding) {
-        // 持仓中: 买入已成交, 待卖出
+        // 持仓中: 买入已成交, 待卖出; 今日卖出日接入竞价确认的预计收益/开盘价(早盘即可见)
+        const s = sellMap[e.code], p = posMap[e.code];
+        const retCell = s && s.est_ret_pct != null
+          ? `<span class="${pctCls(s.est_ret_pct)}">预计 <b>${pctStr(s.est_ret_pct)}</b></span><br><span class="muted" style="font-size:11px">${s.limit_down ? "开盘跌停→按收盘卖, 以晚间结算为准" : "早盘竞价确认 · 晚间结算"}</span>`
+          : (p && p.float_pct != null
+            ? `<span class="${pctCls(p.float_pct)}">浮盈 ${pctStr(p.float_pct)}</span><br><span class="muted" style="font-size:11px">实时 · 晚间结算</span>`
+            : `持仓中`);
         html += `<tr>
           <td data-label="发布日">${fmtDate(r.publish_date)}</td><td data-label="买入日">${fmtDate(e.buy_date)}</td>
           <td class="full" data-label="买入标的"><b>${esc(e.name)}</b> <span class="muted">${esc(e.code)}</span></td>
           <td class="muted" data-label="名次">第${e.rank}名</td>
-          <td data-label="买入价">${e.buy_px}</td><td data-label="卖出日">${fmtDate(e.sell_date)}</td><td class="muted" data-label="卖出价">待开盘</td>
+          <td data-label="买入价">${e.buy_px}</td><td data-label="卖出日">${fmtDate(e.sell_date)}</td><td class="muted" data-label="卖出价">${s && s.open_px && !s.limit_down ? "竞价开盘 " + s.open_px : "待开盘"}</td>
           <td class="muted" data-label="仓位">${e.position_pct}%</td>
-          <td class="muted" data-label="实盘买价">${e.actual_buy_px ?? "-"}</td><td class="muted" data-label="实盘卖价">-</td>
-          <td class="muted" data-label="单期收益">持仓中</td>
+          <td class="muted" data-label="实盘买价">${e.actual_buy_px ?? "-"}</td><td class="muted" data-label="实盘卖价">${s && s.open_px && !s.limit_down ? s.open_px : "-"}</td>
+          <td data-label="单期收益">${retCell}</td>
           <td class="muted chain full" data-label="顺延/放弃过程">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
-          <td class="muted" data-label="状态">持仓中</td></tr>`;
+          <td class="muted" data-label="状态">${s ? "持仓中·今日卖出" : "持仓中"}</td></tr>`;
       } else if (e) {
         html += `<tr>
           <td data-label="发布日">${fmtDate(r.publish_date)}</td><td data-label="买入日">${fmtDate(e.buy_date)}</td>
