@@ -267,6 +267,14 @@ async function renderAuction(buyDate) {
     const a = await r.json();
     const isToday = a.for_today;
     const hasSell = a.sell_today && a.sell_today.length;
+    // 新鲜度自检(第五十九轮): confirm_time 日期早于今日 = 今日竞价确认未生成(流水线异常), 显式告警防误读 ——
+    // 旧卡的"今日非买入日/今日空仓"文案会让用户误以为是策略判定, 实为数据未更新(2026-10-26 事故)
+    const cd = (a.confirm_time || "").split(" ")[0];
+    const todayStr = new Date().toLocaleDateString("sv-SE"); // 本地 YYYY-MM-DD
+    let stale = "";
+    if (cd && cd < todayStr) {
+      stale = `<div style="color:var(--gold);font-size:12px;margin-bottom:4px">⚠ 此为 ${esc(cd)} 的旧确认卡 — 今日竞价确认尚未生成(流水线异常), 晚间结算不受影响</div>`;
+    }
     let head, body = "";
     if (!isToday && !hasSell) {
       head = `<span class="muted">今日非买入日（计划买入日 ${fmtDate(a.buy_date)}），无需竞价确认</span>`;
@@ -289,7 +297,7 @@ async function renderAuction(buyDate) {
         + a.positions.map(p =>
         `<span>📌 当前持仓 <b>${esc(p.name)}</b>(${esc(p.code)}) 买入${p.buy_px}（${fmtDate(p.buy_date)}）· 现价${p.cur_px} · 浮动 <b class="${pctCls(p.float_pct)}">${pctStr(p.float_pct)}</b></span>`).join("<br>") + `</div>`;
     }
-    box.innerHTML = head + body;
+    box.innerHTML = stale + head + body;
   } catch (e) {
     box.innerHTML = `<span class="muted">竞价确认: 尚未生成（每交易日 9:26 自动更新）</span>`;
   }
