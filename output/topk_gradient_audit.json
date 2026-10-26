@@ -1,0 +1,121 @@
+{
+ "generated": "2026-10-26 10:15:22",
+ "era": "20240901",
+ "executed_total": 442,
+ "buckets": {
+  "early(era前)|rank1-5": {
+   "n": 118,
+   "avg_pct": -0.298,
+   "win_pct": 53.4,
+   "comp_pct": -38.41
+  },
+  "early(era前)|rank6-10": {
+   "n": 56,
+   "avg_pct": -1.051,
+   "win_pct": 39.3,
+   "comp_pct": -47.61
+  },
+  "early(era前)|rank11-20": {
+   "n": 66,
+   "avg_pct": -1.741,
+   "win_pct": 43.9,
+   "comp_pct": -70.93
+  },
+  "early(era前)|rank21-30": {
+   "n": 31,
+   "avg_pct": 0.045,
+   "win_pct": 61.3,
+   "comp_pct": -1.85
+  },
+  "early(era前)|rank31+": {
+   "n": 52,
+   "avg_pct": 0.034,
+   "win_pct": 53.8,
+   "comp_pct": -2.85
+  },
+  "early(era前)|all": {
+   "n": 323,
+   "avg_pct": -0.637,
+   "win_pct": 49.8,
+   "comp_pct": -91.06
+  },
+  "recent(era后)|rank1-5": {
+   "n": 38,
+   "avg_pct": 4.332,
+   "win_pct": 60.5,
+   "comp_pct": 357.87
+  },
+  "recent(era后)|rank6-10": {
+   "n": 16,
+   "avg_pct": 2.284,
+   "win_pct": 56.2,
+   "comp_pct": 41.35
+  },
+  "recent(era后)|rank11-20": {
+   "n": 24,
+   "avg_pct": 4.601,
+   "win_pct": 70.8,
+   "comp_pct": 153.61
+  },
+  "recent(era后)|rank21-30": {
+   "n": 10,
+   "avg_pct": 4.575,
+   "win_pct": 50.0,
+   "comp_pct": 45.62
+  },
+  "recent(era后)|rank31+": {
+   "n": 31,
+   "avg_pct": 1.448,
+   "win_pct": 64.5,
+   "comp_pct": 52.69
+  },
+  "recent(era后)|all": {
+   "n": 119,
+   "avg_pct": 3.38,
+   "win_pct": 62.2,
+   "comp_pct": 3549.59
+  }
+ },
+ "gradient_500d": {
+  "top10": {
+   "total": 513.78,
+   "n": 53,
+   "dd": -7.82,
+   "calmar": 19.19,
+   "sharpe": 2.31,
+   "avg": 3.759
+  },
+  "top20": {
+   "total": 1241.47,
+   "n": 77,
+   "dd": -9.28,
+   "calmar": 29.21,
+   "sharpe": 2.43,
+   "avg": 4.021
+  },
+  "top30": {
+   "total": 1630.28,
+   "n": 87,
+   "dd": -9.05,
+   "calmar": 35.58,
+   "sharpe": 2.51,
+   "avg": 4.085
+  },
+  "top50": {
+   "total": 1658.2,
+   "n": 101,
+   "dd": -15.17,
+   "calmar": 21.44,
+   "sharpe": 2.5,
+   "avg": 3.546
+  },
+  "full500": {
+   "total": 2541.59,
+   "n": 118,
+   "dd": -14.14,
+   "calmar": 29.76,
+   "sharpe": 2.77,
+   "avg": 3.392
+  }
+ }
+}
