@@ -108,6 +108,7 @@ def main():
     days = int(os.environ.get("PROFIT_CAP_AUDIT_DAYS", "2500"))
     mc = (cfg.get("risk") or {}).get("month_profit_cap") or {}
     cap_pct, cut_frac = float(mc.get("cap_pct", 0) or 0), float(mc.get("cut_frac", 1.0) or 1.0)
+    cap_active = cap_pct > 0   # 第六十三轮删熔断后 risk:{} -> cap_pct=0, 诊断A分桶失去意义
     print(f"[1/3] prepare_context({days}) ... (月度熔断: cap={cap_pct}% cut={cut_frac})")
     t0 = time.time()
     ctx = prepare_context(cfg, days)
@@ -115,6 +116,7 @@ def main():
     print("[2/3] BASE 回测(含月度熔断) ...")
     base = run_backtest(cfg, ctx=ctx)
     cfg_no = copy.deepcopy(cfg)
+    cfg_no["risk"] = dict(cfg_no.get("risk") or {})   # None安全(第六十三轮risk: {})
     cfg_no["risk"]["month_profit_cap"] = None   # mc_cap=0 -> 熔断永不触发
     print("[3/3] NO_CAP 回测(删除月度熔断) ...")
     nocap = run_backtest(cfg_no, ctx=ctx)
@@ -128,7 +130,7 @@ def main():
     for t in trades:
         g = gains.get(t["buy_date"])
         t["_month_gain"] = round(g, 1) if g is not None else None
-        (capped if (g is not None and g > cap_pct) else normal).append(t)
+        (capped if (cap_active and g is not None and g > cap_pct) else normal).append(t)
     cap_months = sorted({t["buy_date"][:6] for t in capped})
     by_month = {ym: _stats([t for t in capped if t["buy_date"][:6] == ym]) for ym in cap_months}
     era_c = {"before_20240901": _stats([t for t in capped if t["buy_date"] < ERA]),
@@ -152,9 +154,11 @@ def main():
         "meta": {"run_time": time.strftime("%Y-%m-%d %H:%M:%S"), "window_days": days,
                  "days": len(eq_b), "cap_pct": cap_pct, "cut_frac": cut_frac,
                  "capped_trades_n": len(capped), "cap_months": cap_months,
+                 "cap_active": cap_active,
                  "判据": VERDICT,
                  "口径": ("诊断A: BASE十年成交按买入日当月净值增益分桶(收盘nav近似买入时点"
-                          "equity, 边界日可能误判); 诊断B: 同ctx复用prepare_context仅删"
+                          "equity, 边界日可能误判; 第六十三轮删熔断后cap_pct=0, 分桶不激活,"
+                          "capped恒为空); 诊断B: 同ctx复用prepare_context仅删"
                           "risk.month_profit_cap重跑, 复利口径精确。")},
         "profile": {"normal_trades": _stats(normal), "capped_trades": _stats(capped),
                     "capped_era": era_c, "capped_by_year": by_year_c,
