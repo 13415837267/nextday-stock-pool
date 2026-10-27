@@ -1,0 +1,86 @@
+{
+ "universe_n": 155,
+ "missing": 2,
+ "era_split": "20240901",
+ "bucket_quintile": {
+  "bucket1": {
+   "n": 31,
+   "avg": -0.585,
+   "wr": 48.4,
+   "comp": -21.0
+  },
+  "bucket2": {
+   "n": 31,
+   "avg": 0.567,
+   "wr": 58.1,
+   "comp": 16.1
+  },
+  "bucket3": {
+   "n": 31,
+   "avg": 0.416,
+   "wr": 61.3,
+   "comp": 10.0
+  },
+  "bucket4": {
+   "n": 31,
+   "avg": 1.532,
+   "wr": 54.8,
+   "comp": 53.6
+  },
+  "bucket5": {
+   "n": 31,
+   "avg": 2.313,
+   "wr": 54.8,
+   "comp": 85.9
+  },
+  "top_bottom_spread": 2.898
+ },
+ "walkforward_filter": {
+  "all": {
+   "base": {
+    "n": 155,
+    "avg": 0.848,
+    "wr": 55.5,
+    "comp": 188.0
+   },
+   "filtered": {
+    "n": 123,
+    "avg": 1.17,
+    "wr": 56.9,
+    "comp": 244.8
+   }
+  },
+  "era前": {
+   "base": {
+    "n": 116,
+    "avg": -0.282,
+    "wr": 54.3,
+    "comp": -36.8
+   },
+   "filtered": {
+    "n": 85,
+    "avg": -0.234,
+    "wr": 56.5,
+    "comp": -24.0
+   }
+  },
+  "era后": {
+   "base": {
+    "n": 39,
+    "avg": 4.211,
+    "wr": 59.0,
+    "comp": 356.0
+   },
+   "filtered": {
+    "n": 38,
+    "avg": 4.309,
+    "wr": 57.9,
+    "comp": 353.9
+   }
+  }
+ },
+ "corr": {
+  "all": 0.136,
+  "era后": 0.172
+ }
+}
