@@ -44,6 +44,15 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
 
     g = panel.groupby("ts_code", sort=False)
 
+    # IVOL20(第六十七轮文献因子): 个股日收益对市场等权日收益的20日残差标准差(市场调整模型)。
+    # 机制: 陆蓉/王麒《经济学(季刊)》2025——机构主导隔夜(压高低分歧票->低开), 散户主导日内
+    # (推高->高走), 高特质波动票的深低开承接修复更强。停牌日残差置NaN(rolling跳过)。
+    _mkt = panel.loc[panel["is_paused"] == 0].groupby("trade_date")["pct"].mean()
+    put("mkt_pct", panel["trade_date"].map(_mkt))
+    put("resid_pct", np.where(panel["is_paused"] == 1, np.nan,
+                              panel["pct"] - panel["mkt_pct"]))
+    put("ivol20", g["resid_pct"].transform(lambda s: s.rolling(20, min_periods=15).std()))
+
     flast = g["factor"].transform("last")
     k = panel["factor"] / flast.replace(0, np.nan)
     panel["close_adj"] = panel["close"] * k
@@ -271,6 +280,8 @@ def select_stocks(
             score = score + w["neg_vol_ratio"] * _zs(-df["vol_ratio"])   # 缩量越极致越好
         if w.get("low_tail"):
             score = score + w["low_tail"] * _zs(df["low_tail"])          # 下影线越长(盘中承接越强)越好
+        if w.get("ivol"):
+            score = score + w["ivol"] * _zs(df["ivol20"])                # 特质波动率越高(分歧越大, 深低开修复越强)越好
         if w.get("neg_dist_ma5"):
             score = score + w["neg_dist_ma5"] * _zs(-df["dist_ma5"])     # 贴5日线越近(跌幅未失控)越好
         if w.get("neg_dist_low20"):

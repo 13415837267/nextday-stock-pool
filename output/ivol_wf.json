@@ -1,0 +1,82 @@
+{
+ "meta": {
+  "era": "20240901",
+  "days": 2500,
+  "criterion": "训练段连乘复利(事前注册)",
+  "note": "IVOL因子权重走前训练(第六十九轮)"
+ },
+ "rows": [
+  {
+   "key": "BASE(当前参数)",
+   "tr_n": 118,
+   "tr_avg": -0.298,
+   "tr_wr": 53.4,
+   "tr_comp": -38.4,
+   "va_n": 39,
+   "va_avg": 4.211,
+   "va_wr": 59.0,
+   "va_comp": 356.0,
+   "sim_s": 0
+  },
+  {
+   "key": "ivol_w005(dip_weights.ivol=0->0.05)",
+   "tr_n": 123,
+   "tr_avg": -0.404,
+   "tr_wr": 53.7,
+   "tr_comp": -47.2,
+   "va_n": 39,
+   "va_avg": 4.208,
+   "va_wr": 59.0,
+   "va_comp": 355.7,
+   "sim_s": 59
+  },
+  {
+   "key": "ivol_w010(dip_weights.ivol=0->0.1)",
+   "tr_n": 121,
+   "tr_avg": -0.458,
+   "tr_wr": 54.5,
+   "tr_comp": -49.8,
+   "va_n": 38,
+   "va_avg": 4.217,
+   "va_wr": 60.5,
+   "va_comp": 338.7,
+   "sim_s": 28
+  },
+  {
+   "key": "ivol_w015(dip_weights.ivol=0->0.15)",
+   "tr_n": 121,
+   "tr_avg": -0.35,
+   "tr_wr": 55.4,
+   "tr_comp": -42.6,
+   "va_n": 41,
+   "va_avg": 3.791,
+   "va_wr": 56.1,
+   "va_comp": 316.8,
+   "sim_s": 28
+  },
+  {
+   "key": "ivol_w020(dip_weights.ivol=0->0.2)",
+   "tr_n": 125,
+   "tr_avg": -0.234,
+   "tr_wr": 56.0,
+   "tr_comp": -34.7,
+   "va_n": 43,
+   "va_avg": 3.59,
+   "va_wr": 55.8,
+   "va_comp": 311.9,
+   "sim_s": 28
+  },
+  {
+   "key": "ivol_w030(dip_weights.ivol=0->0.3)",
+   "tr_n": 134,
+   "tr_avg": -0.462,
+   "tr_wr": 53.7,
+   "tr_comp": -53.2,
+   "va_n": 43,
+   "va_avg": 3.364,
+   "va_wr": 58.1,
+   "va_comp": 279.6,
+   "sim_s": 28
+  }
+ ]
+}
