@@ -1,26 +1,26 @@
 {
  "meta": {
-  "run_time": "2026-10-27 12:23:02",
+  "run_time": "2026-10-28 01:36:16",
   "start": "20240930",
-  "end": "20261026",
-  "days": 499,
+  "end": "20261027",
+  "days": 500,
   "initial_capital": 1000000.0,
   "rules": "T+1开盘买入/T+2开盘卖出/复利/佣金万2.5+印花税万5+滑点千1"
  },
  "metrics": {
   "总收益率%": 355.96,
-  "年化收益率%": 115.16,
+  "年化收益率%": 114.83,
   "最大回撤%": -6.92,
-  "卡玛比率": 16.64,
+  "卡玛比率": 16.59,
   "夏普比率": 2.03,
   "交易次数": 39,
   "胜率%": 58.97,
   "平均单笔收益%": 4.210999965667725,
   "盈亏比": 7.420000076293945,
   "空仓天数": 100,
-  "跳过买入次数": 1790,
+  "跳过买入次数": 1795,
   "总费用(元)": 88364.0,
-  "同期市场等权基准%": 30.4
+  "同期市场等权基准%": 26.95
  },
  "equity": [
   {
@@ -2017,6 +2017,10 @@
   },
   {
    "d": "2026-10-26",
+   "nav": 4559578.0
+  },
+  {
+   "d": "2026-10-27",
    "nav": 4559578.0
   }
  ],
@@ -4016,69 +4020,13 @@
   {
    "d": "2026-10-26",
    "nav": 1303956.0
+  },
+  {
+   "d": "2026-10-27",
+   "nav": 1269516.0
   }
  ],
  "trades_recent": [
-  {
-   "signal_date": "20260921",
-   "code": "603257.SH",
-   "name": "中国瑞林",
-   "rank": 3,
-   "buy_date": "20260922",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口-1.9%未达承接线-2.4%"
-  },
-  {
-   "signal_date": "20260921",
-   "code": "300808.SZ",
-   "name": "久量股份",
-   "rank": 4,
-   "buy_date": "20260922",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口1.0%未达承接线-2.4%"
-  },
-  {
-   "signal_date": "20260921",
-   "code": "002973.SZ",
-   "name": "侨银股份",
-   "rank": 5,
-   "buy_date": "20260922",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口0.0%未达承接线-2.4%"
-  },
-  {
-   "signal_date": "20260922",
-   "code": "002980.SZ",
-   "name": "华盛昌",
-   "rank": 1,
-   "buy_date": "20260923",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口2.0%未达承接线-2.4%"
-  },
-  {
-   "signal_date": "20260922",
-   "code": "603139.SH",
-   "name": "康惠股份",
-   "rank": 2,
-   "buy_date": "20260923",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口0.8%未达承接线-2.4%"
-  },
   {
    "signal_date": "20260922",
    "code": "002161.SZ",
@@ -4738,6 +4686,66 @@
    "sell_px": 19.0,
    "ret_pct": -0.4000000059604645,
    "note": ""
+  },
+  {
+   "signal_date": "20261026",
+   "code": "301226.SZ",
+   "name": "祥明智能",
+   "rank": 1,
+   "buy_date": "20261027",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口2.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261026",
+   "code": "002959.SZ",
+   "name": "小熊电器",
+   "rank": 2,
+   "buy_date": "20261027",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-1.4%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261026",
+   "code": "603068.SH",
+   "name": "博通集成",
+   "rank": 3,
+   "buy_date": "20261027",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口1.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261026",
+   "code": "601188.SH",
+   "name": "龙江交通",
+   "rank": 4,
+   "buy_date": "20261027",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口0.0%未达承接线-2.75%"
+  },
+  {
+   "signal_date": "20261026",
+   "code": "002674.SZ",
+   "name": "兴业科技",
+   "rank": 5,
+   "buy_date": "20261027",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.0%未达承接线-2.75%"
   }
  ],
  "trades_executed_recent": [
