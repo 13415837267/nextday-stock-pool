@@ -174,14 +174,14 @@ def _zs(s: pd.Series) -> pd.Series:
     return ((s - s.mean()) / std).clip(-3, 3)
 
 
-def select_stocks(
+def _select_one(
     date: str,
     day_df: pd.DataFrame,
     cfg: dict,
     names: dict[str, str] | None = None,
     top_n: int | None = None,
 ) -> tuple[list[dict], dict]:
-    """对某交易日横截面执行过滤+评分, 返回(候选池列表, 统计信息)。"""
+    """单一信号模式的过滤+评分(多策略补位的原子实现)。"""
     uni_cfg, sel_cfg = cfg["universe"], cfg["selection"]
     top_n = top_n or sel_cfg["top_n"]
     mode = sel_cfg.get("mode", "momentum")
@@ -354,3 +354,45 @@ def select_stocks(
             "reasons": "、".join(reasons),
         })
     return picks, stats
+
+
+def select_stocks(
+    date: str,
+    day_df: pd.DataFrame,
+    cfg: dict,
+    names: dict[str, str] | None = None,
+    top_n: int | None = None,
+) -> tuple[list[dict], dict]:
+    """多策略出池: 主力池 + 依序排列的备用池(第七十八轮)。
+
+    每个 pick 带 "pool" 字段: main=主力, fb1/fb2...=第N备用池。
+    引擎按 pool 顺序顺延买入 —— 主力池当日全部缺达标票时, 自动落到备用池,
+    实现"没有票就切换另一个策略"。备用池按 selection.fallbacks 配置, 缺省为空(单策略)。
+    """
+    picks, stats = _select_one(date, day_df, cfg, names, top_n)
+    for p in picks:
+        p["pool"] = "main"
+    if stats.get("weekday_skip"):        # 非出池日: 备用池同样不出票
+        return picks, stats
+    sel_cfg = cfg["selection"]
+    fbs = sel_cfg.get("fallbacks") or []
+    if not fbs or sel_cfg.get("mode") != "dip":
+        return picks, stats
+    have = {p["code"] for p in picks}
+    seen = {"main": 1}
+    for i, fb in enumerate(fbs, 1):
+        if not fb.get("enabled", True) or not fb.get("mode"):
+            continue
+        sub = {**cfg, "selection": {**sel_cfg, "mode": fb["mode"], "fallbacks": []}}
+        fb_picks, _ = _select_one(date, day_df, sub, names, top_n=int(fb.get("top_n") or 0))
+        for p in fb_picks:
+            if p["code"] in have:          # 已在主力池/前序备用池中的票不重复计入
+                continue
+            have.add(p["code"])
+            p["pool"] = f"fb{i}"
+            p["reasons"] = f"{p.get('reasons', '')}｜备用{i}".lstrip("｜")
+            picks.append(p)
+            seen[p["pool"]] = seen.get(p["pool"], 0) + 1
+    stats["fallback_counts"] = {k: v for k, v in seen.items() if k != "main"}
+    return picks, stats
+

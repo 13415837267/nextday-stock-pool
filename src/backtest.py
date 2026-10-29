@@ -332,14 +332,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         nonlocal cash, fee_total
         if not picks:
             return
-        # 顺延深度截断(第六十一轮起默认启用, 配置驱动): 回测资金部署口径=实盘可达池
-        # (selection.exec_top_n, 与网页展示池display_top_n/竞价顺延指引三端一致);
-        # top_n=500仅作观察池诊断(rank字段), 非资金部署口径;
-        # BT_TOPK环境变量可覆盖(诊断用): BT_TOPK=0 复现旧全池口径, BT_TOPK=N 截前N名
+        _sel = cfg.get("selection") or {}
         _env_k = os.environ.get("BT_TOPK")
-        _topk = int(_env_k) if _env_k is not None else int((cfg.get("selection") or {}).get("exec_top_n") or 0)
-        if _topk > 0:
-            picks = picks[:_topk]
+        _topk = int(_env_k) if _env_k is not None else int(_sel.get("exec_top_n") or 0)
         # 当日风控状态与承接线: 超限小仓参与日可用专属承接线 block_gap_below
         # (弱市环境参与时要求更深承接, 提高胜率; 缺省沿用常规承接线)
         reg_row = reg.loc[d] if d in reg.index else None
@@ -347,11 +342,40 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         floor = ex.get("buy_gap_below", 0)
         if (not day_ok) and day_frac and day_frac.get(d, 0) > 0:
             floor = ex.get("block_gap_below", floor)
+        # ---- 多策略顺延(第七十八轮): 主力池 -> 备用池依序切换 ----
+        # 主力池截到 exec_top_n; 备用池(fb1/fb2...)按各自 top_n 截断, 并按 segment 分段启用:
+        #   all=全时段可用 / trend=仅指数>=MA30 / weak=仅指数<MA30
+        # 主力池当日无票达标时, 循环自然落到备用池 —— 即"一个策略没票就切另一个"。
+        _fbs = _sel.get("fallbacks") or []
+        _main = [p for p in picks if p.get("pool", "main") == "main"]
+        _fbp = [p for p in picks if p.get("pool", "main") != "main"]
+        if _topk > 0:
+            _main = _main[:_topk]
+        if _fbs and _fbp:
+            _up = (reg_row is not None and not pd.isna(reg_row.get("mkt_ma", np.nan))
+                   and float(reg_row["mkt_idx"]) >= float(reg_row["mkt_ma"]))
+            _kept = []
+            for p in _fbp:
+                i = int(str(p.get("pool"))[2:]) - 1
+                fb = _fbs[i] if 0 <= i < len(_fbs) else {}
+                seg = fb.get("segment", "all")
+                if (seg == "trend" and not _up) or (seg == "weak" and _up):
+                    continue
+                if sum(1 for q in _kept if q.get("pool") == p.get("pool")) >= int(fb.get("top_n") or 0):
+                    continue
+                p = {**p, "_gap_below": fb.get("gap_below")}
+                _kept.append(p)
+            _fbp = _kept
+        picks = _main + _fbp
         # 第一遍: 先按竞价条件筛出实际可买名单(保持评分排序, 与实盘一致)
-        # _rank=当日信号池评分名次(1起, 第五十八轮诊断字段): 用于审计回测顺延深度 vs 实盘(verified前10)
+        # _rank=该池内评分名次(1起, 第五十八轮诊断字段): 主力/备用各自编号, 便于审计顺延深度
+        _cnt: dict[str, int] = {}
+        for p in picks:
+            k = p.get("pool", "main")
+            _cnt[k] = _cnt.get(k, 0) + 1
+            p["_rank"] = _cnt[k]
         qualified = []
-        for _rk, p in enumerate(picks, 1):
-            p = {**p, "_rank": _rk}
+        for p in picks:
             sub = per_code.get(p["code"])
             row = sub.loc[d] if sub is not None and d in sub.index else None
             if row is None or row["is_paused"] == 1 or row["vol"] <= 0:
@@ -369,9 +393,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if ex.get("skip_open_loss", 0) and gap * 100 <= -abs(ex["skip_open_loss"]):
                 trades.append(_trade(p, "skip", d, note=f"开盘低开{gap*100:.1f}%"))
                 continue
-            # dip 承接过滤: 仅买缺口 <= floor% 的深低开票(0=不过滤)
-            if floor and gap * 100 > floor:
-                trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{floor}%"))
+            # dip 承接过滤: 仅买缺口 <= floor% 的深低开票(0=不过滤); 备用池可配专属承接线
+            _fl = p.get("_gap_below")
+            _fl = floor if _fl is None else _fl
+            if _fl and gap * 100 > _fl:
+                trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{_fl}%"))
                 continue
             if skip_gap_deep is not None and gap * 100 < skip_gap_deep:
                 trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%深于崩塌线{skip_gap_deep}%"))
@@ -641,7 +667,7 @@ def sced_lbl(x):
 
 def _trade(p: dict, kind: str, d: str, note: str = "") -> dict:
     return {"signal_date": p.get("signal_date", ""), "code": p["code"], "name": p.get("name", ""),
-            "rank": p.get("_rank"),
+            "rank": p.get("_rank"), "pool": p.get("pool", "main"),
             "buy_date": d, "buy_px": None, "sell_date": None, "sell_px": None,
             "ret_pct": None, "note": note}
 
