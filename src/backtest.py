@@ -335,6 +335,16 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         _sel = cfg.get("selection") or {}
         _env_k = os.environ.get("BT_TOPK")
         _topk = int(_env_k) if _env_k is not None else int(_sel.get("exec_top_n") or 0)
+        # 第八十五轮: 绩效门控的池深(可选, 默认关闭) —— 仅用"已结算历史成交"判断深度,
+        # 无未来函数: 近 window 笔平均收益 > min_avg 时扩到 hot_top_n, 否则收缩到 cold_top_n。
+        # 目的: era 前(单笔为负)自动保持浅池, era 后(单笔为正)自动扩池吃满顺延空间。
+        _dg = ex.get("depth_gate") or {}
+        if _dg and _env_k is None:
+            _w = int(_dg.get("window", 20))
+            _real = [t["ret_pct"] for t in trades if t.get("ret_pct") is not None]
+            if len(_real) >= _w:
+                _hot = sum(_real[-_w:]) / _w > float(_dg.get("min_avg", 0.0))
+                _topk = int(_dg.get("hot_top_n", _topk)) if _hot else int(_dg.get("cold_top_n", _topk))
         # 当日风控状态与承接线: 超限小仓参与日可用专属承接线 block_gap_below
         # (弱市环境参与时要求更深承接, 提高胜率; 缺省沿用常规承接线)
         reg_row = reg.loc[d] if d in reg.index else None
@@ -396,16 +406,37 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # dip 承接过滤: 仅买缺口 <= floor% 的深低开票(0=不过滤); 备用池可配专属承接线
             _fl = p.get("_gap_below")
             _fl = floor if _fl is None else _fl
+            # 第八十轮: 名次梯度承接线(可选) —— 池内名次越靠后要求缺口越深,
+            # 用"更激进的折价"换深名次的质量, 让扩池新增的成交只发生在最极端的恐慌日。
+            # 配置形如 [{rank_above: 5, gap_below: -3.0}, ...], 取第一个满足条件的档。
+            for _t in (ex.get("gap_rank_tiers") or []):
+                if int(p.get("_rank") or 0) >= int(_t.get("rank_above", 1)):
+                    _tg = float(_t.get("gap_below", _fl))
+                    _fl = min(_tg, float(floor)) if floor else _tg
+            _lim_px = None   # 第八十轮: 盘中止损限价承接价(adj口径), None=按开盘价成交
             if _fl and gap * 100 > _fl:
-                trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{_fl}%"))
-                continue
+                _lmt = float(ex.get("buy_limit_fill") or 0)
+                # 限价承接(默认关闭): 开盘缺口不够深时, 在承接线价位挂全天限价买单,
+                # 当日最低价触及则按该价成交(比开盘更深, 入场价确定)。仅当开盘未过热
+                # (<= buy_limit_open_max%)时启用, 避免追"高开后再跳水"的票。
+                if _lmt > 0 and gap * 100 <= float(ex.get("buy_limit_open_max", 0.0)):
+                    _pc = float(prev_close.iloc[0])
+                    _px = _pc * (1 + _fl / 100.0)
+                    _f = (float(row["close_adj"]) / float(row["close"])
+                          if float(row["close"]) else 0.0)
+                    if _f > 0 and float(row["low"]) * _f <= _px + 1e-9:
+                        _lim_px = _px
+                        gap = _fl / 100.0
+                if _lim_px is None:
+                    trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%未达承接线{_fl}%"))
+                    continue
             if skip_gap_deep is not None and gap * 100 < skip_gap_deep:
                 trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%深于崩塌线{skip_gap_deep}%"))
                 continue
             if min_top1_score is not None and p.get("score", 0) < min_top1_score:
                 trades.append(_trade(p, "skip", d, note=f"top1评分{p.get('score',0):.2f}低于门槛{min_top1_score}"))
                 continue
-            qualified.append({**p, "_row": row, "_gap": gap})
+            qualified.append({**p, "_row": row, "_gap": gap, "_lim_px": _lim_px})
         if not qualified:
             return
         # 每笔固定占组合总资产 frac%(与达标数量解耦, 防恐慌晨逆向选择),
@@ -449,14 +480,17 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             alloc = min(pick_frac * equity, cash)
             if alloc < frac * equity * 0.3:  # 剩余资金不足单笔最低规模(30%)则放弃
                 break
-            buy_eff = row["open_adj"] * (1 + slip)
+            _lp = p.get("_lim_px")
+            buy_eff = (float(_lp) if _lp else float(row["open_adj"])) * (1 + slip)
             units = alloc / (buy_eff * (1 + comm))
             fee = alloc * comm
             fee_total += fee
             cash -= alloc
+            _f = (float(row["close_adj"]) / float(row["close"]) if float(row["close"]) else 0.0)
             holding.append({
                 **p, "buy_date": d, "units": units, "buy_eff": buy_eff,
-                "buy_px_raw": float(row["open"]), "buy_idx": idx,
+                "buy_px_raw": round(float(_lp) / _f, 4) if (_lp and _f) else float(row["open"]),
+                "fill": "limit" if _lp else "open", "buy_idx": idx,
             })
         # 未成交部分留在现金中, 复利滚动
         # 注: A股T+1制度, 当日买入的股票当日不可卖出, 因此不存在任何
@@ -538,6 +572,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "rank": h.get("_rank"), "pool": h.get("pool", "main"),
                 "strategy": h.get("strategy", "dip"),
                 "buy_date": h["buy_date"], "buy_px": h["buy_px_raw"],
+                "fill": h.get("fill", "open"),
                 "sell_date": sell_d, "sell_px": float(row["close" if sold_at_close else "open"]),
                 "ret_pct": round(r * 100, 2), "note": note,
             })

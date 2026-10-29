@@ -223,8 +223,9 @@ def main():
     # 之前, 15:30首跑若榜单未发布(空), 后续触发自动重试; 非空落盘后不重复请求。
     try:
         _lhb = client.lhb_day(signal_date)
-        print(f"龙虎榜榜单: {_fmt(signal_date)} {_lhb and len(_lhb) or 0}条"
-              + ("" if len(_lhb) else "(未发布或为空, 下次运行重试)"))
+        _n_lhb = 0 if _lhb is None else len(_lhb)
+        print(f"龙虎榜榜单: {_fmt(signal_date)} {_n_lhb}条"
+              + ("" if _n_lhb else "(未发布或为空, 下次运行重试)"))
     except Exception as _e:  # noqa: BLE001 榜单失败不影响选股主流程
         print(f"龙虎榜榜单获取失败(不影响主流程): {_e}")
 
@@ -332,6 +333,32 @@ def main():
     cfg_sel["universe"]["listed_min_bars"] = 0
     # 发布池数量: 人工审核用, 默认取评分前 display_top_n 只(与回测的 top_n 资金部署口径解耦)
     disp_n = int(sel_cfg.get("display_top_n") or sel_cfg["top_n"])
+    # 第八十七轮: 绩效门控池深(与 src/backtest.py::do_buy 完全同口径)——
+    # 近 window 笔"已结算"成交均值 > min_avg 时扩到 hot_top_n, 否则收缩到 cold_top_n;
+    # 已结算样本不足 window 笔时保持 exec_top_n(与回测冷启动一致)。仅用账本中已实现成交,
+    # 无未来函数: 今日出池时点之前的成交才是已知的。
+    _dg = (cfg.get("execution") or {}).get("depth_gate") or {}
+    if _dg:
+        _w = int(_dg.get("window", 20))
+        _rets: list[float] = []
+        _led_p = ROOT / "output" / "monitor_samples.json"
+        if _led_p.exists():
+            try:
+                _d = json.loads(_led_p.read_text(encoding="utf-8"))
+                _rets = [float(s["ret_pct"]) for s in (_d.get("exec") or [])
+                         if s.get("ret_pct") is not None]
+            except Exception:  # noqa: BLE001 账本损坏按冷启动处理
+                _rets = []
+        if len(_rets) >= _w:
+            _avg = sum(_rets[-_w:]) / _w
+            _hot = _avg > float(_dg.get("min_avg", 0.0))
+            disp_n = int(_dg.get("hot_top_n" if _hot else "cold_top_n") or disp_n)
+            print(f"  绩效门控: 近{_w}笔均值{_avg:+.2f}% "
+                  f"{'≥' if _hot else '<'} {float(_dg.get('min_avg', 0.0)):+.2f}% "
+                  f"→ 发布池{'扩至' if _hot else '收缩至'}{disp_n}只")
+        else:
+            disp_n = int(sel_cfg.get("exec_top_n") or disp_n)
+            print(f"  绩效门控: 已结算{len(_rets)}笔<{_w} → 冷启动按{disp_n}只")
     ranked, stats = select_stocks(signal_date, by_date[signal_date], cfg_sel,
                                   names, top_n=sel_cfg["top_n"] + 8)
     # ---- 3b. 多策略合并池(第七十九轮) ----
@@ -685,17 +712,26 @@ def main():
     if allow_buy and not regime_ok_now:
         floor_now = ex.get("block_gap_below", floor_now)
     steps = []
+    _rk: dict[str, int] = {}   # 池内名次(主力/备用各自计数, 与回测 _rank 一致)
     # 顺延指引覆盖整个发布池(第六十一轮: 5→display_top_n只): 网页展示N只=指引N只=回测exec_top_n,
     # 三端一致——回测在发布池内顺延, 实盘按指引在发布池内顺延, 口径不再分叉
     for i, p in enumerate(verified, 1):
         # 备用池票有各自承接线(与回测 _gap_below 一致), 指引逐只按来源策略标注
         _strategy = p.get("strategy", "dip")
+        _pool = p.get("pool", "main")
+        _rk[_pool] = _rk.get(_pool, 0) + 1
         _floor = floor_now
-        if p.get("pool", "main") != "main":
-            i_fb = int(str(p["pool"])[2:]) - 1
+        if _pool != "main":
+            i_fb = int(str(_pool)[2:]) - 1
             fb_cfg = _fbs[i_fb] if 0 <= i_fb < len(_fbs) else {}
             if fb_cfg.get("gap_below") is not None:
                 _floor = fb_cfg["gap_below"]
+        # 第八十七轮: 名次梯度承接线(与 src/backtest.py 同口径) —— 池内名次越靠后,
+        # 要求缺口越深; 取所有满足条件的档中最深者(更严)。
+        for _t in (ex.get("gap_rank_tiers") or []):
+            if _rk[_pool] >= int(_t.get("rank_above", 1)):
+                _tg = float(_t.get("gap_below", _floor))
+                _floor = min(_tg, float(_floor)) if _floor else _tg
         steps.append({
             "rank": i, "code": p["code"], "name": p["name"], "score": p.get("score"),
             "close": p.get("close"), "pct": p.get("pct"),
