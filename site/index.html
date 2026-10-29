@@ -207,7 +207,7 @@ async function loadLatest() {
     : `<div class="big" style="color:var(--muted)">⛔ 明日不买入（空仓）</div>
        <div class="row"><b>判定：</b>${esc(td.buy_note || (d.picks.length === 0 ? "今日无合格候选" : "风控限制"))}</div>`;
   const stepsHtml = (td.steps || []).filter(s => s.rank > 0).map(s =>
-    `<div class="row">▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}</div>`).join("")
+    `<div class="row">▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}${s.strategy_cn ? `，<span class="badge" style="font-size:11px">${esc(s.strategy_cn)}</span>` : ""}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}</div>`).join("")
     || `<div class="row">▸ 今日候选池为空${td.empty_funnel ? `：` + Object.entries(td.empty_funnel).filter(([k,v])=>v!=null).map(([k,v])=>`${k} ${v}`).join(" → ") + " → 全部过滤" : ""}，明日空仓</div>`;
   // 两道判定对账(9:26竞价确认 vs 晚间panel结算) + 数据质量(过滤"新股首日属正常"条目)
   const au = d.audit || {};
@@ -243,9 +243,9 @@ async function loadLatest() {
   if (!d.picks.length) {
     document.getElementById("pool").innerHTML = `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
   } else {
-    let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>#</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
+    let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>#</th><th>策略</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>评分</th><th>入选理由</th></tr>`;
     d.picks.forEach((x, i) => {
-      html += `<tr><td class="skip ${i === 0 ? "up" : "muted"}" data-label="排名"><b>${i + 1}</b></td><td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name)}</td><td data-label="收盘价">${x.close}</td>
+      html += `<tr><td class="skip ${i === 0 ? "up" : "muted"}" data-label="排名"><b>${i + 1}</b></td><td data-label="策略"><span class="badge" style="font-size:11px">${esc(x.strategy_cn || "-")}</span></td><td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name)}</td><td data-label="收盘价">${x.close}</td>
         <td class="${pctCls(x.pct)}" data-label="涨幅">${pctStr(x.pct)}</td><td data-label="量比">${x.vol_ratio}</td><td data-label="换手率">${x.turnover_rate}%</td>
         <td data-label="成交额(亿)">${x.amount_yi}</td><td class="${pctCls(x.mom20)}" data-label="20日动量">${pctStr(x.mom20)}</td>
         <td data-label="评分"><b>${x.score}</b></td><td class="muted full" data-label="入选理由">${esc(x.reasons)}</td></tr>`;

@@ -24,7 +24,7 @@ import pandas as pd
 from .config import ROOT, load_config
 from .data_api import ZZClient
 from .monitor import compute_monitor
-from .selector import build_indicators, regime_series, select_stocks, split_by_date
+from .selector import STRATEGY_CN, build_indicators, regime_series, select_stocks, split_by_date
 from .backtest import fetch_panel
 
 DISCLAIMER = "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
@@ -334,18 +334,35 @@ def main():
     disp_n = int(sel_cfg.get("display_top_n") or sel_cfg["top_n"])
     ranked, stats = select_stocks(signal_date, by_date[signal_date], cfg_sel,
                                   names, top_n=sel_cfg["top_n"] + 8)
+    # ---- 3b. 多策略合并池(第七十九轮) ----
+    # 主力池 + 备用池(fb1/fb2...)合成一个池, 每只候选带 strategy/strategy_cn 标签。
+    # 展示配额: 主力 disp_n 只(次新剔除时向后顺延), 各备用池 top_n 只;
+    # 顺序=主力在前、备用在后, 与 src/backtest.py::do_buy 的买入顺延顺序完全一致。
+    _fbs = sel_cfg.get("fallbacks") or []
+    _main_all = [p for p in ranked if p.get("pool", "main") == "main"]
+    _fb_all = [p for p in ranked if p.get("pool", "main") != "main"] if _fbs else []
+    ranked = _main_all + _fb_all
+    quota = {"main": disp_n}
+    for i, fb in enumerate(_fbs, 1):
+        if fb.get("enabled", True):
+            quota[f"fb{i}"] = int(fb.get("top_n") or 0)
+    disp_cap = sum(quota.values())
     # ---- 4. 次新股/上市天数核查 ----
     start_far = (pd.Timestamp(signal_date) - pd.Timedelta(days=540)).strftime("%Y%m%d")
-    verified = []
+    verified, _pool_cnt = [], {}
     for p in ranked:
-        if len(verified) >= disp_n:
+        if len(verified) >= disp_cap:
             break
+        _pool = p.get("pool", "main")
+        if _pool_cnt.get(_pool, 0) >= quota.get(_pool, 0):
+            continue
         hist = client.stock_history(p["code"], start_far, signal_date)
         bars = len(hist)
         if bars < cfg["universe"]["listed_min_bars"]:
             print(f"  剔除次新/数据不足: {p['code']} {p['name']} ({bars}根K线)")
             continue
         verified.append(p)
+        _pool_cnt[_pool] = _pool_cnt.get(_pool, 0) + 1
 
     # ---- 5. 结算 T-2 发布池 ----
     out_dir = ROOT / "output"
@@ -670,12 +687,22 @@ def main():
     steps = []
     # 顺延指引覆盖整个发布池(第六十一轮: 5→display_top_n只): 网页展示N只=指引N只=回测exec_top_n,
     # 三端一致——回测在发布池内顺延, 实盘按指引在发布池内顺延, 口径不再分叉
-    for i, p in enumerate(verified[:disp_n], 1):
+    for i, p in enumerate(verified, 1):
+        # 备用池票有各自承接线(与回测 _gap_below 一致), 指引逐只按来源策略标注
+        _strategy = p.get("strategy", "dip")
+        _floor = floor_now
+        if p.get("pool", "main") != "main":
+            i_fb = int(str(p["pool"])[2:]) - 1
+            fb_cfg = _fbs[i_fb] if 0 <= i_fb < len(_fbs) else {}
+            if fb_cfg.get("gap_below") is not None:
+                _floor = fb_cfg["gap_below"]
         steps.append({
             "rank": i, "code": p["code"], "name": p["name"], "score": p.get("score"),
             "close": p.get("close"), "pct": p.get("pct"),
-            "rule": f"9:25竞价缺口 ≤ {floor_now}% 且 < 9% 且未停牌未一字 → 按{plan_frac:.0%}仓位买入",
-            "fallback": f"不达标 → 顺延第{i+1}名" if i < min(disp_n, len(verified)) else "",
+            "pool": p.get("pool", "main"), "strategy": _strategy,
+            "strategy_cn": p.get("strategy_cn", _strategy),
+            "rule": f"9:25竞价缺口 ≤ {_floor}% 且 < 9% 且未停牌未一字 → 按{plan_frac:.0%}仓位买入",
+            "fallback": f"不达标 → 顺延第{i+1}名" if i < len(verified) else "",
         })
     if not verified:
         steps.append({"rank": 0, "code": "", "name": "（今日无合格候选）", "rule": "明日空仓, 无需操作", "fallback": ""})
@@ -743,8 +770,11 @@ def main():
             "sell_point": "次日开盘集合竞价卖出",
             "position": _position_note(ex),
         },
-        "strategy": "次日开盘买入-再次日开盘卖出({})".format(
-            "趋势内缩量回调+次日深低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)"
+        "strategy": "次日开盘买入-再次日开盘卖出({}{})".format(
+            "趋势内缩量回调+次日深低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)",
+            ("＋合并池:" + "/".join(STRATEGY_CN.get(fb.get("mode"), str(fb.get("mode")))
+                                   for fb in (cfg["selection"].get("fallbacks") or [])))
+            if cfg["selection"].get("fallbacks") else "",
         ),
         "regime": regime_info,
         "stats": {k: v for k, v in stats.items()},
@@ -765,7 +795,9 @@ def main():
         "sell_date": _fmt(sell_d) if sell_d else "",
         "regime_ok": regime_info["ok"],
         "picks": [{"code": p["code"], "name": p["name"], "close": p["close"],
-                   "pct": p["pct"], "reasons": p["reasons"]} for p in verified],
+                   "pct": p["pct"], "reasons": p["reasons"],
+                   "pool": p.get("pool", "main"),
+                   "strategy_cn": p.get("strategy_cn", p.get("strategy", "dip"))} for p in verified],
         "status": "待结算",
     }
     history = [r for r in history if r["publish_date"] != new_rec["publish_date"]]

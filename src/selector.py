@@ -18,6 +18,18 @@ import pandas as pd
 
 from .config import board_of, load_config
 
+# 策略中文名(多策略合并池的展示标签: daily_run/site/回测成交记录共用同一套命名)
+STRATEGY_CN = {
+    "dip": "主力·趋势缩量回调",
+    "momentum": "隔夜动量",
+    "reversal": "超跌反转",
+    "squeeze": "低波缩量横盘",
+    "pullback": "趋势回踩5日线",
+    "limitup": "涨停深低开承接",
+    "spike": "放量突破承接",
+    "oversold": "深跌阳线反转",
+}
+
 
 # ----------------------------------------------------------------------
 def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
@@ -315,6 +327,150 @@ def _select_one(
             + w["neg_bias20"] * _zs(-df["bias20"])
         )
 
+    elif mode == "reversal":
+        # 超跌反转(第七十九轮): T日深跌后盘中出现明显承接(长下影+收盘拉回上沿),
+        # 博次日开盘的低开修复。与dip互补: dip要求趋势内浅回调, 本模式要的是趋势外深跌。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg.get("rev_pct_min", -9.5),
+                                  sel_cfg.get("rev_pct_max", -4.0))]
+        df = df[df["close"] > df["low_limit"]]              # 收盘未跌停
+        df = df[df["low"] < df["high"]]                     # 非一字
+        df = df[df["vol_ratio"] >= sel_cfg.get("rev_vol_ratio_min", 1.2)]  # 放量换手(恐慌盘出清)
+        df = df[df["close_pos"] >= sel_cfg.get("rev_close_pos_min", 0.60)]  # 收盘拉回区间上沿
+        df = df[df["low_tail"] >= sel_cfg.get("rev_low_tail_min", 0.8)]     # 长下影承接
+        df = df[df["mom20"] <= sel_cfg.get("rev_mom20_max", 5.0)]           # 前期已跌(超跌)
+        df = df[df["dist_low20"] <= sel_cfg.get("rev_dist_low20_max", 15.0)]  # 贴近20日低点
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.40 * _zs(df["close_pos"])
+            + 0.20 * _zs(df["low_tail"])
+            + 0.20 * _zs(-df["mom20"])
+            + 0.20 * _zs(-df["dist_low20"])
+        )
+
+    elif mode == "squeeze":
+        # 低波缩量横盘(第七十九轮): 波动率与振幅双低的窄幅整理票, 温和放量小幅上攻,
+        # 博"低波→启动"的次日惯性。与dip互补: dip是回调阴线, 本模式是低波阳线。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg.get("sq_pct_min", 0.5),
+                                  sel_cfg.get("sq_pct_max", 5.0))]
+        df = df[df["close"] < df["high_limit"] - 1e-9]
+        df = df[df["low"] < df["high"]]
+        df = df[df["vol_ratio"].between(sel_cfg.get("sq_vol_ratio_min", 1.0),
+                                        sel_cfg.get("sq_vol_ratio_max", 2.5))]
+        df = df[df["amp_pct"] <= sel_cfg.get("sq_amp_max", 4.0)]           # 当日低振幅
+        ma_ok = (df["close_adj"] > df["ma5"]) & (df["ma5"] > df["ma10"]) & (df["ma10"] > df["ma20"])
+        df = df[ma_ok]
+        df = df[df["bias20"].abs() <= sel_cfg.get("sq_bias_max", 5.0)]     # 贴合均线(未加速)
+        df = df[df["mom20"].between(sel_cfg.get("sq_mom20_min", 0.0),
+                                    sel_cfg.get("sq_mom20_max", 15.0))]
+        if len(df):
+            q = sel_cfg.get("sq_ivol_q", 0.35)
+            df = df[df["ivol20"] <= df["ivol20"].quantile(q)]              # 截面低波分位
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.30 * _zs(-df["ivol20"])
+            + 0.20 * _zs(-df["amp_pct"])
+            + 0.20 * _zs(df["mom3"])
+            + 0.20 * _zs(-df["bias20"])
+            + 0.10 * _zs(np.log1p(df["amount"]))
+        )
+
+    elif mode == "pullback":
+        # 趋势回踩5日线(第七十九轮): 中期强趋势票缩量回踩5日线不破, 博趋势延续。
+        # 与dip互补: dip要求阴线深浅回调且20日动量<25%, 本模式允许强趋势(动量到45%)。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg.get("pb_pct_min", -3.0),
+                                  sel_cfg.get("pb_pct_max", 1.0))]
+        df = df[df["close"] > df["low_limit"]]
+        df = df[df["low"] < df["high"]]
+        df = df[df["close_adj"] > df["ma20"]]
+        df = df[df["ma20"] > df["ma20_prev"]]                              # 20日线向上
+        df = df[df["mom20"].between(sel_cfg.get("pb_mom20_min", 12.0),
+                                    sel_cfg.get("pb_mom20_max", 45.0))]
+        df = df[df["dist_ma5"].between(sel_cfg.get("pb_dist_ma5_min", -3.0),
+                                       sel_cfg.get("pb_dist_ma5_max", 2.0))]
+        df = df[df["vol_ratio"] <= sel_cfg.get("pb_vol_ratio_max", 1.3)]    # 缩量回踩
+        df = df[df["bias20"] <= sel_cfg.get("bias20_max", 8.0)]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.35 * _zs(df["mom20"])
+            + 0.25 * _zs(-df["dist_ma5"])
+            + 0.20 * _zs(-df["vol_ratio"])
+            + 0.20 * _zs(-df["bias20"])
+        )
+
+    elif mode == "limitup":
+        # 涨停封板次日深低开承接(第七十九轮): T日封死涨停、位置不高, T+1恐慌低开时接,
+        # 博获利盘出尽后的修复。与dip互补: dip是缩量阴线, 本模式是放量涨停。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["close"] >= df["high_limit"] - 1e-9]        # 收盘封板
+        df = df[df["low"] < df["high"]]                        # 非一字板(盘中可成交)
+        df = df[df["pct"] >= sel_cfg.get("lu_pct_min", 4.5)]
+        df = df[df["mom20"] <= sel_cfg.get("lu_mom20_max", 40.0)]  # 非高位连板
+        df = df[df["bias20"] <= sel_cfg.get("lu_bias20_max", 12.0)]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.40 * _zs(-df["bias20"])
+            + 0.30 * _zs(-np.log1p(df["amount"]))
+            + 0.20 * _zs(df["mom20"])
+            + 0.10 * _zs(-df["vol_ratio"])
+        )
+
+    elif mode == "spike":
+        # 放量突破次日深低开承接(第七十九轮): T日放量中阳、收盘靠近当日高位,
+        # T+1回抽深低开时接。与dip互补: dip要缩量, 本模式要放量。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg.get("sp_pct_min", 3.0),
+                                  sel_cfg.get("sp_pct_max", 7.0))]
+        df = df[df["close"] < df["high_limit"] - 1e-9]
+        df = df[df["low"] < df["high"]]
+        df = df[df["vol_ratio"].between(sel_cfg.get("sp_vol_ratio_min", 1.5),
+                                        sel_cfg.get("sp_vol_ratio_max", 3.5))]
+        df = df[df["close_pos"] >= sel_cfg.get("sp_close_pos_min", 0.65)]
+        df = df[df["mom20"].between(sel_cfg.get("sp_mom20_min", 0.0),
+                                    sel_cfg.get("sp_mom20_max", 30.0))]
+        df = df[df["bias20"] <= sel_cfg.get("bias20_max", 8.0)]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.35 * _zs(df["close_pos"])
+            + 0.25 * _zs(df["vol_ratio"])
+            + 0.20 * _zs(df["mom20"])
+            + 0.20 * _zs(-df["bias20"])
+        )
+
+    elif mode == "oversold":
+        # 深跌趋势中的阳线反转(第七十九轮): 已深跌(mom20很负)的票T日收阳、盘中承接,
+        # T+1再深低开时接。与dip互补: dip只在上升趋势内做回调, 本模式专门做下跌趋势末端。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg.get("os_pct_min", 1.0),
+                                  sel_cfg.get("os_pct_max", 6.0))]
+        df = df[df["close"] > df["low_limit"]]
+        df = df[df["low"] < df["high"]]
+        df = df[df["mom20"] <= sel_cfg.get("os_mom20_max", -10.0)]      # 20日深跌
+        df = df[df["dist_low20"] <= sel_cfg.get("os_dist_low20_max", 10.0)]  # 贴近20日低点
+        df = df[df["close_pos"] >= sel_cfg.get("os_close_pos_min", 0.60)]
+        df = df[df["vol_ratio"] >= sel_cfg.get("os_vol_ratio_min", 1.2)]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.35 * _zs(-df["mom20"])
+            + 0.25 * _zs(df["close_pos"])
+            + 0.20 * _zs(-df["dist_low20"])
+            + 0.20 * _zs(df["vol_ratio"])
+        )
+
     else:
         raise ValueError(f"未知选股模式: {mode}")
 
@@ -331,6 +487,30 @@ def _select_one(
                 "均线多头",
                 f"换手{r['turnover_rate']:.1f}%",
                 f"20日动量{r['mom20']:.0f}%",
+            ]
+        elif mode == "reversal":
+            reasons = [
+                f"深跌{r['pct']:.1f}%",
+                f"收盘位置{r['close_pos']:.2f}(拉回)",
+                f"下影{r['low_tail']:.1f}%",
+                f"量比{r['vol_ratio']:.1f}(放量)",
+                f"距20日低{r['dist_low20']:.1f}%",
+            ]
+        elif mode == "squeeze":
+            reasons = [
+                f"涨幅{r['pct']:.1f}%",
+                f"振幅{r['amp_pct']:.1f}%(低波)",
+                f"IVOL{r['ivol20']:.3f}",
+                f"乖离{r['bias20']:.1f}%",
+                "均线多头",
+            ]
+        elif mode == "pullback":
+            reasons = [
+                f"回踩{r['pct']:.1f}%",
+                f"距5日线{r['dist_ma5']:.1f}%",
+                f"量比{r['vol_ratio']:.2f}(缩量)",
+                f"20日动量{r['mom20']:.0f}%",
+                "20日线向上",
             ]
         else:  # dip
             reasons = [
@@ -352,6 +532,8 @@ def _select_one(
             "mom20": round(float(r["mom20"]), 1),
             "score": round(float(r["score"]), 3),
             "reasons": "、".join(reasons),
+            "strategy": mode,
+            "strategy_cn": STRATEGY_CN.get(mode, mode),
         })
     return picks, stats
 
@@ -390,7 +572,7 @@ def select_stocks(
                 continue
             have.add(p["code"])
             p["pool"] = f"fb{i}"
-            p["reasons"] = f"{p.get('reasons', '')}｜备用{i}".lstrip("｜")
+            p["reasons"] = f"{p.get('reasons', '')}｜备用{i}·{p.get('strategy_cn', '')}".lstrip("｜")
             picks.append(p)
             seen[p["pool"]] = seen.get(p["pool"], 0) + 1
     stats["fallback_counts"] = {k: v for k, v in seen.items() if k != "main"}

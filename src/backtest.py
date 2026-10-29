@@ -535,7 +535,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             r = proceeds / denom - 1 if denom and denom > 0 else 0.0
             trades.append({
                 "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
-                "rank": h.get("_rank"),
+                "rank": h.get("_rank"), "pool": h.get("pool", "main"),
+                "strategy": h.get("strategy", "dip"),
                 "buy_date": h["buy_date"], "buy_px": h["buy_px_raw"],
                 "sell_date": sell_d, "sell_px": float(row["close" if sold_at_close else "open"]),
                 "ret_pct": round(r * 100, 2), "note": note,
