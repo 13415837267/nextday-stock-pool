@@ -3,9 +3,17 @@ name: 每日选股更新
 
 on:
   schedule:
-    - cron: "0 10 * * 1-5"   # 北京时间周一至周五 18:00 每交易日自动更新一次(免费数据源当日数据此时已完整)
-    - cron: "0 12 * * 1-5"   # 自愈重试1(北京20:00): GitHub schedule 高峰延迟可达数小时(2026-10-26实测延迟6.3h,
-    - cron: "0 14 * * 1-5"   # 自愈重试2(北京22:00): 页面当晚不更新); 双备用槽兜底, 幂等守卫保证只跑一遍
+    # GitHub schedule 是"排队触发"而非"准点执行": 高峰期排队延迟可达数小时(2026-10-26 实测 6.3h,
+    # 2026-10-30 的三个槽被合并且推迟到次日 00:2x)。因此不靠"把时间调早"解决——提前只会让
+    # 预期完成时间前移, 延迟量本身不变, 且 18:00 已是数据源当日数据完整的下限, 再早会拿到残缺数据。
+    # 正确做法: 用密集槽位覆盖同一时间窗, 任一槽跑成即生效, 由幂等守卫收敛为只算一遍。
+    # 末班槽止于北京 22:00, 即使再延迟 2h 也在当日完成, 避免跨日导致"执行日≠数据日"。
+    - cron: "0 10 * * 1-5"   # 北京 18:00 主槽(免费数据源当日数据此时已完整, 不宜再提前)
+    - cron: "0 11 * * 1-5"   # 北京 19:00 重试1
+    - cron: "0 12 * * 1-5"   # 北京 20:00 重试2
+    - cron: "0 13 * * 1-5"   # 北京 21:00 重试3
+    - cron: "0 14 * * 1-5"   # 北京 22:00 重试4(末班, 留 2h 跨日缓冲)
+    - cron: "0 22 * * 1-5"   # 北京次日 06:00 补漏槽: 前一交易日全部延迟/失败时的最后兜底
   push:
     branches: [main]          # main 一有更新(策略优化/数据提交)即重新部署网页, 保证站点与 main 始终一致
     paths-ignore:             # 竞价确认只改 auction.json, 由 auction.yml 自行部署, 不触发每日全量
@@ -32,13 +40,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 备用槽幂等检查(当日已有数据更新提交则跳过全量重跑)
+      - name: 幂等检查(该数据日已处理则本槽跳过, 密集重试槽靠它收敛)
         id: guard
         run: |
+          # 判定口径由"执行日"改为"数据日": latest.json 的 signal_date 即最近一次已处理的交易日。
+          # 它等于今天(北京) => 今日收盘数据已落库, 后续重试槽全部跳过。
+          # 它小于今天 => 上一交易日未处理(含 schedule 延迟跨日), 不跳过, 交给 daily_run 补算。
           today=$(TZ=Asia/Shanghai date +%F)
-          if [ "${{ github.event_name }}" = "schedule" ] && \
-             git log --since="$today 00:00 +0800" --grep="数据更新: $today" --oneline | grep -q .; then
-            echo "今日($today)数据更新已存在, 备用槽跳过"
+          prev_sig=$(python3 -c "import json;print(json.load(open('output/latest.json',encoding='utf-8')).get('signal_date',''))" 2>/dev/null || echo "")
+          echo "今日=$today 已处理数据日=$prev_sig"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$prev_sig" = "$today" ]; then
+            echo "信号日 $prev_sig 已处理, 本槽跳过"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -77,16 +89,20 @@ jobs:
           TZ: Asia/Shanghai
         run: python tools/make_health.py
 
-      - name: 提交更新记录(中文留痕)
+      - name: 提交更新记录(中文留痕, 日期取数据日而非执行日)
         if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 提交日期取 signal_date: 延迟跨日时执行日 != 数据日, 写执行日会让提交历史与账本对不上
+          # (2026-10-31 00:22 曾出现"数据更新: 2026-10-31"但实际一行数据都没采的误导性提交)
+          sig=$(python3 -c "import json;print(json.load(open('output/latest.json',encoding='utf-8')).get('signal_date',''))" 2>/dev/null || echo "")
+          [ -z "$sig" ] && sig=$(TZ=Asia/Shanghai date +%F)
           git add -A output CHANGELOG.md data
           if git diff --cached --quiet; then
             echo "无数据变更, 跳过提交"
           else
-            git commit -m "数据更新: $(TZ=Asia/Shanghai date +%F) 收盘选股与次日候选池 [skip ci]"
+            git commit -m "数据更新: $sig 收盘选股与次日候选池 [skip ci]"
             git push
           fi
 

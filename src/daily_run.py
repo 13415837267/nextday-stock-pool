@@ -2,7 +2,7 @@
 """每日运行入口(供 GitHub Actions 每日收盘后调用)。
 
 流程:
-  0. 交易日历闸门: 非交易日(周末/法定假日)或同信号日已处理则跳过
+  0. 信号日幂等闸门: 非交易日不空转, 按"最新完整交易日"补缺(防 schedule 延迟跨日丢数据)
   1. 确定最新有完整数据的交易日 T
   2. 抓取近 regime.warmup_days 个交易日全市场日线 -> 计算指标与大盘风控
   3. 在 T 日横截面上执行选股, 得到"次日(T+1)计划候选池"
@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -181,19 +180,28 @@ def main():
     client = ZZClient(cfg)
     t0 = time.time()
 
-    # ---- 0. 交易日历闸门: 非交易日(周末/法定假日)直接空转, 防周期轮询在非交易日重复计算 ----
+    # ---- 0. 交易日历标记: 非交易日不再硬性空转, 改由"信号日幂等闸门"决定是否补算 ----
+    # 历史教训(2026-10-31): 原实现在执行日非交易日时直接 return。但 GitHub schedule 排队延迟
+    # 常达数小时(实测 6h+), 18:00/20:00/22:00 三个槽会被推迟到次日 00:2x 才执行 —— 此时"执行日"
+    # 已变成周六, 闸门判定非交易日空转, 前一周期的收盘数据(2026-10-30 龙虎榜/选股/账本)便永久
+    # 丢弃, 而 latest.json 停在上一日, 页面无任何报错, 只能靠人工比对 data/lhb 日期才发现。
+    # 现改为: 无论执行日是否交易日, 都先解析"最新完整交易日", 再由信号日幂等闸门判断该日是否
+    # 已处理; 未处理则照常补算(延迟跨日自愈), 已处理则快速跳过(防重复计算)。
     try:
         from zoneinfo import ZoneInfo
         _now = datetime.now(ZoneInfo("Asia/Shanghai"))
     except Exception:  # noqa: BLE001 时区库不可用时退回系统本地时间
         _now = datetime.now()
     _today = _now.strftime("%Y%m%d")
-    # DAILY_RUN_FORCE=1: 旁路非交易日闸门, 供人工补算/恢复(如周末重建账本);
-    # 仅手动设置, workflow不设此变量 —— 信号日仍取"最新完整交易日", 结算/选股口径不变
-    if not client.is_trading_day(_today) and not os.environ.get("DAILY_RUN_FORCE"):
-        print(f"今日{_fmt(_today)}非A股交易日(周末或法定假日), 按交易日历跳过")
-        return
-    print(f"今日{_fmt(_today)}为A股交易日, 开始运行")
+    try:
+        _today_is_trading = client.is_trading_day(_today)
+    except Exception as _e:  # noqa: BLE001 日历不可用时按非交易日处理(继续走补缺路径, 不误跳过)
+        print(f"⚠ 交易日历查询失败({_e}), 按非交易日继续执行补缺检查")
+        _today_is_trading = False
+    if _today_is_trading:
+        print(f"今日{_fmt(_today)}为A股交易日, 开始运行")
+    else:
+        print(f"今日{_fmt(_today)}非A股交易日(周末或法定假日), 继续执行补缺检查(覆盖延迟跨日的上一交易日)")
 
     # ---- 1. 最新完整交易日 ----
     # 历史: trade_days只含已过去交易日; 未来: 确定信号日后用区间查询补齐——
@@ -247,9 +255,10 @@ def main():
     except Exception as _e:  # noqa: BLE001 财务数据失败不影响选股主流程
         print(f"财务数据抓取失败(不影响主流程): {_e}")
 
-    # ---- 1.4 同信号日幂等跳过: 今日收盘信号已处理过则不重复计算(防重复触发) ----
-    # 注: 仅当解析出的信号日就是今天(收盘数据已完整)且与latest.json一致时跳过;
-    #     信号日<今天(盘前运行/数据延迟)时不跳过, 保留既有补算与恢复路径
+    # ---- 1.4 同信号日幂等跳过: 该交易日收盘信号已处理过则不重复计算(防重复触发) ----
+    # 交易日: 仍要求 signal_date >= _today, 保留盘前运行(信号日<今天)的补算与恢复路径;
+    # 非交易日(含 schedule 延迟跨日): 只要 latest.json 已是该信号日即跳过, 避免周末重复全量计算。
+    # 二者都只在"该信号日确实处理过"时跳过 —— 上一交易日未处理时会照常补算, 这是丢数据后的自愈入口。
     _latest_path = ROOT / "output" / "latest.json"
     _prev_sig = ""
     if _latest_path.exists():
@@ -257,8 +266,8 @@ def main():
             _prev_sig = str((json.loads(_latest_path.read_text(encoding="utf-8")) or {}).get("signal_date") or "")
         except Exception:  # noqa: BLE001 latest.json损坏时视为未处理, 正常重算
             _prev_sig = ""
-    if _prev_sig == _fmt(signal_date) and signal_date >= _today:
-        print(f"信号日{_fmt(signal_date)}今日已处理过(latest.json一致), 幂等跳过")
+    if _prev_sig == _fmt(signal_date) and (signal_date >= _today or not _today_is_trading):
+        print(f"信号日{_fmt(signal_date)}已处理过(latest.json一致), 幂等跳过")
         return
 
     names_df = client.stock_names()
