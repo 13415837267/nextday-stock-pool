@@ -210,12 +210,31 @@ def main():
     cal = client.trade_days(days=cfg["regime"].get("warmup_days", 30) + 45)
     signal_date = None
     day_df = None
-    for d in reversed(cal[-8:]):
-        df = client.market_day(d)
-        if len(df) >= 3000:
-            signal_date = d
-            day_df = df
-            break
+    # 先探测最近两个交易日的行数, 识别"当日行情只发布了部分股票"的半成品状态。
+    # 背景(2026-10-31): 主槽提前到 16:00(收盘后仅 1 小时), 数据源可能尚未发布完整全市场行情。
+    # 原判据 len(df)>=3000 过松——全市场约 5400 只, 只出 4000 只也会通过, 从而把残缺行情当作
+    # 完整收盘数据参与选股(静默错误, 比"没更新"更难发现)。故增加相对判据: 当日行数不足前一
+    # 交易日的 95% 时视为未出全, 顺延到上一交易日, 由后续补数据槽在行情出全后重新产出。
+    _recent = [(d, client.market_day(d)) for d in reversed(cal[-2:])]
+    for _i, (_d, _df) in enumerate(_recent):
+        _n = len(_df)
+        if _n < 3000:
+            continue
+        if _i + 1 < len(_recent):
+            _base_n = len(_recent[_i + 1][1])
+            if _base_n >= 3000 and _n < _base_n * 0.95:
+                print(f"⚠ {_fmt(_d)} 行情仅 {_n} 行(前一交易日 {_base_n} 行, {_n / _base_n:.1%}),"
+                      f" 疑似当日未出全, 顺延到上一交易日")
+                continue
+        signal_date, day_df = _d, _df
+        break
+    if signal_date is None:  # 回落: 原逐日探测(应对连续多日缺失/半成品的极端情况)
+        for d in reversed(cal[-8:]):
+            df = client.market_day(d)
+            if len(df) >= 3000:
+                signal_date = d
+                day_df = df
+                break
     if signal_date is None:
         raise RuntimeError("近8个交易日均无完整行情数据, 终止")
     try:
@@ -256,9 +275,10 @@ def main():
         print(f"财务数据抓取失败(不影响主流程): {_e}")
 
     # ---- 1.4 同信号日幂等跳过: 该交易日收盘信号已处理过则不重复计算(防重复触发) ----
-    # 交易日: 仍要求 signal_date >= _today, 保留盘前运行(信号日<今天)的补算与恢复路径;
-    # 非交易日(含 schedule 延迟跨日): 只要 latest.json 已是该信号日即跳过, 避免周末重复全量计算。
-    # 二者都只在"该信号日确实处理过"时跳过 —— 上一交易日未处理时会照常补算, 这是丢数据后的自愈入口。
+    # 判定口径就是"信号日": signal_date 本身已是"最新完整交易日", 只要 latest.json 就是这一天,
+    # 说明该日已处理完毕, 再算一遍结果必然相同。因此不再附加 signal_date>=_today 的日期比较 ——
+    # 那个条件会让"数据尚未出全的早槽"(如 16:00 主槽)反复重算上一交易日, 白烧 runner 且可能
+    # 用旧数据刷新 output。数据没出全时这里直接跳过, 交给后续重试槽; 数据出全后自然放行。
     _latest_path = ROOT / "output" / "latest.json"
     _prev_sig = ""
     if _latest_path.exists():
@@ -266,7 +286,7 @@ def main():
             _prev_sig = str((json.loads(_latest_path.read_text(encoding="utf-8")) or {}).get("signal_date") or "")
         except Exception:  # noqa: BLE001 latest.json损坏时视为未处理, 正常重算
             _prev_sig = ""
-    if _prev_sig == _fmt(signal_date) and (signal_date >= _today or not _today_is_trading):
+    if _prev_sig == _fmt(signal_date):
         print(f"信号日{_fmt(signal_date)}已处理过(latest.json一致), 幂等跳过")
         return
 

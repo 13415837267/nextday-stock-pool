@@ -222,7 +222,6 @@ async function loadLatest() {
     <div class="plan-grid">
       <div class="t1-box" style="grid-column:1/-1">
         <div class="k muted" style="font-size:12px">T+1（${fmtDate(p.buy_date)}）执行判定卡 · 9:25 竞价结束后照此执行</div>
-        <div id="auction-box" class="row" style="padding:8px 0;border-top:1px dashed var(--border);margin-top:8px"><span class="muted">竞价确认: 加载中…</span></div>
         ${judgeHead}
         ${stepsHtml}
         ${auditHtml}
@@ -237,8 +236,6 @@ async function loadLatest() {
         <b>仓位</b><br><span class="muted">${esc(p.position || "")}</span>
       </div>
     </div>`;
-
-  renderAuction(p.buy_date);
 
   if (!d.picks.length) {
     document.getElementById("pool").innerHTML = `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
@@ -255,51 +252,6 @@ async function loadLatest() {
   document.getElementById("disclaimer").textContent = d.disclaimer || "";
 }
 
-/* ---------- 竞价确认卡(9:26 自动判定) ---------- */
-async function renderAuction(buyDate) {
-  const box = document.getElementById("auction-box");
-  if (!box) return;
-  try {
-    const r = await fetch(`data/auction.json?t=${Date.now()}`);
-    if (!r.ok) throw 0;
-    const a = await r.json();
-    const isToday = a.for_today;
-    const hasSell = a.sell_today && a.sell_today.length;
-    // 新鲜度自检(第五十九轮): confirm_time 日期早于今日 = 今日竞价确认未生成(流水线异常), 显式告警防误读 ——
-    // 旧卡的"今日非买入日/今日空仓"文案会让用户误以为是策略判定, 实为数据未更新(2026-10-26 事故)
-    const cd = (a.confirm_time || "").split(" ")[0];
-    const todayStr = new Date().toLocaleDateString("sv-SE"); // 本地 YYYY-MM-DD
-    let stale = "";
-    if (cd && cd < todayStr) {
-      stale = `<div style="color:var(--gold);font-size:12px;margin-bottom:4px">⚠ 此为 ${esc(cd)} 的旧确认卡 — 今日竞价确认尚未生成(流水线异常), 晚间结算不受影响</div>`;
-    }
-    let head, body = "";
-    if (!isToday && !hasSell) {
-      head = `<span class="muted">今日非买入日（计划买入日 ${fmtDate(a.buy_date)}），无需竞价确认</span>`;
-    } else if (a.action === "buy") {
-      head = `<span style="color:var(--up)"><b>🔔 竞价确认（${a.confirm_time.split(" ")[1] || ""}）：买入 第${a.rank}名 ${esc(a.name)}（${esc(a.code)}）</b></span>
-        <span class="muted">· 开盘价 ${a.open_px} · 缺口 ${pctStr(a.gap_pct)} · 仓位 ${a.position_pct}%</span>`;
-    } else {
-      head = `<span class="muted"><b>⛔ 竞价确认：今日空仓</b> · ${esc(a.note || "")}</span>`;
-    }
-    if (a.chain && a.chain.length) body = `<div class="muted" style="font-size:12px;margin-top:4px">${a.chain.map(esc).join("；")}</div>`;
-    if (hasSell) {
-      body += `<div style="margin-top:6px">` + a.sell_today.map(s =>
-        `<span style="color:var(--gold)">📤 今日开盘卖出 <b>${esc(s.name)}</b>(${esc(s.code)}) 买入价${s.buy_px}（${fmtDate(s.buy_date)}）`
-        + ` · 竞价开盘${s.open_px ?? "-"} · 预计实现 <b class="${pctCls(s.est_ret_pct)}">${s.est_ret_pct != null ? pctStr(s.est_ret_pct) : "-"}</b>（含费用）`
-        + (s.limit_down ? ` · <span style="color:var(--red)">开盘跌停 → 按规则今日收盘卖出</span>` : ``) + `</span>`).join("<br>") + `</div>`;
-    }
-    if (a.positions && a.positions.length) {
-      body += `<div style="margin-top:6px">`
-        + (a.positions_time ? `<span class="muted" style="font-size:12px">现价截至 ${esc(a.positions_time)}（收盘后=收盘价, 盘中=实时价）</span><br>` : "")
-        + a.positions.map(p =>
-        `<span>📌 当前持仓 <b>${esc(p.name)}</b>(${esc(p.code)}) 买入${p.buy_px}（${fmtDate(p.buy_date)}）· 现价${p.cur_px} · 浮动 <b class="${pctCls(p.float_pct)}">${pctStr(p.float_pct)}</b></span>`).join("<br>") + `</div>`;
-    }
-    box.innerHTML = stale + head + body;
-  } catch (e) {
-    box.innerHTML = `<span class="muted">竞价确认: 尚未生成（每交易日 9:26 自动更新）</span>`;
-  }
-}
 
 /* ---------- 三: 单吊执行记录(逐笔明细) ---------- */
 async function loadExecHistory() {
@@ -307,13 +259,9 @@ async function loadExecHistory() {
   try {
     const d = await jget("./data/history.json");
     const recs = d.records || [];
-    // 早盘确认收益(第五十七轮补充): 持仓行接入竞价确认卡数据 —— 今日卖出日显示预计实现收益,
-    // 未到卖出日显示实时浮盈; 正式账仍以晚间panel结算为准, 此处仅展示
-    let au = null;
-    try { au = await jget("./data/auction.json"); } catch (e) { /* 早盘未生成时静默, 行为与旧版一致 */ }
+    // 竞价确认已于 2026-10-31 停用(独立 workflow 删除, 买入判定统一由前一交易日收盘后的选股
+    // 计划卡承担), 故不再读取 auction.json —— 否则会读到停用前的陈旧浮盈/卖出记录并当作今日数据。
     const sellMap = {}, posMap = {};
-    if (au && au.sell_today) au.sell_today.forEach(s => { sellMap[s.code] = s; });
-    if (au && au.positions) au.positions.forEach(p => { posMap[p.code] = p; });
     const det = recs.filter(r => r.executed);
     let cum = 1;
     det.slice().reverse().forEach(r => { cum *= (1 + r.executed.ret_pct / 100); });
