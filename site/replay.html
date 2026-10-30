@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>历史回放 · 2026-09-01 ~ 2026-10-31</title>
+<style>
+  :root {
+    --bg:#0b0e14; --panel:#12161f; --panel2:#171c26; --border:#232a36;
+    --text:#e6edf3; --muted:#8b949e; --gold:#d4a017; --red:#f85149;
+    --green:#3fb950; --blue:#58a6ff; --purple:#bc8cff;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif; line-height:1.65; }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 16px 64px; }
+  header { border-bottom:1px solid var(--border); padding-bottom:18px; margin-bottom:22px; }
+  h1 { font-size:25px; color:var(--gold); }
+  h1 small { font-size:13px; color:var(--muted); font-weight:normal; margin-left:12px; }
+  .meta { color:var(--muted); font-size:13px; margin-top:6px; }
+  .badges { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+  .badge { font-size:12px; padding:3px 10px; border-radius:12px; border:1px solid var(--border); color:var(--muted); }
+  .badge.ok { color:var(--green); border-color:var(--green); }
+  .badge.gold { color:var(--gold); border-color:var(--gold); }
+  .badge a { color:inherit; text-decoration:none; }
+  h2 { font-size:18px; margin:30px 0 12px; padding-left:10px; border-left:3px solid var(--gold); }
+  h2 .sub { font-size:12px; color:var(--muted); font-weight:normal; margin-left:8px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .card .k { color:var(--muted); font-size:12px; }
+  .card .v { font-size:20px; font-weight:600; margin-top:4px; }
+  .card .s { font-size:11px; color:var(--muted); margin-top:2px; }
+  .up { color:var(--red); } .down { color:var(--green); }
+  table { width:100%; border-collapse:collapse; font-size:13px; background:var(--panel); border-radius:8px; overflow:hidden; }
+  th,td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th { background:#1a202b; color:var(--muted); font-weight:500; }
+  tr:hover td { background:#1a2029; }
+  .muted { color:var(--muted); }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; }
+  .tbl-wrap { overflow-x:auto; }
+  details { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px 16px; }
+  summary { cursor:pointer; color:var(--gold); font-size:14px; }
+  .note { font-size:13px; color:var(--muted); }
+  .note b { color:var(--text); }
+  .note li { margin-left:18px; }
+  code { background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:12px; color:var(--blue); }
+  .tag { font-size:11px; padding:1px 6px; border-radius:4px; border:1px solid var(--border); color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>历史回放 <small>2026-09-01 ~ 2026-10-31</small></h1>
+  <div class="meta">按当前策略逐日重放 · 复用回测引擎 · 指标仅用截至当日数据</div>
+  <div class="badges">
+    <span class="badge gold">T日收盘选股 → T+1开盘竞价买入 → T+2开盘卖出</span>
+    <span class="badge ok">无未来函数</span>
+    <span class="badge">预热 155 交易日</span>
+    <span class="badge">面板 2026-01-05 起</span>
+    <span class="badge"><a href="./index.html">← 返回实盘看板</a></span>
+  </div>
+</header>
+
+<h2>区间概览 <span class="sub">按买入日归属，含区间内已平仓的 7 笔</span></h2>
+<div class="cards">
+  <div class="card"><div class="k">成交笔数</div><div class="v">7</div><div class="s">胜 3 负 4</div></div>
+  <div class="card"><div class="k">胜率</div><div class="v">42.9%</div></div>
+  <div class="card"><div class="k">平均单笔</div><div class="v up">+1.29%</div></div>
+  <div class="card"><div class="k">区间收益</div><div class="v up">+3.58%</div><div class="s">108.6万 → 112.5万</div></div>
+  <div class="card"><div class="k">区间最大回撤</div><div class="v down">-12.85%</div></div>
+  <div class="card"><div class="k">最好一笔</div><div class="v up">+10.75%</div></div>
+  <div class="card"><div class="k">最差一笔</div><div class="v down">-11.16%</div></div>
+</div>
+<div class="cards" style="margin-top:12px;grid-template-columns:repeat(4,1fr)"><div class='card'><div class='k'>2026年9月</div><div class='v up'>+4.28%</div></div><div class='card'><div class='k'>2026年10月</div><div class='v up'>+3.37%</div></div></div>
+
+<h2>账户净值 <span class="sub">起点 108.58 万（2026-09-01 收盘）</span></h2>
+<div class="panel"><svg viewBox="0 0 1100 280" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block">
+<defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#f85149" stop-opacity=".28"/><stop offset="100%" stop-color="#f85149" stop-opacity="0"/>
+</linearGradient></defs>
+<line x1='56' y1='250.0' x2='1082' y2='250.0' stroke='#232a36' stroke-width='1'/><text x='48' y='254.0' fill='#8b949e' font-size='10' text-anchor='end'>-2.7%</text><line x1='56' y1='192.0' x2='1082' y2='192.0' stroke='#232a36' stroke-width='1'/><text x='48' y='196.0' fill='#8b949e' font-size='10' text-anchor='end'>+3.1%</text><line x1='56' y1='134.0' x2='1082' y2='134.0' stroke='#232a36' stroke-width='1'/><text x='48' y='138.0' fill='#8b949e' font-size='10' text-anchor='end'>+8.9%</text><line x1='56' y1='76.0' x2='1082' y2='76.0' stroke='#232a36' stroke-width='1'/><text x='48' y='80.0' fill='#8b949e' font-size='10' text-anchor='end'>+14.7%</text><line x1='56' y1='18.0' x2='1082' y2='18.0' stroke='#232a36' stroke-width='1'/><text x='48' y='22.0' fill='#8b949e' font-size='10' text-anchor='end'>+20.5%</text>
+<polygon points="56.0,250.0 56.0,222.9 83.0,222.9 110.0,233.3 137.0,220.9 164.0,220.9 191.0,220.9 218.0,220.9 245.0,220.9 272.0,220.9 299.0,220.9 326.0,220.9 353.0,220.9 380.0,220.9 407.0,220.9 434.0,220.9 461.0,220.9 488.0,220.9 515.0,220.9 542.0,220.9 569.0,220.9 596.0,220.9 623.0,220.9 650.0,220.9 677.0,220.9 704.0,220.9 731.0,112.0 758.0,113.3 785.0,129.1 812.0,116.0 839.0,34.7 866.0,52.6 893.0,52.6 920.0,52.6 947.0,37.5 974.0,57.3 1001.0,57.3 1028.0,57.3 1055.0,70.1 1082.0,187.1 1082.0,250.0" fill="url(#g1)"/>
+<polyline points="56.0,222.9 83.0,222.9 110.0,233.3 137.0,220.9 164.0,220.9 191.0,220.9 218.0,220.9 245.0,220.9 272.0,220.9 299.0,220.9 326.0,220.9 353.0,220.9 380.0,220.9 407.0,220.9 434.0,220.9 461.0,220.9 488.0,220.9 515.0,220.9 542.0,220.9 569.0,220.9 596.0,220.9 623.0,220.9 650.0,220.9 677.0,220.9 704.0,220.9 731.0,112.0 758.0,113.3 785.0,129.1 812.0,116.0 839.0,34.7 866.0,52.6 893.0,52.6 920.0,52.6 947.0,37.5 974.0,57.3 1001.0,57.3 1028.0,57.3 1055.0,70.1 1082.0,187.1" fill="none" stroke="#f85149" stroke-width="2"/>
+<line x1="56" y1="222.9" x2="1082" y2="222.9" stroke="#8b949e" stroke-dasharray="4 4" stroke-width="1"/>
+<text x='56.0' y='272' fill='#8b949e' font-size='10' text-anchor='start'>09-01</text><text x='407.0' y='272' fill='#8b949e' font-size='10' text-anchor='middle'>09-18</text><text x='758.0' y='272' fill='#8b949e' font-size='10' text-anchor='middle'>10-15</text><text x='1082.0' y='272' fill='#8b949e' font-size='10' text-anchor='end'>10-30</text>
+</svg></div>
+
+<h2>成交明细 <span class="sub">T 日信号 → T+1 开盘买入 → T+2 开盘卖出</span></h2>
+<div class="tbl-wrap"><table id="trades"><thead><tr>
+  <th>信号日</th><th>买入日</th><th>卖出日</th><th>代码</th><th>名称</th><th>买入价</th><th>卖出价</th><th>收益</th><th>名次</th><th>备注</th>
+</tr></thead><tbody></tbody></table></div>
+
+<h2>逐日决策 <span class="sub">解释"这天为什么没买"</span></h2>
+<details>
+  <summary>展开 38 个交易日的选股/买入判定</summary>
+  <div class="tbl-wrap" style="margin-top:12px"><table id="daily"><thead><tr>
+    <th>买入日</th><th>风控</th><th>成交</th><th>候选与跳过原因</th>
+  </tr></thead><tbody></tbody></table></div>
+</details>
+
+<h2>口径说明</h2>
+<div class="panel note">
+  <p><b>为什么成交这么少？</b> 这不是漏跑。策略要求次日<b>低开 ≤ -2.35%</b>（弱市超限参与日为 -2.75%）才承接，
+  9 月候选票的实际缺口多在 -1.7% ~ +2.0%，未达承接线就主动放弃。
+  这 38 个交易日里，9 月成交 2 笔、10 月 5 笔，另有 10 天大盘风控直接空仓。
+  10 月大盘持续走弱触发「超长风控恢复参与」——连续风控超过 5 天后按 100% 仓位逐步恢复，故成交反而集中在 10 月。</p>
+  <p style="margin-top:10px"><b>无未来函数的三条保证：</b></p>
+  <ul>
+    <li>指标（MA/动量/波动/振幅）全部为 <code>rolling</code> / <code>shift(1)</code> 向后看，无 <code>center=True</code>、无 <code>shift(-n)</code>；</li>
+    <li>选股只传当日截面数据，不包含任何后续交易日行；风控序列同样只依赖当日及之前；</li>
+    <li>买入取 T+1 真实开盘价、卖出取 T+2 真实开盘价（跌停回退当日收盘），绩效门控只用已发生的成交。</li>
+  </ul>
+  <p style="margin-top:10px"><b>与实盘对账：</b>10-23 买入 300192.SZ（-0.40%）、10-29 买入 002811.SZ（-11.16%），
+  与实盘 <code>history.json</code> 的同日记录完全一致，说明回放与实盘同一套成交口径。</p>
+  <p style="margin-top:10px" class="muted">差异说明：实盘每日只加载 30 日面板（<code>listed_min_bars=0</code>），
+  回放用连续 155 日面板（<code>listed_min_bars=120</code>），次新股过滤口径不同，个别日期的候选池会有出入。</p>
+</div>
+
+<script>
+const DATA = {"meta": {"start": "20260901", "end": "20261031", "panel_first": "20260105", "panel_last": "20261030", "warmup_days": 155, "strategy": "T日收盘选股 → T+1开盘竞价买入 → T+2开盘卖出", "initial_capital": 1000000.0, "note": "复用回测引擎, 指标仅用截至当日数据, 买卖用当日真实开盘价, 无未来函数"}, "summary": {"n_trades": 7, "n_win": 3, "win_rate": 42.9, "avg_ret_pct": 1.29, "sum_ret_pct": 9.06, "best": 10.75, "worst": -11.16, "range_ret_pct": 3.58, "range_mdd_pct": -12.85, "base_date": "2026-09-01", "base_nav": 1085777.0, "end_nav": 1124679.0}, "trades": [{"signal_date": "20260831", "buy_date": "20260901", "sell_date": "20260902", "code": "001230.SZ", "name": "劲旅环境", "rank": 5, "pool": "main", "strategy": "dip", "buy_px": 20.72, "sell_px": 21.7, "ret_pct": 4.42, "note": ""}, {"signal_date": "20260901", "buy_date": "20260902", "sell_date": "20260903", "code": "000657.SZ", "name": "中钨高新", "rank": 5, "pool": "main", "strategy": "dip", "buy_px": 60.47, "sell_px": 60.63, "ret_pct": -0.04, "note": ""}, {"signal_date": "20261012", "buy_date": "20261013", "sell_date": "20261014", "code": "301176.SZ", "name": "逸豪新材", "rank": 1, "pool": "main", "strategy": "dip", "buy_px": 44.29, "sell_px": 49.2, "ret_pct": 10.75, "note": ""}, {"signal_date": "20261014", "buy_date": "20261015", "sell_date": "20261016", "code": "003001.SZ", "name": "中岩大地", "rank": 3, "pool": "main", "strategy": "dip", "buy_px": 16.9, "sell_px": 16.91, "ret_pct": -0.24, "note": ""}, {"signal_date": "20261016", "buy_date": "20261019", "sell_date": "20261020", "code": "002585.SZ", "name": "双星新材", "rank": 5, "pool": "main", "strategy": "dip", "buy_px": 9.75, "sell_px": 10.34, "ret_pct": 5.73, "note": ""}, {"signal_date": "20261022", "buy_date": "20261023", "sell_date": "20261026", "code": "300192.SZ", "name": "科德教育", "rank": 2, "pool": "main", "strategy": "dip", "buy_px": 19.02, "sell_px": 19.0, "ret_pct": -0.4, "note": ""}, {"signal_date": "20261028", "buy_date": "20261029", "sell_date": "20261030", "code": "002811.SZ", "name": "郑中设计", "rank": 2, "pool": "main", "strategy": "dip", "buy_px": 17.45, "sell_px": 15.55, "ret_pct": -11.16, "note": "开盘跌停按收盘"}], "curve": [{"d": "2026-09-01", "nav": 1085777.0}, {"d": "2026-09-02", "nav": 1074449.0}, {"d": "2026-09-03", "nav": 1088002.0}, {"d": "2026-09-04", "nav": 1088002.0}, {"d": "2026-09-07", "nav": 1088002.0}, {"d": "2026-09-08", "nav": 1088002.0}, {"d": "2026-09-09", "nav": 1088002.0}, {"d": "2026-09-10", "nav": 1088002.0}, {"d": "2026-09-11", "nav": 1088002.0}, {"d": "2026-09-14", "nav": 1088002.0}, {"d": "2026-09-15", "nav": 1088002.0}, {"d": "2026-09-16", "nav": 1088002.0}, {"d": "2026-09-17", "nav": 1088002.0}, {"d": "2026-09-18", "nav": 1088002.0}, {"d": "2026-09-21", "nav": 1088002.0}, {"d": "2026-09-22", "nav": 1088002.0}, {"d": "2026-09-23", "nav": 1088002.0}, {"d": "2026-09-24", "nav": 1088002.0}, {"d": "2026-09-28", "nav": 1088002.0}, {"d": "2026-09-29", "nav": 1088002.0}, {"d": "2026-09-30", "nav": 1088002.0}, {"d": "2026-10-08", "nav": 1088002.0}, {"d": "2026-10-09", "nav": 1088002.0}, {"d": "2026-10-12", "nav": 1088002.0}, {"d": "2026-10-13", "nav": 1206373.0}, {"d": "2026-10-14", "nav": 1204998.0}, {"d": "2026-10-15", "nav": 1187827.0}, {"d": "2026-10-16", "nav": 1202099.0}, {"d": "2026-10-19", "nav": 1290489.0}, {"d": "2026-10-20", "nav": 1271032.0}, {"d": "2026-10-21", "nav": 1271032.0}, {"d": "2026-10-22", "nav": 1271032.0}, {"d": "2026-10-23", "nav": 1287466.0}, {"d": "2026-10-26", "nav": 1265892.0}, {"d": "2026-10-27", "nav": 1265892.0}, {"d": "2026-10-28", "nav": 1265892.0}, {"d": "2026-10-29", "nav": 1251994.0}, {"d": "2026-10-30", "nav": 1124679.0}], "base_nav": 1085777.0, "daily": [{"date": "20260901", "trade_ok": true, "alloc": 1.0, "fills": [{"code": "001230.SZ", "name": "劲旅环境", "ret_pct": 4.42}], "skipped": [{"code": "300434.SZ", "name": "金石亚药", "note": "缺口0.5%未达承接线-2.35%"}, {"code": "301060.SZ", "name": "兰卫医学", "note": "缺口-0.3%未达承接线-2.35%"}, {"code": "002589.SZ", "name": "瑞康医药", "note": "缺口0.0%未达承接线-2.35%"}, {"code": "603682.SH", "name": "锦和商管", "note": "缺口-1.8%未达承接线-2.35%"}]}, {"date": "20260902", "trade_ok": true, "alloc": 1.0, "fills": [{"code": "000657.SZ", "name": "中钨高新", "ret_pct": -0.04}], "skipped": [{"code": "300476.SZ", "name": "胜宏科技", "note": "缺口-1.7%未达承接线-2.35%"}, {"code": "603124.SH", "name": "江南新材", "note": "缺口-1.0%未达承接线-2.35%"}, {"code": "600667.SH", "name": "太极实业", "note": "缺口-1.3%未达承接线-2.35%"}, {"code": "300814.SZ", "name": "中富电路", "note": "缺口-1.2%未达承接线-2.35%"}]}, {"date": "20260903", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "301130.SZ", "name": "西点药业", "note": "缺口-0.7%未达承接线-2.35%"}, {"code": "600683.SH", "name": "京投发展", "note": "缺口-0.2%未达承接线-2.35%"}, {"code": "600641.SH", "name": "先导基电", "note": "缺口0.9%未达承接线-2.35%"}, {"code": "301607.SZ", "name": "富特科技", "note": "缺口1.3%未达承接线-2.35%"}, {"code": "300936.SZ", "name": "中英科技", "note": "缺口1.6%未达承接线-2.35%"}]}, {"date": "20260904", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "300120.SZ", "name": "经纬辉开", "note": "缺口1.2%未达承接线-2.35%"}, {"code": "002687.SZ", "name": "乔治白", "note": "缺口0.5%未达承接线-2.35%"}, {"code": "002589.SZ", "name": "瑞康医药", "note": "缺口0.3%未达承接线-2.35%"}, {"code": "002329.SZ", "name": "皇氏集团", "note": "缺口0.5%未达承接线-2.35%"}, {"code": "603038.SH", "name": "华立股份", "note": "缺口0.3%未达承接线-2.35%"}]}, {"date": "20260907", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "003023.SZ", "name": "彩虹集团", "note": "缺口0.0%未达承接线-2.35%"}, {"code": "603118.SH", "name": "共进股份", "note": "缺口4.6%未达承接线-2.35%"}, {"code": "603903.SH", "name": "中持股份", "note": "缺口0.1%未达承接线-2.35%"}, {"code": "300907.SZ", "name": "康平科技", "note": "缺口0.5%未达承接线-2.35%"}, {"code": "600330.SH", "name": "天通股份", "note": "缺口4.2%未达承接线-2.35%"}]}, {"date": "20260908", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "603113.SH", "name": "金能科技", "note": "缺口0.0%未达承接线-2.35%"}, {"code": "002716.SZ", "name": "湖南白银", "note": "缺口1.5%未达承接线-2.35%"}, {"code": "300180.SZ", "name": "华峰超纤", "note": "缺口0.2%未达承接线-2.35%"}, {"code": "300546.SZ", "name": "雄帝科技", "note": "缺口-0.7%未达承接线-2.35%"}, {"code": "300542.SZ", "name": "新晨科技", "note": "缺口-0.4%未达承接线-2.35%"}]}, {"date": "20260909", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "301127.SZ", "name": "武汉天源", "note": "缺口-1.7%未达承接线-2.35%"}, {"code": "600353.SH", "name": "旭光电子", "note": "缺口1.7%未达承接线-2.35%"}, {"code": "300602.SZ", "name": "飞荣达", "note": "缺口0.6%未达承接线-2.35%"}, {"code": "301373.SZ", "name": "凌玮科技", "note": "缺口0.1%未达承接线-2.35%"}, {"code": "300394.SZ", "name": "天孚通信", "note": "缺口4.4%未达承接线-2.35%"}]}, {"date": "20260910", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "301130.SZ", "name": "西点药业", "note": "缺口-1.5%未达承接线-2.35%"}, {"code": "300598.SZ", "name": "诚迈科技", "note": "缺口-0.8%未达承接线-2.35%"}, {"code": "301234.SZ", "name": "五洲医疗", "note": "缺口1.2%未达承接线-2.35%"}, {"code": "002655.SZ", "name": "共达电声", "note": "缺口-0.7%未达承接线-2.35%"}, {"code": "002396.SZ", "name": "星网锐捷", "note": "缺口-0.0%未达承接线-2.35%"}]}, {"date": "20260911", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": [{"code": "301160.SZ", "name": "翔楼新材", "note": "缺口-1.2%未达承接线-2.35%"}, {"code": "300598.SZ", "name": "诚迈科技", "note": "缺口-0.2%未达承接线-2.35%"}, {"code": "002165.SZ", "name": "红宝丽", "note": "缺口-1.6%未达承接线-2.35%"}, {"code": "002515.SZ", "name": "金字火腿", "note": "缺口-1.6%未达承接线-2.35%"}, {"code": "603113.SH", "name": "金能科技", "note": "缺口-1.1%未达承接线-2.35%"}]}, {"date": "20260914", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20260915", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20260916", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20260917", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20260918", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": []}, {"date": "20260921", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "600176.SH", "name": "中国巨石", "note": "缺口-0.1%未达承接线-2.35%"}, {"code": "603266.SH", "name": "天龙股份", "note": "缺口-1.6%未达承接线-2.35%"}, {"code": "605006.SH", "name": "山东玻纤", "note": "缺口-1.8%未达承接线-2.35%"}]}, {"date": "20260922", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "002026.SZ", "name": "山东威达", "note": "缺口1.2%未达承接线-2.35%"}, {"code": "603615.SH", "name": "茶花股份", "note": "缺口0.0%未达承接线-2.35%"}, {"code": "603257.SH", "name": "中国瑞林", "note": "缺口-1.9%未达承接线-2.35%"}, {"code": "300808.SZ", "name": "久量股份", "note": "缺口1.0%未达承接线-2.35%"}, {"code": "002973.SZ", "name": "侨银股份", "note": "缺口0.0%未达承接线-2.35%"}]}, {"date": "20260923", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "002980.SZ", "name": "华盛昌", "note": "缺口2.0%未达承接线-2.35%"}, {"code": "603139.SH", "name": "康惠股份", "note": "缺口0.8%未达承接线-2.35%"}, {"code": "002161.SZ", "name": "远望谷", "note": "缺口-0.7%未达承接线-2.35%"}, {"code": "002730.SZ", "name": "电光科技", "note": "缺口0.2%未达承接线-2.35%"}, {"code": "300825.SZ", "name": "阿尔特", "note": "缺口-0.9%未达承接线-2.35%"}]}, {"date": "20260924", "trade_ok": true, "alloc": 1.0, "fills": [], "skipped": [{"code": "002855.SZ", "name": "捷荣技术", "note": "缺口-1.1%未达承接线-2.35%"}, {"code": "003005.SZ", "name": "竞业达", "note": "缺口-1.4%未达承接线-2.35%"}, {"code": "600108.SH", "name": "亚盛集团", "note": "缺口1.2%未达承接线-2.35%"}, {"code": "600869.SH", "name": "远东股份", "note": "缺口-1.2%未达承接线-2.35%"}, {"code": "002396.SZ", "name": "星网锐捷", "note": "缺口0.8%未达承接线-2.35%"}]}, {"date": "20260928", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": [{"code": "600869.SH", "name": "远东股份", "note": "缺口0.1%未达承接线-2.35%"}, {"code": "301628.SZ", "name": "强达电路", "note": "缺口-0.7%未达承接线-2.35%"}, {"code": "600880.SH", "name": "博瑞传播", "note": "缺口-0.5%未达承接线-2.35%"}, {"code": "600088.SH", "name": "中视传媒", "note": "缺口-0.2%未达承接线-2.35%"}, {"code": "600108.SH", "name": "亚盛集团", "note": "缺口1.5%未达承接线-2.35%"}]}, {"date": "20260929", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20260930", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20261008", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20261009", "trade_ok": false, "alloc": 0.0, "fills": [], "skipped": []}, {"date": "20261012", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": []}, {"date": "20261013", "trade_ok": false, "alloc": 1.0, "fills": [{"code": "301176.SZ", "name": "逸豪新材", "ret_pct": 10.75}], "skipped": [{"code": "300739.SZ", "name": "明阳电路", "note": "缺口-1.0%未达承接线-2.75%"}, {"code": "603328.SH", "name": "依顿电子", "note": "缺口-2.7%未达承接线-2.75%"}, {"code": "603386.SH", "name": "骏亚科技", "note": "缺口-0.8%未达承接线-2.75%"}]}, {"date": "20261014", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "300850.SZ", "name": "新强联", "note": "缺口-0.8%未达承接线-2.75%"}, {"code": "000513.SZ", "name": "丽珠集团", "note": "缺口0.6%未达承接线-2.75%"}, {"code": "300676.SZ", "name": "华大基因", "note": "缺口-0.7%未达承接线-2.75%"}]}, {"date": "20261015", "trade_ok": false, "alloc": 1.0, "fills": [{"code": "003001.SZ", "name": "中岩大地", "ret_pct": -0.24}], "skipped": [{"code": "000504.SZ", "name": "南华生物", "note": "缺口-2.4%未达承接线-2.75%"}, {"code": "600059.SH", "name": "古越龙山", "note": "缺口-1.7%未达承接线-2.75%"}, {"code": "600488.SH", "name": "津药药业", "note": "缺口-1.9%未达承接线-2.75%"}]}, {"date": "20261016", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "601579.SH", "name": "会稽山", "note": "缺口0.1%未达承接线-2.75%"}, {"code": "601218.SH", "name": "吉鑫科技", "note": "缺口0.8%未达承接线-2.75%"}, {"code": "301047.SZ", "name": "义翘神州", "note": "缺口2.0%未达承接线-2.75%"}, {"code": "600488.SH", "name": "津药药业", "note": "缺口0.9%未达承接线-2.75%"}, {"code": "002669.SZ", "name": "康达新材", "note": "缺口1.8%未达承接线-2.75%"}]}, {"date": "20261019", "trade_ok": false, "alloc": 1.0, "fills": [{"code": "002585.SZ", "name": "双星新材", "ret_pct": 5.73}], "skipped": [{"code": "601579.SH", "name": "会稽山", "note": "缺口-0.5%未达承接线-2.75%"}, {"code": "301080.SZ", "name": "百普赛斯", "note": "缺口-1.0%未达承接线-2.75%"}, {"code": "300243.SZ", "name": "瑞丰高材", "note": "缺口0.0%未达承接线-2.75%"}, {"code": "000504.SZ", "name": "南华生物", "note": "缺口-2.2%未达承接线-2.75%"}]}, {"date": "20261020", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "601579.SH", "name": "会稽山", "note": "缺口-1.5%未达承接线-2.75%"}, {"code": "000002.SZ", "name": "万科Ａ", "note": "缺口0.3%未达承接线-2.75%"}, {"code": "002813.SZ", "name": "路畅科技", "note": "缺口-0.8%未达承接线-2.75%"}, {"code": "603968.SH", "name": "醋化股份", "note": "缺口-0.2%未达承接线-2.75%"}, {"code": "300675.SZ", "name": "建科院", "note": "缺口-0.4%未达承接线-2.75%"}]}, {"date": "20261021", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "603001.SH", "name": "奥康国际", "note": "缺口0.2%未达承接线-2.75%"}, {"code": "603172.SH", "name": "万丰股份", "note": "缺口-0.1%未达承接线-2.75%"}, {"code": "002791.SZ", "name": "坚朗五金", "note": "缺口0.9%未达承接线-2.75%"}, {"code": "002172.SZ", "name": "澳洋健康", "note": "缺口-0.2%未达承接线-2.75%"}, {"code": "600812.SH", "name": "华北制药", "note": "缺口0.5%未达承接线-2.75%"}]}, {"date": "20261022", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "301108.SZ", "name": "洁雅股份", "note": "缺口0.0%未达承接线-2.75%"}, {"code": "301210.SZ", "name": "金杨精密", "note": "缺口-0.7%未达承接线-2.75%"}, {"code": "600356.SH", "name": "恒丰纸业", "note": "缺口0.0%未达承接线-2.75%"}, {"code": "600418.SH", "name": "江淮汽车", "note": "缺口-1.0%未达承接线-2.75%"}, {"code": "002869.SZ", "name": "金溢科技", "note": "缺口-0.4%未达承接线-2.75%"}]}, {"date": "20261023", "trade_ok": false, "alloc": 1.0, "fills": [{"code": "300192.SZ", "name": "科德教育", "ret_pct": -0.4}], "skipped": [{"code": "000504.SZ", "name": "南华生物", "note": "缺口-2.0%未达承接线-2.75%"}, {"code": "000002.SZ", "name": "万科Ａ", "note": "缺口-0.9%未达承接线-2.75%"}, {"code": "603073.SH", "name": "彩蝶实业", "note": "缺口-1.2%未达承接线-2.75%"}, {"code": "002813.SZ", "name": "路畅科技", "note": "缺口-1.2%未达承接线-2.75%"}]}, {"date": "20261026", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": []}, {"date": "20261027", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "301226.SZ", "name": "祥明智能", "note": "缺口2.0%未达承接线-2.75%"}, {"code": "002959.SZ", "name": "小熊电器", "note": "缺口-1.4%未达承接线-2.75%"}, {"code": "603068.SH", "name": "博通集成", "note": "缺口1.0%未达承接线-2.75%"}, {"code": "601188.SH", "name": "龙江交通", "note": "缺口0.0%未达承接线-2.75%"}, {"code": "002674.SZ", "name": "兴业科技", "note": "缺口-0.0%未达承接线-2.75%"}]}, {"date": "20261028", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "601811.SH", "name": "新华文轩", "note": "缺口-0.1%未达承接线-2.75%"}, {"code": "002614.SZ", "name": "奥佳华", "note": "缺口-0.5%未达承接线-2.75%"}, {"code": "600843.SH", "name": "上工申贝", "note": "缺口0.0%未达承接线-2.75%"}, {"code": "600573.SH", "name": "惠泉啤酒", "note": "缺口-0.2%未达承接线-2.75%"}, {"code": "301119.SZ", "name": "正强股份", "note": "缺口-1.8%未达承接线-2.75%"}]}, {"date": "20261029", "trade_ok": false, "alloc": 1.0, "fills": [{"code": "002811.SZ", "name": "郑中设计", "ret_pct": -11.16}], "skipped": [{"code": "301311.SZ", "name": "昆船智能", "note": "缺口-2.4%未达承接线-2.75%"}, {"code": "301239.SZ", "name": "普瑞眼科", "note": "缺口-1.6%未达承接线-2.75%"}]}, {"date": "20261030", "trade_ok": false, "alloc": 1.0, "fills": [], "skipped": [{"code": "600408.SH", "name": "安泰集团", "note": "缺口-0.6%未达承接线-2.75%"}, {"code": "300413.SZ", "name": "芒果超媒", "note": "缺口-1.8%未达承接线-2.75%"}, {"code": "300182.SZ", "name": "捷成股份", "note": "缺口-2.3%未达承接线-2.75%"}]}], "monthly": [{"month": "202609", "ret_pct": 4.28}, {"month": "202610", "ret_pct": 3.37}], "perf": {"总收益率%": 12.47, "年化收益率%": 99.09, "最大回撤%": -12.85, "卡玛比率": 7.71, "夏普比率": 1.8, "交易次数": 8, "胜率%": 50.0, "平均单笔收益%": 1.662, "盈亏比": 2.12, "空仓天数": 10, "跳过买入次数": 136, "总费用(元)": 9262.0, "同期市场等权基准%": -11.66}};
+const f2 = v => (v == null ? '-' : v.toFixed(2));
+const cls = v => (v > 0 ? 'up' : (v < 0 ? 'down' : ''));
+const dstr = s => s ? `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}` : '-';
+
+document.querySelector('#trades tbody').innerHTML = DATA.trades.map(t => `
+  <tr><td class="muted">${dstr(t.signal_date)}</td><td>${dstr(t.buy_date)}</td><td>${dstr(t.sell_date)}</td>
+  <td>${t.code}</td><td>${t.name}</td><td>${f2(t.buy_px)}</td><td>${f2(t.sell_px)}</td>
+  <td class="${cls(t.ret_pct)}"><b>${t.ret_pct > 0 ? '+' : ''}${f2(t.ret_pct)}%</b></td>
+  <td class="muted">${t.rank ?? '-'}</td><td class="muted">${t.note || ''}</td></tr>`).join('');
+
+document.querySelector('#daily tbody').innerHTML = DATA.daily.map(d => {
+  const fills = d.fills.map(f => `<span class="up">${f.code} ${f.name} ${f.ret_pct > 0 ? '+' : ''}${f2(f.ret_pct)}%</span>`).join('；');
+  const skips = d.skipped.map(s => `${s.code} ${s.name}：${s.note}`).join('；');
+  const cand = fills || skips || '<span class="muted">无候选</span>';
+  return `<tr><td>${dstr(d.date)}</td>
+    <td>${d.alloc <= 0 ? '<span class="down">空仓</span>'
+        : (d.trade_ok ? '<span class="up">正常</span>'
+                      : '<span style="color:#d4a017">超限满仓</span>')}</td>
+    <td>${d.fills.length ? d.fills.length : '<span class="muted">0</span>'}</td>
+    <td class="muted" style="white-space:normal">${cand}</td></tr>`;
+}).join('');
+</script>
+</div>
+</body>
+</html>

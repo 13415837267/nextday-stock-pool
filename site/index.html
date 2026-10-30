@@ -167,6 +167,7 @@ async function loadLatest() {
   document.getElementById("meta").textContent =
     `信号日 ${fmtDate(d.signal_date)} · 更新于 ${d.update_time} · ${d.strategy}`;
   const badges = [];
+  badges.push(`<span class="badge"><a href="./replay.html" style="color:var(--gold);text-decoration:none">历史回放 9-10月 →</a></span>`);
   const ok = d.regime && d.regime.ok;
   badges.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日受限"}</span>`);
   if (d.regime && d.regime.note) badges.push(`<span class="badge">${esc(d.regime.note)}</span>`);
