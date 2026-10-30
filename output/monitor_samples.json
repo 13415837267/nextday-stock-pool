@@ -15,6 +15,21 @@
    "ret_pct": -11.16
   }
  ],
- "blocked": [],
+ "blocked": [
+  {
+   "publish_date": "2026-10-20",
+   "sell_date": "2026-10-22",
+   "code": "600312.SH",
+   "name": "平高电气",
+   "ret_pct": 1.75
+  },
+  {
+   "publish_date": "2026-10-21",
+   "sell_date": "2026-10-23",
+   "code": "600418.SH",
+   "name": "江淮汽车",
+   "ret_pct": -7.11
+  }
+ ],
  "updated": "2026-10-30"
 }

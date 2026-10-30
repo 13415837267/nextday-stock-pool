@@ -1,17 +1,18 @@
 {
- "update_time": "2026-10-31 01:58:51",
+ "update_time": "2026-10-31 03:42:59",
  "signal_date": "2026-10-30",
+ "config_fp": "e34e0a3e2f43",
  "plan": {
   "buy_date": "2026-11-02",
   "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
   "sell_date": "2026-11-03",
-  "sell_point": "次日开盘集合竞价卖出",
-  "position": "若开仓: 买入评分第1名 1 只, 约 100% 总资产仓位; 仅买开盘缺口 <= -2.35% 的深低开票; T+1买入, T+2开盘卖出(遵守A股T+1制度, 无当日卖出)"
+  "sell_point": "次日开盘集合竞价卖出(开盘跌幅≥2%且未跌停则当日收盘卖出)",
+  "position": "若开仓: 买入评分第1名 1 只, 约 100% 总资产仓位; 仅买开盘缺口 <= -0.8% 的低开票(风控日以判定卡承接线为准); T+1买入, T+2开盘卖出(遵守A股T+1制度, 无当日卖出); 若T+2开盘跌幅≥2%且未跌停, 改为当日收盘卖出"
  },
- "strategy": "次日开盘买入-再次日开盘卖出(趋势内缩量回调+次日深低开承接)",
+ "strategy": "次日开盘买入-再次日开盘卖出(趋势内缩量回调+次日低开承接＋备选补位:隔夜动量/深跌阳线反转/趋势回踩5日线)",
  "regime": {
   "ok": false,
-  "breadth": 0.143,
+  "breadth": 0.162,
   "mkt_above_ma": false,
   "block_days": 10,
   "max_block_days": 5,
@@ -21,28 +22,13 @@
  "stats": {
   "universe": 5577,
   "mode": "dip",
-  "non_st_board": 4421,
-  "liquidity": 1896,
-  "price_action": 596,
-  "trend_ok": 10,
-  "scored": 10
+  "non_st_board": 3050,
+  "liquidity": 1118,
+  "price_action": 354,
+  "trend_ok": 5,
+  "scored": 5
  },
  "picks": [
-  {
-   "code": "300413.SZ",
-   "name": "芒果超媒",
-   "close": 22.3,
-   "pct": -4.29,
-   "amount_yi": 15.06,
-   "turnover_rate": 6.5,
-   "vol_ratio": 0.72,
-   "mom20": 17.4,
-   "score": 1.334,
-   "reasons": "回调-4.3%、量比0.72(缩量)、20日动量17%、乖离-2.2%、换手6.5%、次日竞价深低开承接",
-   "strategy": "dip",
-   "strategy_cn": "主力·趋势缩量回调",
-   "pool": "main"
-  },
   {
    "code": "603992.SH",
    "name": "松霖科技",
@@ -52,53 +38,8 @@
    "turnover_rate": 2.05,
    "vol_ratio": 0.92,
    "mom20": 5.2,
-   "score": 0.653,
+   "score": 0.953,
    "reasons": "回调-4.2%、量比0.92(缩量)、20日动量5%、乖离-2.8%、换手2.0%、次日竞价深低开承接",
-   "strategy": "dip",
-   "strategy_cn": "主力·趋势缩量回调",
-   "pool": "main"
-  },
-  {
-   "code": "300466.SZ",
-   "name": "赛摩智能",
-   "close": 7.65,
-   "pct": -3.16,
-   "amount_yi": 1.65,
-   "turnover_rate": 4.55,
-   "vol_ratio": 0.55,
-   "mom20": 7.3,
-   "score": 0.446,
-   "reasons": "回调-3.2%、量比0.55(缩量)、20日动量7%、乖离-0.6%、换手4.6%、次日竞价深低开承接",
-   "strategy": "dip",
-   "strategy_cn": "主力·趋势缩量回调",
-   "pool": "main"
-  },
-  {
-   "code": "600853.SH",
-   "name": "龙建股份",
-   "close": 3.51,
-   "pct": -3.84,
-   "amount_yi": 2.35,
-   "turnover_rate": 6.44,
-   "vol_ratio": 1.15,
-   "mom20": 7.7,
-   "score": 0.205,
-   "reasons": "回调-3.8%、量比1.15(缩量)、20日动量8%、乖离0.9%、换手6.4%、次日竞价深低开承接",
-   "strategy": "dip",
-   "strategy_cn": "主力·趋势缩量回调",
-   "pool": "main"
-  },
-  {
-   "code": "300984.SZ",
-   "name": "金沃股份",
-   "close": 34.66,
-   "pct": -4.54,
-   "amount_yi": 3.35,
-   "turnover_rate": 7.57,
-   "vol_ratio": 0.76,
-   "mom20": 8.6,
-   "score": 0.177,
-   "reasons": "回调-4.5%、量比0.76(缩量)、20日动量9%、乖离1.6%、换手7.6%、次日竞价深低开承接",
    "strategy": "dip",
    "strategy_cn": "主力·趋势缩量回调",
    "pool": "main"
@@ -116,63 +57,11 @@
   "steps": [
    {
     "rank": 1,
-    "code": "300413.SZ",
-    "name": "芒果超媒",
-    "score": 1.334,
-    "close": 22.3,
-    "pct": -4.29,
-    "pool": "main",
-    "strategy": "dip",
-    "strategy_cn": "主力·趋势缩量回调",
-    "rule": "9:25竞价缺口 ≤ -2.75% 且 < 9% 且未停牌未一字 → 按100%仓位买入",
-    "fallback": "不达标 → 顺延第2名"
-   },
-   {
-    "rank": 2,
     "code": "603992.SH",
     "name": "松霖科技",
-    "score": 0.653,
+    "score": 0.953,
     "close": 20.98,
     "pct": -4.2,
-    "pool": "main",
-    "strategy": "dip",
-    "strategy_cn": "主力·趋势缩量回调",
-    "rule": "9:25竞价缺口 ≤ -2.75% 且 < 9% 且未停牌未一字 → 按100%仓位买入",
-    "fallback": "不达标 → 顺延第3名"
-   },
-   {
-    "rank": 3,
-    "code": "300466.SZ",
-    "name": "赛摩智能",
-    "score": 0.446,
-    "close": 7.65,
-    "pct": -3.16,
-    "pool": "main",
-    "strategy": "dip",
-    "strategy_cn": "主力·趋势缩量回调",
-    "rule": "9:25竞价缺口 ≤ -2.75% 且 < 9% 且未停牌未一字 → 按100%仓位买入",
-    "fallback": "不达标 → 顺延第4名"
-   },
-   {
-    "rank": 4,
-    "code": "600853.SH",
-    "name": "龙建股份",
-    "score": 0.205,
-    "close": 3.51,
-    "pct": -3.84,
-    "pool": "main",
-    "strategy": "dip",
-    "strategy_cn": "主力·趋势缩量回调",
-    "rule": "9:25竞价缺口 ≤ -2.75% 且 < 9% 且未停牌未一字 → 按100%仓位买入",
-    "fallback": "不达标 → 顺延第5名"
-   },
-   {
-    "rank": 5,
-    "code": "300984.SZ",
-    "name": "金沃股份",
-    "score": 0.177,
-    "close": 34.66,
-    "pct": -4.54,
     "pool": "main",
     "strategy": "dip",
     "strategy_cn": "主力·趋势缩量回调",
@@ -180,7 +69,7 @@
     "fallback": ""
    }
   ],
-  "sell_plan": "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)",
+  "sell_plan": "T+2 开盘集合竞价卖出(开盘跌幅≥2%或跌停则当日收盘卖出)",
   "empty_funnel": null
  },
  "monitor": {
@@ -197,7 +86,12 @@
    "window": 20
   }
  },
- "observe": null,
+ "observe": {
+  "n": 2,
+  "avg_pct": -2.68,
+  "win_pct": 50.0,
+  "note": "风控空仓日对照: 若当日完全放行(其余执行闸不变)的虚拟top1收益, 前瞻验证风控机会成本(第45轮回顾: era后贡献+1183pp), 不参与决策"
+ },
  "audit": {
   "checked": true,
   "match": true,
