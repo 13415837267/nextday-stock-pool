@@ -329,7 +329,9 @@ async function loadExecHistory() {
       ht.innerHTML = `<div class="loading">明细自 2026-10-22 起逐笔记录, 首笔结算将在下一个交易日晚更新</div>`;
     else
       ht.innerHTML = html + "</table></div>" +
-      `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。「实盘买/卖价」列用于记录你的真实成交价与模拟价对照(现为空, 成交后告知即写入)。</div>`;
+      `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。「实盘买/卖价」列用于记录你的真实成交价与模拟价对照(现为空, 成交后告知即写入)。<br>` +
+      `2026-10-30 及之前的历史成交按当时口径(含创业板、承接线下限 -2.35%)记录且<b>不改写</b>；` +
+      `新口径(沪深主板单只)自 2026-11-02 买入起执行。</div>`;
   } catch (e) { ht.innerHTML = `<div class="loading">执行记录加载失败: ${esc(e.message)}</div>`; }
 }
 
