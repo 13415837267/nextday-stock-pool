@@ -110,7 +110,7 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         run: |
           mkdir -p deploy/data
-          cp site/index.html deploy/
+          cp site/*.html deploy/          # 全部页面(含 replay.html 历史回放)
           cp output/*.json deploy/data/ 2>/dev/null || true
 
       - name: 上传 Pages 产物
