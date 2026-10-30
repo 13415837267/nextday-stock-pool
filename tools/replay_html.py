@@ -71,6 +71,8 @@ def render(payload: dict) -> str:
     n_flat = sum(1 for d in daily if d.get("alloc", 1.0) <= 0)
     n_part = sum(1 for d in daily if 0 < d.get("alloc", 1.0) < 1)
     reenter = f"{max((d.get('alloc', 0) for d in daily), default=1) * 100:.0f}%"
+    n_skip = sum(len(d.get("skipped", [])) for d in daily)
+    bench = (payload.get("perf") or {}).get("同期市场等权基准%")
 
     def cls(v):
         return "up" if (v or 0) > 0 else ("down" if (v or 0) < 0 else "")
@@ -134,7 +136,7 @@ def render(payload: dict) -> str:
 <div class="wrap">
 <header>
   <h1>历史回放 <small>{_fmt_date(m['start'])} ~ {_fmt_date(m['end'])}</small></h1>
-  <div class="meta">按当前策略逐日重放 · 复用回测引擎 · 指标仅用截至当日数据</div>
+  <div class="meta">按当前策略逐日重放（沪深主板单只口径）· 复用回测引擎 · 指标仅用截至当日数据</div>
   <div class="badges">
     <span class="badge gold">{m['strategy']}</span>
     <span class="badge ok">无未来函数</span>
@@ -174,17 +176,23 @@ def render(payload: dict) -> str:
 
 <h2>口径说明</h2>
 <div class="panel note">
-  <p><b>为什么成交这么少？</b> 这不是漏跑。策略要求次日<b>低开 ≤ -2.35%</b>（弱市超限参与日为 -2.75%）才承接，
-  9 月候选票的实际缺口多在 -1.7% ~ +2.0%，未达承接线就主动放弃。
-  这 {n_day} 个交易日里，9 月成交 {n_sep} 笔、10 月 {n_oct} 笔，另有 {n_flat} 天大盘风控直接空仓。
-  10 月大盘持续走弱触发「超长风控恢复参与」——连续风控超过 5 天后按 {reenter} 仓位逐步恢复，故成交反而集中在 10 月。</p>
+  <p><b>为什么成交这么少？</b> 这不是漏跑。每日只从<b>沪深主板</b>发布 1 只，且要求次日<b>低开 ≤ -0.8%</b> 才承接；
+  候选票的实际缺口多数落在 -0.8% ~ +2%，未达承接线就主动放弃（本区间共放弃 {n_skip} 次）。
+  单只口径没有第 2 只可顺延，第 1 名不达标当日即空仓。
+  这 {n_day} 个交易日里，9 月成交 {n_sep} 笔、10 月 {n_oct} 笔，另有 {n_flat} 天大盘风控直接空仓。</p>
+
+  <p><b>这 38 天为什么是负的？</b> 本区间是弱市段，同期全市场等权基准 {bench:+.2f}%。
+  单只满仓下 4 笔成交就决定了区间结果，样本极小、方差极大：最差一笔 002811.SZ 开盘跌停按收盘录得 -11.16%，
+  单笔即拖累约 11 个百分点。<b>不要用 38 天推断长期期望</b>——同一套配置在 500 日窗口为
+  +249.06%（基准 +23.25%）、胜率 73.75%、最大回撤 -13.67%、卡玛 6.42、80 笔成交；
+  反过来，也不要因为 500 日好看就低估短期连亏的可能。</p>
   <p style="margin-top:10px"><b>无未来函数的三条保证：</b></p>
   <ul>
     <li>指标（MA/动量/波动/振幅）全部为 <code>rolling</code> / <code>shift(1)</code> 向后看，无 <code>center=True</code>、无 <code>shift(-n)</code>；</li>
     <li>选股只传当日截面数据，不包含任何后续交易日行；风控序列同样只依赖当日及之前；</li>
     <li>买入取 T+1 真实开盘价、卖出取 T+2 真实开盘价（跌停回退当日收盘），绩效门控只用已发生的成交。</li>
   </ul>
-  <p style="margin-top:10px"><b>与实盘对账：</b>10-23 买入 300192.SZ（-0.40%）、10-29 买入 002811.SZ（-11.16%），
+  <p style="margin-top:10px"><b>与实盘对账：</b>10-28 信号 → 10-29 买入 002811.SZ → 10-30 开盘跌停按收盘卖出（-11.16%），
   与实盘 <code>history.json</code> 的同日记录完全一致，说明回放与实盘同一套成交口径。</p>
   <p style="margin-top:10px" class="muted">差异说明：实盘每日只加载 30 日面板（<code>listed_min_bars=0</code>），
   回放用连续 155 日面板（<code>listed_min_bars=120</code>），次新股过滤口径不同，个别日期的候选池会有出入。</p>

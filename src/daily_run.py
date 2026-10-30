@@ -33,6 +33,43 @@ def _fmt(d: str) -> str:
     return f"{d[:4]}-{d[4:6]}-{d[6:]}"
 
 
+def _config_fp(cfg: dict) -> str:
+    """选股/执行关键参数的指纹: 参数一变, 同一信号日也要重算(三端同步的开关)。
+
+    只纳入会改变选股结果或成交判定的字段; 注释、README、仓位小数等不影响结果的
+    改动不会触发重算, 避免无意义地重刷 output。
+    """
+    import hashlib
+
+    u = cfg.get("universe") or {}
+    s = cfg.get("selection") or {}
+    e = cfg.get("execution") or {}
+    key = {
+        "boards": list(u.get("boards") or []),
+        "price": [u.get("price_min"), u.get("price_max")],
+        "turnover": [u.get("turnover_min"), u.get("turnover_max")],
+        "amount_min_yi": u.get("amount_min_yi"),
+        "listed_min_bars": u.get("listed_min_bars"),
+        "mode": s.get("mode"),
+        "disp_n": s.get("display_top_n"),
+        "exec_n": s.get("exec_top_n"),
+        "dip": [s.get("dip_pct_min"), s.get("dip_pct_max"), s.get("dip_vol_ratio_max"),
+                s.get("dip_mom20_min"), s.get("dip_mom20_max"), s.get("dip_dist_low20_min"),
+                s.get("dip_close_pos_max"), s.get("dip_weights")],
+        "bias20_max": s.get("bias20_max"),
+        "fallbacks": [(f.get("mode"), f.get("top_n"), f.get("gap_below"), f.get("segment"))
+                      for f in (s.get("fallbacks") or [])],
+        "slot": bool(s.get("fallback_slot")),
+        "gap": e.get("buy_gap_below"),
+        "block_gap": e.get("block_gap_below"),
+        "scd": e.get("sell_close_if_open_drop"),
+        "max_buy": e.get("max_buy_per_day"),
+        "alloc": e.get("alloc_frac_pct"),
+    }
+    raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+
+
 def _exec_gate(rb, gap: float, ex: dict, floor: float) -> str | None:
     """非风控执行闸(与回测口径一致, 第49轮自内联elif链提取复用): 返回拦截原因, None=放行。
 
@@ -64,8 +101,11 @@ def _position_note(ex: dict) -> str:
     else:
         pos = f"若开仓: 达标票每笔约 {frac:g}% 总资产"
     if gap:
-        pos += f"; 仅买开盘缺口 <= {gap:g}% 的深低开票"
+        pos += f"; 仅买开盘缺口 <= {gap:g}% 的低开票(风控日以判定卡承接线为准)"
     pos += "; T+1买入, T+2开盘卖出(遵守A股T+1制度, 无当日卖出)"
+    scd = float(ex.get("sell_close_if_open_drop") or 0)
+    if scd > 0:
+        pos += f"; 若T+2开盘跌幅≥{scd:g}%且未跌停, 改为当日收盘卖出"
     return pos
 
 
@@ -140,6 +180,13 @@ def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict):
             and float(row["open"]) <= float(row["low_limit"]) + 1e-9:
         sold_close = True
         note = (note + " 开盘跌停按收盘").strip()
+    # 第八十九轮: T+2开盘深跌(未跌停)延卖至收盘(与 backtest do_sell 同口径,
+    # 仅用T+2开盘/昨收瞬时信息做决策, 无未来函数)
+    scd = float(ex.get("sell_close_if_open_drop") or 0)
+    if (not sold_close) and scd > 0 and float(row["pre_close"]) > 0 \
+            and (float(row["open"]) / float(row["pre_close"]) - 1) * 100 <= -scd:
+        sold_close = True
+        note = (note + f" 开盘深跌{scd:g}%按收盘").strip()
     return row, dd, sold_close, note
 
 
@@ -281,14 +328,22 @@ def main():
     # 用旧数据刷新 output。数据没出全时这里直接跳过, 交给后续重试槽; 数据出全后自然放行。
     _latest_path = ROOT / "output" / "latest.json"
     _prev_sig = ""
+    _prev_fp = ""
     if _latest_path.exists():
         try:
-            _prev_sig = str((json.loads(_latest_path.read_text(encoding="utf-8")) or {}).get("signal_date") or "")
+            _prev = json.loads(_latest_path.read_text(encoding="utf-8")) or {}
+            _prev_sig = str(_prev.get("signal_date") or "")
+            _prev_fp = str(_prev.get("config_fp") or "")
         except Exception:  # noqa: BLE001 latest.json损坏时视为未处理, 正常重算
-            _prev_sig = ""
-    if _prev_sig == _fmt(signal_date):
-        print(f"信号日{_fmt(signal_date)}已处理过(latest.json一致), 幂等跳过")
+            _prev_sig, _prev_fp = "", ""
+    # 口径指纹: 选股/执行的关键参数一变, 同一信号日也必须重算 —— 否则改完策略后,
+    # 幂等闸门会以"这天已处理过"为由继续展示旧口径的结果, 三端静默不一致。
+    _fp = _config_fp(cfg)
+    if _prev_sig == _fmt(signal_date) and _prev_fp == _fp:
+        print(f"信号日{_fmt(signal_date)}已处理过(latest.json一致, 口径{_fp}), 幂等跳过")
         return
+    if _prev_sig == _fmt(signal_date):
+        print(f"信号日{_fmt(signal_date)}已处理过但口径已变更({_prev_fp or '无'}→{_fp}), 按新口径重算")
 
     names_df = client.stock_names()
     names = dict(zip(names_df["ts_code"], names_df["name"]))
@@ -781,7 +836,9 @@ def main():
         "month_cap_active": cap_frac < 1.0,
         "cap_note": cap_note,
         "steps": steps,
-        "sell_plan": "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)",
+        "sell_plan": (f"T+2 开盘集合竞价卖出(开盘跌幅≥{float(ex.get('sell_close_if_open_drop') or 0):g}%或跌停则当日收盘卖出)"
+                      if float(ex.get("sell_close_if_open_drop") or 0) > 0
+                      else "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)"),
         "empty_funnel": ({"全市场": stats.get("universe"), "流动性/次新": stats.get("liquidity"),
                           "回调形态": stats.get("price_action"), "趋势条件": stats.get("trend_ok"),
                           "评分入池": stats.get("scored")} if not verified else None),
@@ -828,16 +885,19 @@ def main():
     latest = {
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
+        "config_fp": _fp,
         "plan": {
             "buy_date": _fmt(buy_d) if buy_d else "",
             "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
             "sell_date": _fmt(sell_d) if sell_d else "",
-            "sell_point": "次日开盘集合竞价卖出",
+            "sell_point": (f"次日开盘集合竞价卖出(开盘跌幅≥{float(ex.get('sell_close_if_open_drop') or 0):g}%且未跌停则当日收盘卖出)"
+                           if float(ex.get("sell_close_if_open_drop") or 0) > 0
+                           else "次日开盘集合竞价卖出"),
             "position": _position_note(ex),
         },
         "strategy": "次日开盘买入-再次日开盘卖出({}{})".format(
-            "趋势内缩量回调+次日深低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)",
-            ("＋合并池:" + "/".join(STRATEGY_CN.get(fb.get("mode"), str(fb.get("mode")))
+            "趋势内缩量回调+次日低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)",
+            ("＋备选补位:" + "/".join(STRATEGY_CN.get(fb.get("mode"), str(fb.get("mode")))
                                    for fb in (cfg["selection"].get("fallbacks") or [])))
             if cfg["selection"].get("fallbacks") else "",
         ),

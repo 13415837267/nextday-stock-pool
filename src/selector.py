@@ -560,6 +560,11 @@ def select_stocks(
     fbs = sel_cfg.get("fallbacks") or []
     if not fbs or sel_cfg.get("mode") != "dip":
         return picks, stats
+    # 单槽漏斗(第九十一轮): 主力池当日有候选时不再并入备用池 —— 网页仍然只给1只,
+    # 备用策略只在"主力策略当日完全没有信号"的交易日补位。与"层层顺延"相比,
+    # 这条模式避开的是主力已出票但竞价缺口不达标的日子(逆向选择最严重的一天)。
+    if sel_cfg.get("fallback_slot") and picks:
+        return picks, stats
     have = {p["code"] for p in picks}
     seen = {"main": 1}
     for i, fb in enumerate(fbs, 1):

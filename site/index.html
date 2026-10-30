@@ -88,7 +88,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>A股次日候选池系统 <small>趋势缩量回调 · 次日深低开竞价承接 · 单吊执行</small></h1>
+    <h1>A股次日候选池系统 <small>沪深主板单只 · 趋势缩量回调 · 次日观察入场 · 单吊执行</small></h1>
     <div class="meta" id="meta">加载中...</div>
     <div class="badges" id="badges"></div>
   </header>
@@ -96,7 +96,7 @@
   <h2>一、明日单吊计划 <span class="sub">每日仅执行评分第 1 名 1 笔</span></h2>
   <div id="plan"><div class="loading">加载中...</div></div>
 
-  <h2>二、计划候选池 <span class="sub">发布池＝回测可执行池＝竞价顺延指引（三端一致）；池深随绩效门控动态：冷态3只 / 热态30只（第八十七~八十八轮，窗口15笔）；第1名不可成交顺延下一只，仅池内顺延</span></h2>
+  <h2>二、当日计划（1只主选 + 备用漏斗） <span class="sub">仅沪深主板 · 主力有信号日只发1只；主力无信号日按备选顺序补位（至多3只），买入端每日仍只买第一只达标票（第九十一轮）</span></h2>
   <div id="pool"><div class="loading">加载中...</div></div>
 
   <h2>三、单吊执行记录 <span class="sub">逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）</span></h2>
@@ -115,26 +115,27 @@
   <div class="panel">
     <b>执行时点</b>
     <ul class="rules">
-      <li>T日收盘后：系统运行选股，按绩效门控决定发布池深度（冷态3只 / 热态30只），发布「次日计划候选池」</li>
-      <li>T+1日开盘集合竞价：单吊——仅买评分第1名1只、全仓进出；且仅当其开盘缺口 ≤ -2.35%（第6名起 ≤ -3.5%）才入场，高开/一字放弃并顺延下一只</li>
-      <li>T+2日开盘集合竞价：全部卖出，资金复利滚动</li>
+      <li>T日收盘后：系统在沪深主板中选股，主力(dip)有候选时固定只发布「次日计划」1只；主力当日无任何候选时，按备用策略顺序（隔夜动量→深跌阳线反转→趋势回踩5日线）补位，网页最多列3只</li>
+      <li>T+1日开盘集合竞价：按列表顺序只买<b>第一只</b>达标票、全仓进出；开盘缺口 ≤ -0.8% 且未高开≥9%/一字/停牌才入场，全部不达标当日空仓（每日最多买1只）</li>
+      <li>T+2日开盘集合竞价：卖出；若T+2开盘跌幅≥2%且未跌停，改为当日收盘卖出，资金复利滚动</li>
       <li>风控触发时（市场宽度&lt;25% 或市场等权指数低于MA30）：次日空仓；连续风控超5个交易日后恢复参与（系数95%起步、每多1日+5%至满仓），且仅买缺口≤-2.75%的深低开票</li>
-      <li>月度盈利熔断已于 2026-10-26 删除（top30 口径下成本 646pp 且回撤零改善，纯右尾压制；top5 主口径维持删除）</li>
+      <li>月度盈利熔断已于 2026-10-26 删除（top30 口径下成本 646pp 且回撤零改善，纯右尾压制；单只主板口径维持删除）</li>
     </ul>
     <b>选股条件（T日收盘：趋势内缩量回调）</b>
     <ul class="rules">
-      <li>范围：沪深主板+创业板，非ST、非停牌、上市满120个交易日</li>
-      <li>价格 3~300 元；成交额 ≥ 0.8亿；换手率 2%~15%</li>
-      <li>当日涨幅 -6.0%~-3%（明显阴线回调）；距20日最低价≥5%（排除已深跌票）；收盘未跌停、非一字板</li>
+      <li>范围：沪深主板（第八十九轮移除创业板），非ST、非停牌、上市满120个交易日</li>
+      <li>价格 3~150 元；成交额 ≥ 0.8亿；换手率 2%~12%</li>
+      <li>当日涨幅 -6.0%~-3%（明显阴线回调）；距20日最低价≥6%（排除已深跌票）；收盘未跌停、非一字板</li>
       <li>量比 ≤ 3.0（缩量回调）；20日累计涨幅 5%~25%；20日乖离率 ≤ 8%</li>
       <li>收盘位置 ≤ 0.32：阴线收盘须在当日振幅区间下沿32%以内</li>
-      <li>评分 = 0.30·z(20日动量) + 0.60·z(-乖离) + 0.05·z(-成交额) + 0.03·z(下影线) + 0.02·z(-量比)</li>
+      <li>评分 = 0.20·z(20日动量) + 0.70·z(-乖离) + 0.05·z(-成交额) + 0.03·z(下影线) + 0.02·z(-量比)</li>
+      <li>备用漏斗（仅主力无信号日启用）：隔夜动量（涨幅1~7%、量比1.2~5、MA5向上）→ 深跌阳线反转（20日跌幅≥10%后收阳）→ 趋势回踩5日线（20日涨幅12~45%、缩量回踩不破MA20）；三族均要求T+1缺口≤-0.8%才买</li>
     </ul>
     <b>披露</b>
     <ul class="rules">
-      <li>回测为样本内结果，存在优化选择偏差；Walk-Forward 检验显示样本外信号为正但应打折：理性前瞻锚为月均 5~8%、回撤 -20% 左右</li>
+      <li>回测为样本内结果，存在优化选择偏差；沪深主板单只口径 500 日实测 +249.06%（同期等权基准 +23.25%）、最大回撤 -13.67%、胜率 73.75%、盈亏比 3.46；理性前瞻锚取月均 4~6%、回撤 -15% 左右</li>
       <li>滑点敏感性（top30口径留档）：双边千2滑点下总收益由 2275.75% 降至 1894.36%（回撤 -9.05%→-9.51%）；实盘务必限价单集合竞价执行</li>
-      <li>单吊口径隔夜方差极大，绝对波动远高于分散组合；绩效门控在弱市自动收缩到3只、热态扩至30只（第八十七~八十八轮，窗口15笔），以"少做错单"换回撤，审核量随绩效率波动</li>
+      <li>单吊口径隔夜方差极大，绝对波动远高于分散组合；第八十九轮起固定单只、无顺延，第1名缺口不达标即当日空仓——500 日 80 笔 / 空仓 82 天 / 跳过买入 356 次，大部分时间在等机会而非交易</li>
       <li>Bootstrap 置信区间（块长10日×3000次，2026-10-29 第八十八轮口径重算）：总收益 P5~P95 = +266.47%~+12507.85%（实际+1634.81%处于中位附近）；最大回撤 P5~P95 = -19.77%~-7.24%（中位-11.69%）；重采样无法覆盖市场结构变化风险</li>
       <li>⚠ 长周期压力检验（2500交易日/2016-07~2026-10，第八十八轮口径）：总收益 +1676.81%（基准+41.26%）、最大回撤 -30.88%——策略优势依赖市场环境（era前均笔+0.169%、era后+5.217%）。已内置恐慌型波动熔断（十年信号扫描+走前验证：恐慌期信号均值-1.72%/胜率41%，双段一致）</li>
     </ul>
@@ -203,7 +204,7 @@ async function loadLatest() {
   const judgeHead = allow
     ? `<div class="big" style="color:var(--up)">✅ 明日可买入 · 仓位 ${td.position_pct ?? 100}%</div>
        <div class="row"><b>判定：</b>${esc(td.buy_note || "")}</div>
-       <div class="row"><b>承接线：</b>开盘缺口 ≤ <b>${td.floor_pct ?? "-"}%</b> 才买（高开≥9%/一字/停牌放弃并顺延）</div>
+       <div class="row"><b>承接线：</b>开盘缺口 ≤ <b>${td.floor_pct ?? "-"}%</b> 才买（高开≥9%/一字/停牌放弃，当日空仓）</div>
        ${capLine}`
     : `<div class="big" style="color:var(--muted)">⛔ 明日不买入（空仓）</div>
        <div class="row"><b>判定：</b>${esc(td.buy_note || (d.picks.length === 0 ? "今日无合格候选" : "风控限制"))}</div>`;
@@ -276,7 +277,7 @@ async function loadExecHistory() {
       <div class="card"><div class="k">累计复利收益(明细口径)</div><div class="v ${pctCls(cumRet)}">${det.length ? pctStr(cumRet) : "-"}</div></div>
       <div class="card"><div class="k">期数起点</div><div class="v" style="font-size:14px">${det.length ? fmtDate(det[det.length - 1].publish_date) : "-"}</div></div>`;
 
-    let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>顺延/放弃过程</th><th>状态</th></tr>`;
+    let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>发布日</th><th>买入日</th><th>买入标的</th><th>名次</th><th>买入价</th><th>卖出日</th><th>卖出价</th><th>仓位</th><th>实盘买价</th><th>实盘卖价</th><th>单期收益</th><th>执行/放弃过程</th><th>状态</th></tr>`;
     // 只展示单吊明细口径: publish_date >= 2026-10-22 的记录; 之前的记录(含待结算)一律不显示
     const CUTOFF = "2026-10-22";
     recs.forEach(r => {
@@ -298,7 +299,7 @@ async function loadExecHistory() {
           <td class="muted" data-label="仓位">${e.position_pct}%</td>
           <td class="muted" data-label="实盘买价">${e.actual_buy_px ?? "-"}</td><td class="muted" data-label="实盘卖价">${s && s.open_px && !s.limit_down ? s.open_px : "-"}</td>
           <td data-label="单期收益">${retCell}</td>
-          <td class="muted chain full" data-label="顺延/放弃过程">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
+          <td class="muted chain full" data-label="执行/放弃过程">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
           <td class="muted" data-label="状态">${s ? "持仓中·今日卖出" : "持仓中"}</td></tr>`;
       } else if (e) {
         html += `<tr>
@@ -309,7 +310,7 @@ async function loadExecHistory() {
           <td class="muted" data-label="仓位">${e.position_pct}%</td>
           <td class="muted" data-label="实盘买价">${e.actual_buy_px ?? "-"}</td><td class="muted" data-label="实盘卖价">${e.actual_sell_px ?? "-"}</td>
           <td class="${pctCls(e.ret_pct)}" data-label="单期收益"><b>${pctStr(e.ret_pct)}</b></td>
-          <td class="muted chain full" data-label="顺延/放弃过程">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
+          <td class="muted chain full" data-label="执行/放弃过程">${e.chain && e.chain.length ? esc(e.chain.join("；")) : "第1名直接成交"}</td>
           <td class="muted" data-label="状态">${esc(r.status || "")}</td></tr>`;
       } else if (r.status === "待结算") {
         const chain = (r.skip_chain || []).join("；") || "-";
@@ -320,7 +321,7 @@ async function loadExecHistory() {
           <td class="muted" data-label="名次">-</td><td class="muted" data-label="买入价">-</td><td class="muted" data-label="卖出日">-</td><td class="muted" data-label="卖出价">-</td>
           <td class="muted" data-label="仓位">-</td><td class="muted" data-label="实盘买价">-</td>
           <td class="muted" data-label="实盘卖价">-</td><td class="muted" data-label="单期收益">-</td>
-          <td class="muted chain full" data-label="顺延/放弃过程">${esc(chain)}</td>
+          <td class="muted chain full" data-label="执行/放弃过程">${esc(chain)}</td>
           <td class="muted" data-label="状态">待结算</td></tr>`;
       }
     });
