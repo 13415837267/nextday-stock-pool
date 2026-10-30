@@ -102,6 +102,8 @@ def _position_note(ex: dict) -> str:
         pos = f"若开仓: 达标票每笔约 {frac:g}% 总资产"
     if gap:
         pos += f"; 仅买开盘缺口 <= {gap:g}% 的低开票(风控日以判定卡承接线为准)"
+    else:
+        pos += "; 不设缺口门槛, T+1 开盘价直接成交(仅停牌/一字涨停买不到)"
     pos += "; T+1买入, T+2开盘卖出(遵守A股T+1制度, 无当日卖出)"
     scd = float(ex.get("sell_close_if_open_drop") or 0)
     if scd > 0:
@@ -566,6 +568,12 @@ def main():
     for rec in history:
         if rec.get("status") == "已结算":
             continue
+        # 第九十二轮: 账本不因口径变更改写 —— 已终结为"无成交"的记录若来自旧口径
+        # (config_fp 不同或旧版无该字段), 保持原判, 不再用当前执行规则重判。
+        # 否则每次调参都会把历史"缺口不达标空仓"翻成"已成交", 与页面留档说明矛盾。
+        # 仅未终结记录(待结算/持仓中)继续按当前口径推进。
+        if rec.get("status") == "无成交" and str(rec.get("config_fp") or "") != _fp:
+            continue
         pdate = rec["publish_date"]
         # 日期格式归一化: history 的 publish_date 带横杠, cal/by_date/reg 为无横杠
         # (此前格式不一致导致结算循环静默跳过所有记录 —— 2026-10-23 发现并修复)
@@ -741,6 +749,9 @@ def main():
     # 首个超限日(consec=max_block+1)即 0.95+0.05=1.0 封顶 —— "95%仓位"从未实际生效,
     # 回测中超限参与日实为"全额参与+严承接线"。此处按买入日(明日, consec+1)对齐同款公式。
     over_frac = min(1.0, reenter + 0.05 * (consec + 1 - max_block)) if over_limit else 1.0
+    # 第九十二轮: 无缺口门槛时, 文案统一为"开盘价直接成交", 不再输出承接线百分比
+    _bg = cfg["execution"].get("block_gap_below", cfg["execution"].get("buy_gap_below"))
+    _bg_txt = f"(执行承接线{_bg}%)" if _bg else "(不设缺口门槛, 按开盘价买入)"
     regime_info = {
         "ok": bool(reg_row["trade_ok"]) if reg_row is not None else True,
         "breadth": round(float(reg_row["breadth"]), 3) if reg_row is not None else None,
@@ -750,7 +761,7 @@ def main():
         "reenter_frac": over_frac if over_limit else None,
         "note": "宽度/市场指数达标, 可正常开仓" if (reg_row is not None and reg_row["trade_ok"])
                 else (f"大盘风控连续第{consec}日, 超过{max_block}日上限: 次日按{over_frac:.0%}仓位参与候选池"
-                      f"(执行承接线{cfg['execution'].get('block_gap_below', cfg['execution'].get('buy_gap_below'))}%)"
+                      f"{_bg_txt}"
                       if over_limit else
                       (f"大盘风控触发(连续第{consec}日): 次日建议空仓观望" if reg_row is not None else "")),
     }
@@ -776,25 +787,26 @@ def main():
         _m20 = float((reg["mkt_idx"].loc[signal_date] / reg["mkt_idx"].shift(20).loc[signal_date] - 1) * 100) \
             if signal_date in reg.index else 0.0
         panic_day = (_vol20 > cfg["regime"]["vol_max"]) and (_m20 < cfg["regime"].get("vol_mkt_ret_min", 0.0))
+    plan_frac = (over_frac if (over_limit_now and not regime_ok_now) else 1.0) * cap_frac
+    floor_now = ex.get("buy_gap_below", 0)
+    if not regime_ok_now:
+        # 第九十二轮: 承接线判定提前到文案之前, 便于按"有无门槛"生成不同指引
+        floor_now = ex.get("block_gap_below", floor_now)
+    _fill_txt = f"开盘缺口≤{floor_now:g}%才买" if floor_now else "开盘价直接买入(不设缺口门槛)"
     if panic_day:
         allow_buy = False
         buy_note = "恐慌型波动日(高波动+市场20日下跌): 全额空仓, 不参与任何买入"
     elif regime_ok_now:
         allow_buy = True
-        buy_note = "风控通过: 可正常开仓(承接线见下)"
+        buy_note = f"风控通过: 可正常开仓({_fill_txt})"
     elif over_limit_now:
         allow_buy = True
-        buy_note = f"超限参与日(连续风控第{consec}日): 按{over_frac:.0%}仓位参与, 执行更严承接线"
+        buy_note = f"超限参与日(连续风控第{consec}日): 按{over_frac:.0%}仓位参与, {_fill_txt}"
     else:
         allow_buy = False
         buy_note = f"大盘风控中(连续第{consec}日): 空仓观望"
     if allow_buy and cap_frac < 1.0:
         buy_note += f"; {cap_note}"
-
-    plan_frac = (over_frac if (over_limit_now and not regime_ok_now) else 1.0) * cap_frac
-    floor_now = ex.get("buy_gap_below", 0)
-    if allow_buy and not regime_ok_now:
-        floor_now = ex.get("block_gap_below", floor_now)
     steps = []
     _rk: dict[str, int] = {}   # 池内名次(主力/备用各自计数, 与回测 _rank 一致)
     # 顺延指引覆盖整个发布池(第六十一轮: 5→display_top_n只): 网页展示N只=指引N只=回测exec_top_n,
@@ -821,7 +833,9 @@ def main():
             "close": p.get("close"), "pct": p.get("pct"),
             "pool": p.get("pool", "main"), "strategy": _strategy,
             "strategy_cn": p.get("strategy_cn", _strategy),
-            "rule": f"9:25竞价缺口 ≤ {_floor}% 且 < 9% 且未停牌未一字 → 按{plan_frac:.0%}仓位买入",
+            "rule": (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{plan_frac:.0%}仓位买入"
+                     if _floor else
+                     f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{plan_frac:.0%}仓位买入"),
             "fallback": f"不达标 → 顺延第{i+1}名" if i < len(verified) else "",
         })
     if not verified:
@@ -830,7 +844,7 @@ def main():
         "allow_buy": allow_buy,
         "buy_note": buy_note,
         "panic_day": panic_day,
-        "floor_pct": floor_now if allow_buy else None,
+        "floor_pct": (floor_now if (allow_buy and floor_now) else None),
         "position_pct": round(plan_frac * ex.get("alloc_frac_pct", 100.0), 1),
         "month_gain_pct": round(month_gain_pct, 1),
         "month_cap_active": cap_frac < 1.0,
@@ -924,6 +938,7 @@ def main():
                    "pool": p.get("pool", "main"),
                    "strategy_cn": p.get("strategy_cn", p.get("strategy", "dip"))} for p in verified],
         "status": "待结算",
+        "config_fp": _fp,   # 第九十二轮: 记录生成时的执行口径, 供后续区分"历史留档"与"当前口径"
     }
     history = [r for r in history if r["publish_date"] != new_rec["publish_date"]]
     history.insert(0, new_rec)

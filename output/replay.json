@@ -10,20 +10,34 @@
   "note": "复用回测引擎, 指标仅用截至当日数据, 买卖用当日真实开盘价, 无未来函数"
  },
  "summary": {
-  "n_trades": 4,
-  "n_win": 1,
-  "win_rate": 25.0,
-  "avg_ret_pct": -3.24,
-  "sum_ret_pct": -12.96,
-  "best": 1.03,
-  "worst": -11.16,
-  "range_ret_pct": -12.77,
-  "range_mdd_pct": -13.67,
+  "n_trades": 24,
+  "n_win": 9,
+  "win_rate": 37.5,
+  "avg_ret_pct": -0.49,
+  "sum_ret_pct": -11.81,
+  "best": 13.22,
+  "worst": -6.67,
+  "range_ret_pct": -10.63,
+  "range_mdd_pct": -25.56,
   "base_date": "2026-09-01",
-  "base_nav": 1042361.0,
-  "end_nav": 909213.0
+  "base_nav": 1150381.0,
+  "end_nav": 1028124.0
  },
  "trades": [
+  {
+   "signal_date": "20260831",
+   "buy_date": "20260901",
+   "sell_date": "20260902",
+   "code": "002589.SZ",
+   "name": "瑞康医药",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 3.18,
+   "sell_px": 3.49,
+   "ret_pct": 9.42,
+   "note": ""
+  },
   {
    "signal_date": "20260901",
    "buy_date": "20260902",
@@ -36,6 +50,174 @@
    "buy_px": 117.5,
    "sell_px": 119.07,
    "ret_pct": 1.03,
+   "note": ""
+  },
+  {
+   "signal_date": "20260902",
+   "buy_date": "20260903",
+   "sell_date": "20260904",
+   "code": "600683.SH",
+   "name": "京投发展",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 9.88,
+   "sell_px": 9.79,
+   "ret_pct": -1.21,
+   "note": ""
+  },
+  {
+   "signal_date": "20260903",
+   "buy_date": "20260904",
+   "sell_date": "20260907",
+   "code": "002589.SZ",
+   "name": "瑞康医药",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 3.2,
+   "sell_px": 3.22,
+   "ret_pct": 0.32,
+   "note": ""
+  },
+  {
+   "signal_date": "20260904",
+   "buy_date": "20260907",
+   "sell_date": "20260908",
+   "code": "003023.SZ",
+   "name": "彩虹集团",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 26.01,
+   "sell_px": 26.05,
+   "ret_pct": -0.15,
+   "note": ""
+  },
+  {
+   "signal_date": "20260907",
+   "buy_date": "20260908",
+   "sell_date": "20260909",
+   "code": "603113.SH",
+   "name": "金能科技",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 5.39,
+   "sell_px": 5.52,
+   "ret_pct": 2.11,
+   "note": ""
+  },
+  {
+   "signal_date": "20260908",
+   "buy_date": "20260909",
+   "sell_date": "20260910",
+   "code": "600353.SH",
+   "name": "旭光电子",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 32.28,
+   "sell_px": 32.0,
+   "ret_pct": -1.16,
+   "note": ""
+  },
+  {
+   "signal_date": "20260909",
+   "buy_date": "20260910",
+   "sell_date": "20260911",
+   "code": "002655.SZ",
+   "name": "共达电声",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 36.73,
+   "sell_px": 35.5,
+   "ret_pct": -3.64,
+   "note": ""
+  },
+  {
+   "signal_date": "20260918",
+   "buy_date": "20260921",
+   "sell_date": "20260922",
+   "code": "600176.SH",
+   "name": "中国巨石",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 44.99,
+   "sell_px": 46.1,
+   "ret_pct": 2.16,
+   "note": ""
+  },
+  {
+   "signal_date": "20260921",
+   "buy_date": "20260922",
+   "sell_date": "20260923",
+   "code": "002026.SZ",
+   "name": "山东威达",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 11.12,
+   "sell_px": 11.2,
+   "ret_pct": 0.42,
+   "note": ""
+  },
+  {
+   "signal_date": "20260922",
+   "buy_date": "20260923",
+   "sell_date": "20260924",
+   "code": "603139.SH",
+   "name": "康惠股份",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 36.83,
+   "sell_px": 36.31,
+   "ret_pct": -1.71,
+   "note": ""
+  },
+  {
+   "signal_date": "20261009",
+   "buy_date": "20261012",
+   "sell_date": "20261013",
+   "code": "601956.SH",
+   "name": "东贝集团",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 5.36,
+   "sell_px": 5.18,
+   "ret_pct": -3.65,
+   "note": ""
+  },
+  {
+   "signal_date": "20261012",
+   "buy_date": "20261013",
+   "sell_date": "20261014",
+   "code": "603328.SH",
+   "name": "依顿电子",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 11.8,
+   "sell_px": 13.4,
+   "ret_pct": 13.22,
+   "note": ""
+  },
+  {
+   "signal_date": "20261013",
+   "buy_date": "20261014",
+   "sell_date": "20261015",
+   "code": "000513.SZ",
+   "name": "丽珠集团",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 28.58,
+   "sell_px": 27.64,
+   "ret_pct": -3.58,
    "note": ""
   },
   {
@@ -53,6 +235,90 @@
    "note": ""
   },
   {
+   "signal_date": "20261015",
+   "buy_date": "20261016",
+   "sell_date": "20261019",
+   "code": "601579.SH",
+   "name": "会稽山",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 29.9,
+   "sell_px": 27.99,
+   "ret_pct": -6.67,
+   "note": ""
+  },
+  {
+   "signal_date": "20261016",
+   "buy_date": "20261019",
+   "sell_date": "20261020",
+   "code": "601579.SH",
+   "name": "会稽山",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 27.99,
+   "sell_px": 26.34,
+   "ret_pct": -6.18,
+   "note": ""
+  },
+  {
+   "signal_date": "20261019",
+   "buy_date": "20261020",
+   "sell_date": "20261021",
+   "code": "601579.SH",
+   "name": "会稽山",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 26.34,
+   "sell_px": 26.9,
+   "ret_pct": 1.82,
+   "note": ""
+  },
+  {
+   "signal_date": "20261020",
+   "buy_date": "20261021",
+   "sell_date": "20261022",
+   "code": "603001.SH",
+   "name": "奥康国际",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 10.83,
+   "sell_px": 10.98,
+   "ret_pct": 1.08,
+   "note": ""
+  },
+  {
+   "signal_date": "20261021",
+   "buy_date": "20261022",
+   "sell_date": "20261023",
+   "code": "600356.SH",
+   "name": "恒丰纸业",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 9.75,
+   "sell_px": 9.3,
+   "ret_pct": -4.9,
+   "note": ""
+  },
+  {
+   "signal_date": "20261022",
+   "buy_date": "20261023",
+   "sell_date": "20261026",
+   "code": "000504.SZ",
+   "name": "南华生物",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 8.81,
+   "sell_px": 8.82,
+   "ret_pct": -0.19,
+   "note": ""
+  },
+  {
    "signal_date": "20261023",
    "buy_date": "20261026",
    "sell_date": "20261027",
@@ -67,188 +333,202 @@
    "note": ""
   },
   {
-   "signal_date": "20261028",
-   "buy_date": "20261029",
-   "sell_date": "20261030",
-   "code": "002811.SZ",
-   "name": "郑中设计",
+   "signal_date": "20261026",
+   "buy_date": "20261027",
+   "sell_date": "20261028",
+   "code": "603068.SH",
+   "name": "博通集成",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
-   "buy_px": 17.45,
-   "sell_px": 15.55,
-   "ret_pct": -11.16,
-   "note": "开盘跌停按收盘"
+   "buy_px": 42.78,
+   "sell_px": 40.88,
+   "ret_pct": -4.73,
+   "note": ""
+  },
+  {
+   "signal_date": "20261027",
+   "buy_date": "20261028",
+   "sell_date": "20261029",
+   "code": "002614.SZ",
+   "name": "奥佳华",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_px": 7.6,
+   "sell_px": 7.41,
+   "ret_pct": -2.79,
+   "note": "开盘深跌2%按收盘"
   }
  ],
  "curve": [
   {
    "d": "2026-09-01",
-   "nav": 1042361.0
+   "nav": 1150381.0
   },
   {
    "d": "2026-09-02",
-   "nav": 1047261.0
+   "nav": 1150471.0
   },
   {
    "d": "2026-09-03",
-   "nav": 1053124.0
+   "nav": 1144942.0
   },
   {
    "d": "2026-09-04",
-   "nav": 1053124.0
+   "nav": 1148647.0
   },
   {
    "d": "2026-09-07",
-   "nav": 1053124.0
+   "nav": 1152251.0
   },
   {
    "d": "2026-09-08",
-   "nav": 1053124.0
+   "nav": 1194449.0
   },
   {
    "d": "2026-09-09",
-   "nav": 1053124.0
+   "nav": 1170859.0
   },
   {
    "d": "2026-09-10",
-   "nav": 1053124.0
+   "nav": 1133900.0
   },
   {
    "d": "2026-09-11",
-   "nav": 1053124.0
+   "nav": 1113412.0
   },
   {
    "d": "2026-09-14",
-   "nav": 1053124.0
+   "nav": 1113412.0
   },
   {
    "d": "2026-09-15",
-   "nav": 1053124.0
+   "nav": 1113412.0
   },
   {
    "d": "2026-09-16",
-   "nav": 1053124.0
+   "nav": 1113412.0
   },
   {
    "d": "2026-09-17",
-   "nav": 1053124.0
+   "nav": 1113412.0
   },
   {
    "d": "2026-09-18",
-   "nav": 1053124.0
+   "nav": 1113412.0
   },
   {
    "d": "2026-09-21",
-   "nav": 1053124.0
+   "nav": 1133773.0
   },
   {
    "d": "2026-09-22",
-   "nav": 1053124.0
+   "nav": 1123785.0
   },
   {
    "d": "2026-09-23",
-   "nav": 1053124.0
+   "nav": 1132736.0
   },
   {
    "d": "2026-09-24",
-   "nav": 1053124.0
+   "nav": 1122716.0
   },
   {
    "d": "2026-09-28",
-   "nav": 1053124.0
+   "nav": 1122716.0
   },
   {
    "d": "2026-09-29",
-   "nav": 1053124.0
+   "nav": 1122716.0
   },
   {
    "d": "2026-09-30",
-   "nav": 1053124.0
+   "nav": 1122716.0
   },
   {
    "d": "2026-10-08",
-   "nav": 1053124.0
+   "nav": 1122716.0
   },
   {
    "d": "2026-10-09",
-   "nav": 1053124.0
+   "nav": 1122716.0
   },
   {
    "d": "2026-10-12",
-   "nav": 1053124.0
+   "nav": 1094118.0
   },
   {
    "d": "2026-10-13",
-   "nav": 1053124.0
+   "nav": 1221414.0
   },
   {
    "d": "2026-10-14",
-   "nav": 1053124.0
+   "nav": 1198836.0
   },
   {
    "d": "2026-10-15",
-   "nav": 1038117.0
+   "nav": 1164103.0
   },
   {
    "d": "2026-10-16",
-   "nav": 1050591.0
+   "nav": 1106966.0
   },
   {
    "d": "2026-10-19",
-   "nav": 1050591.0
+   "nav": 1049506.0
   },
   {
    "d": "2026-10-20",
-   "nav": 1050591.0
+   "nav": 1054969.0
   },
   {
    "d": "2026-10-21",
-   "nav": 1050591.0
+   "nav": 1059734.0
   },
   {
    "d": "2026-10-22",
-   "nav": 1050591.0
+   "nav": 1024532.0
   },
   {
    "d": "2026-10-23",
-   "nav": 1050591.0
+   "nav": 1026765.0
   },
   {
    "d": "2026-10-26",
-   "nav": 1029299.0
+   "nav": 987404.0
   },
   {
    "d": "2026-10-27",
-   "nav": 1023373.0
+   "nav": 921819.0
   },
   {
    "d": "2026-10-28",
-   "nav": 1023373.0
+   "nav": 958722.0
   },
   {
    "d": "2026-10-29",
-   "nav": 1012137.0
+   "nav": 909192.0
   },
   {
    "d": "2026-10-30",
-   "nav": 909213.0
+   "nav": 1028124.0
   }
  ],
- "base_nav": 1042361.0,
+ "base_nav": 1150381.0,
  "daily": [
   {
    "date": "20260901",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "002589.SZ",
      "name": "瑞康医药",
-     "note": "缺口0.0%未达承接线-0.8%"
+     "ret_pct": 9.42
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260902",
@@ -267,79 +547,79 @@
    "date": "20260903",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "600683.SH",
      "name": "京投发展",
-     "note": "缺口-0.2%未达承接线-0.8%"
+     "ret_pct": -1.21
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260904",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "002589.SZ",
      "name": "瑞康医药",
-     "note": "缺口0.3%未达承接线-0.8%"
+     "ret_pct": 0.32
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260907",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "003023.SZ",
      "name": "彩虹集团",
-     "note": "缺口0.0%未达承接线-0.8%"
+     "ret_pct": -0.15
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260908",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "603113.SH",
      "name": "金能科技",
-     "note": "缺口0.0%未达承接线-0.8%"
+     "ret_pct": 2.11
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260909",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "600353.SH",
      "name": "旭光电子",
-     "note": "缺口1.7%未达承接线-0.8%"
+     "ret_pct": -1.16
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260910",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "002655.SZ",
      "name": "共达电声",
-     "note": "缺口-0.7%未达承接线-0.8%"
+     "ret_pct": -3.64
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260911",
@@ -387,40 +667,40 @@
    "date": "20260921",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "600176.SH",
      "name": "中国巨石",
-     "note": "缺口-0.1%未达承接线-0.8%"
+     "ret_pct": 2.16
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260922",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "002026.SZ",
      "name": "山东威达",
-     "note": "缺口1.2%未达承接线-0.8%"
+     "ret_pct": 0.42
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260923",
    "trade_ok": true,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "603139.SH",
      "name": "康惠股份",
-     "note": "缺口0.8%未达承接线-0.8%"
+     "ret_pct": -1.71
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260924",
@@ -468,40 +748,40 @@
    "date": "20261012",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "601956.SH",
      "name": "东贝集团",
-     "note": "缺口0.8%未达承接线-2.75%"
+     "ret_pct": -3.65
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261013",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "603328.SH",
      "name": "依顿电子",
-     "note": "缺口-2.7%未达承接线-2.75%"
+     "ret_pct": 13.22
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261014",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "000513.SZ",
      "name": "丽珠集团",
-     "note": "缺口0.6%未达承接线-2.75%"
+     "ret_pct": -3.58
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261015",
@@ -520,79 +800,79 @@
    "date": "20261016",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "601579.SH",
      "name": "会稽山",
-     "note": "缺口0.1%未达承接线-2.75%"
+     "ret_pct": -6.67
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261019",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "601579.SH",
      "name": "会稽山",
-     "note": "缺口-0.5%未达承接线-2.75%"
+     "ret_pct": -6.18
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261020",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "601579.SH",
      "name": "会稽山",
-     "note": "缺口-1.5%未达承接线-2.75%"
+     "ret_pct": 1.82
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261021",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "603001.SH",
      "name": "奥康国际",
-     "note": "缺口0.2%未达承接线-2.75%"
+     "ret_pct": 1.08
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261022",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "600356.SH",
      "name": "恒丰纸业",
-     "note": "缺口0.0%未达承接线-2.75%"
+     "ret_pct": -4.9
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261023",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "000504.SZ",
      "name": "南华生物",
-     "note": "缺口-2.0%未达承接线-2.75%"
+     "ret_pct": -0.19
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261026",
@@ -605,51 +885,39 @@
      "ret_pct": -2.59
     }
    ],
-   "skipped": [
-    {
-     "code": "000498.SZ",
-     "name": "山东路桥",
-     "note": "缺口-0.2%未达承接线-0.8%"
-    }
-   ]
+   "skipped": []
   },
   {
    "date": "20261027",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "603068.SH",
      "name": "博通集成",
-     "note": "缺口1.0%未达承接线-2.75%"
+     "ret_pct": -4.73
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261028",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "fills": [
     {
      "code": "002614.SZ",
      "name": "奥佳华",
-     "note": "缺口-0.5%未达承接线-2.75%"
+     "ret_pct": -2.79
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20261029",
    "trade_ok": false,
    "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002811.SZ",
-     "name": "郑中设计",
-     "ret_pct": -11.16
-    }
-   ],
+   "fills": [],
    "skipped": []
   },
   {
@@ -663,26 +931,26 @@
  "monthly": [
   {
    "month": "202609",
-   "ret_pct": 0.94
+   "ret_pct": 7.18
   },
   {
    "month": "202610",
-   "ret_pct": -13.67
+   "ret_pct": -8.43
   }
  ],
  "perf": {
-  "总收益率%": -9.08,
-  "年化收益率%": -42.75,
-  "最大回撤%": -13.67,
-  "卡玛比率": -3.13,
-  "夏普比率": -1.87,
-  "交易次数": 5,
-  "胜率%": 40.0,
-  "平均单笔收益%": -1.744,
-  "盈亏比": 0.38,
+  "总收益率%": 2.81,
+  "年化收益率%": 17.65,
+  "最大回撤%": -25.56,
+  "卡玛比率": 0.69,
+  "夏普比率": 0.56,
+  "交易次数": 28,
+  "胜率%": 39.29,
+  "平均单笔收益%": -0.256,
+  "盈亏比": 0.84,
   "空仓天数": 10,
-  "跳过买入次数": 25,
-  "总费用(元)": 5104.0,
+  "跳过买入次数": 0,
+  "总费用(元)": 30634.0,
   "同期市场等权基准%": -10.45
  }
 }

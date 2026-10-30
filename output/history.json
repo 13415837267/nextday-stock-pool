@@ -21,7 +21,8 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算"
+   "status": "待结算",
+   "config_fp": "a77ea8ea6e88"
   },
   {
    "publish_date": "2026-10-29",
