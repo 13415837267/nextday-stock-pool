@@ -169,7 +169,7 @@ def render(payload: dict) -> str:
 
 <h2>逐日决策 <span class="sub">解释"这天为什么没买"</span></h2>
 <details>
-  <summary>展开 38 个交易日的选股/买入判定</summary>
+  <summary>展开 {n_day} 个交易日的选股/买入判定</summary>
   <div class="tbl-wrap" style="margin-top:12px"><table id="daily"><thead><tr>
     <th>买入日</th><th>风控</th><th>成交</th><th>候选与跳过原因</th>
   </tr></thead><tbody></tbody></table></div>
