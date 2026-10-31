@@ -307,6 +307,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
     gap_tiers = ex.get("gap_size_tiers") or []   # 缺口分级下注: [{below: -4.0, mult: 1.0}, ...]
     gap_above_tiers = ex.get("gap_above_tiers") or []   # 高开降仓: [{above: 0, mult: 0.5}, ...]
+    pool_tiers = ex.get("pool_n_tiers") or []           # 池深分档下注: [{min: 41, mult: 1.0}, ...]
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
     # 第九十六轮: 评分分档下注 [{min: 1.5, mult: 1.0}, {min: 1.1, mult: 0.6}, ...] 降序匹配
     # —— 门槛降低后不再"一刀切空仓", 低分票只给小仓, 高分票才满仓; 兼顾笔数与期望。
@@ -335,6 +336,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
 
     def do_buy(picks: list[dict], d: str, idx: int = 0):
         nonlocal cash, fee_total
+        frac_buy_open = min(1.0, max(0.0, float(ex.get("buy_open_frac", 1.0) or 0.0)))
         if not picks:
             return
         _sel = cfg.get("selection") or {}
@@ -516,6 +518,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     if g100 >= float(t["above"]):
                         pick_frac *= float(t.get("mult", 1.0))
                         break
+            # 池深分档下注(第九十九轮, 可选): 当日候选池深度 = 同风格票的"共振强度",
+            # T 日盘后即已知(无未来函数)。池子越宽说明越多强势股同步回调、次日修复有板块共振,
+            # 池子窄则是孤立回调 —— 实测几何期望从池41+的+1.28%单调掉到池11-20的+0.04%。
+            if pool_tiers:
+                _pn = int(p.get("_pool_n") or 0)
+                for _t in pool_tiers:
+                    if _pn >= int(_t["min"]):
+                        pick_frac *= float(_t.get("mult", 1.0))
+                        break
             alloc = min(pick_frac * equity, cash)
             # 剩余现金不足"本笔目标仓位"的30%才放弃(第九十七轮修正: 原以满仓 frac 为基准,
             # 在评分档×缺口档叠加把目标仓位压到 30% 以下时会把本可成交的单直接丢弃 ——
@@ -523,7 +534,16 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if alloc < pick_frac * equity * 0.3:
                 break
             _lp = p.get("_lim_px")
-            buy_adj = float(_lp) if _lp else float(row["open_adj"])   # 不含滑点的成交参考价
+            # 分批建仓(第九十九轮, 可选; 缺省 1.0=全开盘买, 与旧口径逐位等价):
+            # T+1 开盘买 frac_b, 当日收盘买 1-frac_b。与卖出端 sell_open_frac 对称 ——
+            # 都在回答"日内这一段该不该全押某一个时点"。成本价按成交金额加权。
+            if _lp:
+                buy_adj = float(_lp)
+            elif frac_buy_open >= 1.0:
+                buy_adj = float(row["open_adj"])
+            else:
+                buy_adj = (frac_buy_open * float(row["open_adj"])
+                           + (1 - frac_buy_open) * float(row["close_adj"]))
             buy_eff = buy_adj * (1 + slip)
             units = alloc / (buy_eff * (1 + comm))
             fee = alloc * comm

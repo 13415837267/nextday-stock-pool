@@ -70,6 +70,7 @@ def _config_fp(cfg: dict) -> str:
         "score_gate": e.get("min_top1_score"),          # 第九十五轮: 质量门槛
         "score_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("score_tiers") or [])],  # 第九十六轮: 分档下注
         "gap_above": [(t.get("above"), t.get("mult")) for t in (e.get("gap_above_tiers") or [])],  # 第九十七轮: 高开降仓
+        "pool_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("pool_n_tiers") or [])],  # 第九十九轮: 池深分档
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
@@ -97,6 +98,23 @@ def _gap_tier_mult(gap: float, ex: dict, score=None) -> tuple[float, str]:
         if float(gap) >= float(t.get("above", 0.0)):
             _m = float(t.get("mult", 1.0))
             return _m, f"缺口{gap:+.1f}%→{_m:.0%}仓({float(t['above']):g}档)"
+    return 1.0, ""
+
+
+def _pool_tier_mult(pool_n, ex: dict) -> tuple[float, str]:
+    """池深分档乘数(与回测 do_buy 的 pool_n_tiers 同口径, 降序匹配)。
+
+    pool_n = T 日收盘后满足 dip 全部条件的票数(盘后即知, 无未来函数)。
+    池越宽 = 越多同风格票同步被错杀 = 次日修复有板块共振; 池越窄 = 孤立回调。
+    与回测一致: pool_n 为 0/None(备用池补位或历史记录缺字段) 不匹配任何档 -> 满仓。
+    """
+    if pool_n is None:
+        return 1.0, ""
+    _n = int(pool_n)
+    for t in (ex.get("pool_n_tiers") or []):
+        if _n >= int(t["min"]):
+            _m = float(t.get("mult", 1.0))
+            return _m, (f"池深{_n}只→{_m:.0%}仓" if _m != 1.0 else "")
     return 1.0, ""
 
 
@@ -146,6 +164,11 @@ def _position_note(ex: dict) -> str:
         seg = "/".join(f"≥{float(t['above']):g}%→{float(t.get('mult', 1.0)):.0%}"
                        for t in gat)
         pos += f"; 高开减仓: 竞价缺口 {seg}(照常成交, 只降仓位)"
+    ptiers = ex.get("pool_n_tiers") or []
+    if ptiers:
+        seg = "/".join(f"≥{int(t['min'])}只→{float(t.get('mult', 1.0)):.0%}"
+                       for t in ptiers)
+        pos += f"; 池深分档: 当日候选 {seg}(只降仓位, 不弃单)"
     pos += "; 出场: " + _sell_rule_text(ex) + "(遵守A股T+1制度, 无当日卖出)"
     return pos
 
@@ -545,6 +568,11 @@ def main():
             continue
         verified.append(p)
         _pool_cnt[_pool] = _pool_cnt.get(_pool, 0) + 1
+    # 第九十九轮: 把"当日主力池候选数"挂到每只票上 —— 池深分档下注的唯一输入,
+    # 与回测 do_buy 的 _pool_n(= select 的 scored) 完全同源, 盘后即知。
+    _pn_main = int(stats.get("scored") or 0)
+    for _p in verified:
+        _p["pool_n"] = _pn_main if _p.get("pool", "main") == "main" else 0
 
     # ---- 5. 结算 T-2 发布池 ----
     out_dir = ROOT / "output"
@@ -624,7 +652,8 @@ def main():
             # 此前只记 bfrac*熔断系数, 页面显示的执行仓位与回测实际仓位不同。
             _sm = _pos_tier_mult(p.get("score"), ex)
             _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
-            _pos = round(bfrac * _cf * _sm * _gm * ex.get("alloc_frac_pct", 100.0), 1)
+            _pm, _pt = _pool_tier_mult(p.get("pool_n"), ex)
+            _pos = round(bfrac * _cf * _sm * _gm * _pm * ex.get("alloc_frac_pct", 100.0), 1)
             return {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
@@ -633,8 +662,9 @@ def main():
                 "position_pct": _pos,
                 "pos_note": ("·".join(x for x in [
                     (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
-                    _gt] if x) or None),
+                    _gt, _pt] if x) or None),
                 "gap_pct": round(gap, 2),
+                "pool_n": p.get("pool_n"),
                 "chain": chain,
                 "holding": True,
             }
@@ -730,6 +760,7 @@ def main():
             # 第九十七轮: 同 _settle_holding —— 补上评分档与高开降仓档, 执行记录与回测同尺度
             _sm = _pos_tier_mult(p.get("score"), ex)
             _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
+            _pm, _pt = _pool_tier_mult(p.get("pool_n"), ex)
             executed = {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
@@ -737,11 +768,12 @@ def main():
                 "sell_px": round(_spx / (float(sell_row["close_adj"]) / float(sell_row["close"]))
                                  if float(sell_row["close"]) else _spx, 2),
                 "ret_pct": round(float(r) * 100, 2),
-                "position_pct": round(bfrac * _cf * _sm * _gm * ex.get("alloc_frac_pct", 100.0), 1),
+                "position_pct": round(bfrac * _cf * _sm * _gm * _pm * ex.get("alloc_frac_pct", 100.0), 1),
                 "pos_note": ("·".join(x for x in [
                     (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
-                    _gt] if x) or None),
+                    _gt, _pt] if x) or None),
                 "gap_pct": round(gap, 2),
+                "pool_n": p.get("pool_n"),
                 "chain": chain,
             }
             if sell_note:
@@ -926,7 +958,12 @@ def main():
     _gat_rule = (f"; 若竞价缺口 {_gat_txt} 则按该比例减仓(照常成交, 不弃单)" if _gat else "")
     if _gat and allow_buy:
         buy_note += _gat_rule
-    _pos_frac = plan_frac * _tier_mult
+    # 第九十九轮: 池深分档 —— 与"评分档""高开档"同尺度叠乘, 只降仓不弃单。
+    _pn_today = int(stats.get("scored") or 0)
+    _pool_mult, _pool_txt = _pool_tier_mult((_pn_today if verified and verified[0].get("pool", "main") == "main" else None), ex)
+    if _pool_mult < 1.0 and allow_buy:
+        buy_note += f"; {_pool_txt}(当日候选池偏窄=孤立回调、缺共振)"
+    _pos_frac = plan_frac * _tier_mult * _pool_mult
     steps = []
     _rk: dict[str, int] = {}   # 池内名次(主力/备用各自计数, 与回测 _rank 一致)
     # 顺延指引覆盖整个发布池(第六十一轮: 5→display_top_n只): 网页展示N只=指引N只=回测exec_top_n,
@@ -953,6 +990,7 @@ def main():
             "close": p.get("close"), "pct": p.get("pct"),
             "pool": p.get("pool", "main"), "strategy": _strategy,
             "strategy_cn": p.get("strategy_cn", _strategy),
+            "pool_n": p.get("pool_n"),
             "rule": ((f"评分 {float(_top_score):.2f} < 门槛 {float(_gate):g} → 不参与(空仓)"
                       if _gate_blocked else
                       (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{_pos_frac:.0%}仓位买入{_gat_rule}"
@@ -976,6 +1014,9 @@ def main():
         "gate_blocked": _gate_blocked,
         "score_tier_mult": (round(_tier_mult, 3) if _tiers else None),
         "score_tier_note": (_tier_txt or None),
+        "pool_n": _pn_today,                       # 第九十九轮: 当日候选池深度
+        "pool_tier_mult": (round(_pool_mult, 3) if (ex.get("pool_n_tiers") or []) else None),
+        "pool_tier_note": (_pool_txt or None),
         "gap_tier_note": (_gat_txt or None),
         "steps": steps,
         "sell_plan": _sell_rule_text(ex),

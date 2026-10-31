@@ -22,7 +22,7 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "cd3fe689f7f7"
+   "config_fp": "fc7028d28af4"
   },
   {
    "publish_date": "2026-10-29",
@@ -89,6 +89,7 @@
     "position_pct": 100.0,
     "pos_note": null,
     "gap_pct": -3.99,
+    "pool_n": null,
     "chain": [],
     "holding": true
    },
