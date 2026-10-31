@@ -310,6 +310,20 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     gap_above_tiers = ex.get("gap_above_tiers") or []   # 高开降仓: [{above: 0, mult: 0.5}, ...]
     gap_floor_tiers = ex.get("gap_floor_tiers") or []   # 深低开加仓下限: [{below: -1, min_pool: 11, floor: 0.8}]
     pool_tiers = ex.get("pool_n_tiers") or []           # 池深分档下注: [{min: 41, mult: 1.0}, ...]
+    knife_tiers = ex.get("knife_tiers") or []           # 阴跌刀口保护(第一百零三轮): [{mkt_above, res_below, mult}]
+    mkt_floor_tiers = ex.get("mkt_floor_tiers") or []   # 全市场恐慌日回满仓: [{mkt_below, floor}]
+    # 信号日"市场典型个股涨跌"(全市场 pct 中位数): 只用 T 日收盘后的横截面, 无未来函数。
+    # 用于把"大盘一起跌"(系统性错杀, 次日修复有共振)与"大盘平稳而个股独跌"(个股有事)分开。
+    mkt_ret_map: dict[str, float] = {}
+    if knife_tiers or mkt_floor_tiers:
+        for _d in main_dates:
+            _dd = by_date.get(_d)
+            if _dd is None:
+                continue
+            _v = _dd["pct"].to_numpy(dtype="float64")
+            _v = _v[~np.isnan(_v)]
+            if len(_v):
+                mkt_ret_map[_d] = float(np.median(_v))
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
     gate_scale = bool(ex.get("score_gate_pool_scale", False))   # 第一百轮: 门槛按池内z分理论上限缩放
     gate_ref = float(ex.get("score_gate_ref_pool", 40) or 40)    # 缩放基准池深(该池深下门槛=min_top1_score)
@@ -414,6 +428,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             sig_row = by_date[p["signal_date"]]
             prev_close = sig_row.loc[sig_row["ts_code"] == p["code"], "close_adj"]
             gap = row["open_adj"] / float(prev_close.iloc[0]) - 1 if len(prev_close) else 0
+            # 信号日个股涨跌(用于"刀口保护": 与市场典型个股涨跌相减得超额跌幅)
+            _pct_sig = None
+            if knife_tiers or mkt_floor_tiers:
+                _pr = sig_row.loc[sig_row["ts_code"] == p["code"], "pct"]
+                if len(_pr):
+                    _pct_sig = float(_pr.iloc[0])
             if gap * 100 >= ex["skip_open_gain"]:
                 trades.append(_trade(p, "skip", d, note=f"开盘高开{gap*100:.1f}%"))
                 continue
@@ -466,7 +486,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if _gate is not None and p.get("score", 0) < _gate:
                 trades.append(_trade(p, "skip", d, note=f"top1评分{p.get('score',0):.2f}低于门槛{_gate:.2f}"))
                 continue
-            qualified.append({**p, "_row": row, "_gap": gap, "_lim_px": _lim_px})
+            qualified.append({**p, "_row": row, "_gap": gap, "_lim_px": _lim_px,
+                              "_pct_sig": _pct_sig})
         if not qualified:
             return
         # 每笔固定占组合总资产 frac%(与达标数量解耦, 防恐慌晨逆向选择),
@@ -550,6 +571,28 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     if _pn >= int(_t["min"]):
                         pick_frac *= float(_t.get("mult", 1.0))
                         break
+            # 阴跌刀口保护(第一百零三轮, 可选): 市场 T 日"典型个股"在涨/走平(中位数 > mkt_above),
+            # 而本票超额下跌超过 res_below 个百分点 —— 这是"个股自己的事"(利空/资金出逃),
+            # 不是大盘一起砸出来的系统性错杀, 次日深低开的修复含义不同, 故缩仓(不弃单)。
+            # 放在 gap_floor 之前: 深低开是直接证据, 仍可把仓位补回满仓。
+            if knife_tiers and p.get("_pct_sig") is not None:
+                _mr = mkt_ret_map.get(p["signal_date"])
+                if _mr is not None:
+                    _res = float(p["_pct_sig"]) - _mr
+                    for t in knife_tiers:
+                        if _mr > float(t.get("mkt_above", -0.5)) and _res <= float(t.get("res_below", -4.0)):
+                            pick_frac *= float(t.get("mult", 1.0))
+                            break
+            # 全市场恐慌日回满仓(第一百零三轮, 可选): 信号日市场"典型个股"跌幅达到 mkt_below 时,
+            # 这一天的回调是大盘一起砸出来的系统性错杀, 次日深低开的修复有全市场共振,
+            # 撤销评分/池深折价回到 floor(仍以当日参与系数 frac 为上限基准, 不越过风控降仓)。
+            if mkt_floor_tiers and p.get("_pct_sig") is not None:
+                _mr = mkt_ret_map.get(p["signal_date"])
+                if _mr is not None:
+                    for t in mkt_floor_tiers:
+                        if _mr <= float(t.get("mkt_below", -1.0)):
+                            pick_frac = max(pick_frac, frac * float(t.get("floor", 1.0)))
+                            break
             # 深低开加仓(第一百零一轮, 可选): 竞价缺口 <= below 且当日池深 >= min_pool 时,
             # 仓位不低于 frac*floor(以当日参与系数 frac 为基准, 不覆盖风控降仓)。
             # 依据: 缺口是唯一在 6/7 年同向的调节变量 —— 缺口<=-1% 的 92 笔均值 +1.85%/胜率 75%,
@@ -562,6 +605,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                         pick_frac = max(pick_frac, frac * float(_t.get("floor", 1.0)))
                         break
             alloc = min(pick_frac * equity, cash)
+            # 第一百零三轮修复: 分档乘数为 0(或叠乘后为 0)时会生成 units=0 的"零仓成交" ——
+            # 既记进交易次数/胜率(0 收益被算作亏损), 又与实际资金路径矛盾。
+            # 与 day 级 frac<=0 的守卫同源, 只是那一层拦不住单笔被乘成 0。
+            if pick_frac <= 0:
+                continue
             # 剩余现金不足"本笔目标仓位"的30%才放弃(第九十七轮修正: 原以满仓 frac 为基准,
             # 在评分档×缺口档叠加把目标仓位压到 30% 以下时会把本可成交的单直接丢弃 ——
             # 高开降仓的实验里因此凭空少掉 159 笔交易; 判据应与本笔实际目标仓位同尺度)。

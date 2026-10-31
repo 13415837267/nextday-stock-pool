@@ -148,7 +148,11 @@ def main():
             _fl, _ft = _gap_floor_mult(result["gap_pct"], td.get("pool_n"), ex)
             _floor_txt = ""
             if _fl and _pm < _fl and _pm > 0:
-                _restored = _pos0 / _pm * _fl
+                # 第一百零三轮: position_pct 里可能还含刀口保护乘数(个股独跌缩仓),
+                # 深低开是更强的直接证据, 与回测 gap_floor(max(pick_frac, frac*floor)) 同口径,
+                # 要把池深折价与刀口折价一起还原。
+                _km = float(td.get("knife_mult") or 1.0) or 1.0
+                _restored = _pos0 / _pm / _km * _fl
                 if _restored > _pos1:
                     _pos1 = _restored
                     _floor_txt = f"（{_ft}，仓位回{_pos1:.0f}%）"

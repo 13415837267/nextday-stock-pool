@@ -138,6 +138,45 @@ def _gap_floor_mult(gap: float, pool_n, ex: dict) -> tuple[float, str]:
     return 0.0, ""
 
 
+def _market_median_pct(by_date: dict, date: str) -> float:
+    """信号日全市场涨跌幅中位数("典型个股"当天涨跌): 只用 T 日收盘横截面, 盘后即知。"""
+    try:
+        df = by_date.get(date)
+        if df is None or not len(df):
+            return 0.0
+        return float(pd.Series(df["pct"]).median())
+    except Exception:  # noqa: BLE001 数据异常时不启用市场语境修正
+        return 0.0
+
+
+def _mkt_context(pct_stock, mkt_ret: float, ex: dict) -> tuple[float, str, float, str]:
+    """第一百零三轮 市场语境修正, 与回测 do_buy 的 knife_tiers / mkt_floor_tiers 同口径。
+
+    返回 (刀口乘数, 刀口文案, 恐慌日仓位下限, 恐慌日文案):
+      - 刀口: 大盘平稳/上涨(中位数 > mkt_above)而个股超额下跌(个股-市场) <= res_below
+        → 个股自己的事, 不是系统性错杀, 乘 mult 缩仓;
+      - 恐慌日: 全市场跌到 mkt_below 以下 → 系统性错杀, 仓位不低于 frac*floor。
+    """
+    km, kt = 1.0, ""
+    try:
+        _pct = float(pct_stock or 0.0)
+    except (TypeError, ValueError):
+        _pct = 0.0
+    for t in (ex.get("knife_tiers") or []):
+        if mkt_ret > float(t.get("mkt_above", -0.5)) and (_pct - mkt_ret) <= float(t.get("res_below", -4.0)):
+            km = float(t.get("mult", 1.0))
+            kt = (f"大盘中位数{mkt_ret:+.1f}%而个股超额{_pct - mkt_ret:+.1f}pp"
+                  f"→{km:.0%}仓(个股独跌)")
+            break
+    mf, ft = 0.0, ""
+    for t in (ex.get("mkt_floor_tiers") or []):
+        if mkt_ret <= float(t.get("mkt_below", -1.5)):
+            mf = float(t.get("floor", 1.0))
+            ft = f"全市场下跌(中位数{mkt_ret:+.1f}%)→回{mf:.0%}仓"
+            break
+    return km, kt, mf, ft
+
+
 def _exec_gate(rb, gap: float, ex: dict, floor: float) -> str | None:
     """非风控执行闸(与回测口径一致, 第49轮自内联elif链提取复用): 返回拦截原因, None=放行。
 
@@ -192,6 +231,14 @@ def _position_note(ex: dict) -> str:
     for _t in (ex.get("gap_floor_tiers") or []):
         pos += (f"; 深低开回满仓: 竞价缺口 ≤{float(_t['below']):g}% 且达标≥{int(_t.get('min_pool', 0))}只"
                 f" → 撤销池深折价、回{float(_t.get('floor', 1.0)):.0%}仓")
+        break
+    for _t in (ex.get("knife_tiers") or []):
+        pos += (f"; 刀口保护: 信号日全市场涨跌中位数 >{float(_t['mkt_above']):g}% 且个股超额下跌"
+                f"≤{float(_t['res_below']):g}pp → {float(_t.get('mult', 1.0)):.0%}仓(个股独跌≠系统性错杀)")
+        break
+    for _t in (ex.get("mkt_floor_tiers") or []):
+        pos += (f"; 恐慌日回满仓: 全市场涨跌中位数 ≤{float(_t['mkt_below']):g}% → 撤销评分/池深折价回"
+                f"{float(_t.get('floor', 1.0)):.0%}仓")
         break
     if float(ex.get("blocked_frac", 0) or 0) > 0 and ex.get("block_gap_below"):
         pos += (f"; 风控日: 只在竞价缺口 ≤{float(ex['block_gap_below']):g}% 时按"
@@ -700,8 +747,11 @@ def main():
             _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
             _pm, _pt = _pool_tier_mult(p.get("pool_n"), ex)
             _fl, _ft = _gap_floor_mult(gap, p.get("pool_n"), ex)   # 第一百零一轮: 深低开下限
+            _mkt = _market_median_pct(by_date, rec["publish_date"])
+            _km, _kt, _mf, _mft = _mkt_context(p.get("pct"), _mkt, ex)   # 第一百零三轮: 市场语境
             _base = bfrac * _cf
-            _pos = round(max(_base * _sm * _gm * _pm, _base * _fl) * ex.get("alloc_frac_pct", 100.0), 1)
+            _pos = round(max(_base * _sm * _gm * _pm * _km, _base * _fl, _base * _mf)
+                         * ex.get("alloc_frac_pct", 100.0), 1)
             if _fl and _pm < _fl:
                 _pt = (f"{_pt}·{_ft}" if _pt else _ft)
             return {
@@ -712,7 +762,7 @@ def main():
                 "position_pct": _pos,
                 "pos_note": ("·".join(x for x in [
                     (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
-                    _gt, _pt] if x) or None),
+                    _gt, _pt, _kt, _mft] if x) or None),
                 "gap_pct": round(gap, 2),
                 "pool_n": p.get("pool_n"),
                 "chain": chain,
@@ -812,8 +862,11 @@ def main():
             _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
             _pm, _pt = _pool_tier_mult(p.get("pool_n"), ex)
             _fl, _ft = _gap_floor_mult(gap, p.get("pool_n"), ex)   # 第一百零一轮
+            _mkt = _market_median_pct(by_date, rec["publish_date"])
+            _km, _kt, _mf, _mft = _mkt_context(p.get("pct"), _mkt, ex)   # 第一百零三轮
             _base = bfrac * _cf
-            _pos_final = round(max(_base * _sm * _gm * _pm, _base * _fl) * ex.get("alloc_frac_pct", 100.0), 1)
+            _pos_final = round(max(_base * _sm * _gm * _pm * _km, _base * _fl, _base * _mf)
+                               * ex.get("alloc_frac_pct", 100.0), 1)
             if _fl and _pm < _fl:
                 _pt = (f"{_pt}·{_ft}" if _pt else _ft)
             executed = {
@@ -826,7 +879,7 @@ def main():
                 "position_pct": _pos_final,
                 "pos_note": ("·".join(x for x in [
                     (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
-                    _gt, _pt] if x) or None),
+                    _gt, _pt, _kt, _mft] if x) or None),
                 "gap_pct": round(gap, 2),
                 "pool_n": p.get("pool_n"),
                 "chain": chain,
@@ -1036,6 +1089,23 @@ def main():
         buy_note += (f"; 若竞价缺口 ≤{float(_t0['below']):g}% 且达标≥{int(_t0.get('min_pool', 0))}只"
                      f" → 撤销池深折价、回{float(_t0.get('floor', 1.0)):.0%}仓")
     _pos_frac = plan_frac * _tier_mult * _pool_mult
+    # 第一百零三轮: 市场语境 —— 把"深低开/回调"拆成市场成分与个股成分
+    #   (a) 刀口保护: 大盘平稳/上涨(全市场涨跌中位数 > mkt_above)而首选超额下跌
+    #       (个股 pct - 市场中位数) <= res_below → 个股自己的事, 不是系统性错杀, 缩仓;
+    #   (b) 恐慌日回满仓: 全市场跌到 mkt_below 以下 → 系统性错杀, 次日修复有全市场共振,
+    #       撤销评分/池深折价回满仓(仍以 plan_frac 为上限, 不越过风控降仓)。
+    # 两个输入都是 T 日收盘后的横截面统计, 盘后即知, 无未来函数。
+    _mkt_ret = _market_median_pct(by_date, signal_date)
+    _knife_mult, _knife_txt, _mf_frac, _mkt_floor_txt = _mkt_context(
+        (verified[0].get("pct") if verified else None), _mkt_ret, ex)
+    if allow_buy:
+        _pos_frac *= _knife_mult
+        if _mf_frac and _pos_frac < plan_frac * _mf_frac:
+            _pos_frac = plan_frac * _mf_frac
+    if allow_buy and _knife_txt:
+        buy_note += f"; {_knife_txt}"
+    if allow_buy and _mkt_floor_txt:
+        buy_note += f"; {_mkt_floor_txt}"
     steps = []
     _rk: dict[str, int] = {}   # 池内名次(主力/备用各自计数, 与回测 _rank 一致)
     # 顺延指引覆盖整个发布池(第六十一轮: 5→display_top_n只): 网页展示N只=指引N只=回测exec_top_n,
@@ -1089,6 +1159,11 @@ def main():
         "pool_n": _pn_today,                       # 第九十九轮: 当日候选池深度
         "pool_tier_mult": (round(_pool_mult, 3) if (ex.get("pool_n_tiers") or []) else None),
         "pool_tier_note": (_pool_txt or None),
+        # 第一百零三轮: 市场语境(信号日全市场中位数涨跌)与两条仓位修正
+        "mkt_ret_pct": round(_mkt_ret, 2),
+        "knife_mult": (round(_knife_mult, 3) if (ex.get("knife_tiers") or []) else None),
+        "knife_note": (_knife_txt or None),
+        "mkt_floor_note": (_mkt_floor_txt or None),
         "gap_tier_note": (_gat_txt or None),
         "steps": steps,
         "sell_plan": _sell_rule_text(ex),
