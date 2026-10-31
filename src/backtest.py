@@ -308,6 +308,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
     gap_tiers = ex.get("gap_size_tiers") or []   # 缺口分级下注: [{below: -4.0, mult: 1.0}, ...]
     gap_above_tiers = ex.get("gap_above_tiers") or []   # 高开降仓: [{above: 0, mult: 0.5}, ...]
+    gap_floor_tiers = ex.get("gap_floor_tiers") or []   # 深低开加仓下限: [{below: -1, min_pool: 11, floor: 0.8}]
     pool_tiers = ex.get("pool_n_tiers") or []           # 池深分档下注: [{min: 41, mult: 1.0}, ...]
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
     gate_scale = bool(ex.get("score_gate_pool_scale", False))   # 第一百轮: 门槛按池内z分理论上限缩放
@@ -542,6 +543,17 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 for _t in pool_tiers:
                     if _pn >= int(_t["min"]):
                         pick_frac *= float(_t.get("mult", 1.0))
+                        break
+            # 深低开加仓(第一百零一轮, 可选): 竞价缺口 <= below 且当日池深 >= min_pool 时,
+            # 仓位不低于 frac*floor(以当日参与系数 frac 为基准, 不覆盖风控降仓)。
+            # 依据: 缺口是唯一在 6/7 年同向的调节变量 —— 缺口<=-1% 的 92 笔均值 +1.85%/胜率 75%,
+            # 而缺口>=0.5% 的 120 笔均值 -0.15%; 现行规则只惩罚高开, 深低开拿不到额外预算。
+            if gap_floor_tiers:
+                _g100 = p["_gap"] * 100
+                _pn = int(p.get("_pool_n") or 0)
+                for _t in gap_floor_tiers:
+                    if _g100 <= float(_t["below"]) and _pn >= int(_t.get("min_pool", 0)):
+                        pick_frac = max(pick_frac, frac * float(_t.get("floor", 1.0)))
                         break
             alloc = min(pick_frac * equity, cash)
             # 剩余现金不足"本笔目标仓位"的30%才放弃(第九十七轮修正: 原以满仓 frac 为基准,

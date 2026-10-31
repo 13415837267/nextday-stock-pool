@@ -15,7 +15,7 @@ sys.path.insert(0, ROOT)
 CST = timezone(timedelta(hours=8))
 
 from src.config import load_config   # noqa: E402  (需先注入ROOT)
-from src.daily_run import _gap_tier_mult   # noqa: E402  (第九十七轮: 高开降仓同口径)
+from src.daily_run import _gap_tier_mult, _gap_floor_mult, _pool_tier_mult   # noqa: E402  (第九十七/一百零一轮: 缺口档同口径)
 
 
 def limit_ratio(code):
@@ -138,13 +138,26 @@ def main():
             _sc = next((s.get("score") for s in td.get("steps", [])
                         if s.get("code") == result["code"]), None)
             _gm, _gt = _gap_tier_mult(result["gap_pct"], ex, _sc)
+            _pos0 = float(result["position_pct"] or 0)
+            _pos1 = _pos0 * _gm if _gm < 1.0 else _pos0
             if _gm < 1.0:
-                result["position_pct"] = round(float(result["position_pct"] or 0) * _gm, 1)
                 result["gap_tier_note"] = _gt
+            # 第一百零一轮: 深低开撤销池深折价 —— 盘前 position_pct 里已含池深档,
+            # 9:25 拿到真实缺口后, 若缺口 <= below 且达标票 >= min_pool, 把池深折价还原。
+            _pm, _pt = _pool_tier_mult(td.get("pool_n"), ex)
+            _fl, _ft = _gap_floor_mult(result["gap_pct"], td.get("pool_n"), ex)
+            _floor_txt = ""
+            if _fl and _pm < _fl and _pm > 0:
+                _restored = _pos0 / _pm * _fl
+                if _restored > _pos1:
+                    _pos1 = _restored
+                    _floor_txt = f"（{_ft}，仓位回{_pos1:.0f}%）"
+            result["position_pct"] = round(_pos1, 1)
             result["note"] = (f"确认买入第{result['rank']}名 {name}({code}), "
                               f"竞价缺口{result['gap_pct']:.2f}%, 开盘价{result['open_px']}, "
                               f"仓位{result['position_pct']}%"
-                              + (f"（{_gt}，高开减仓）" if _gm < 1.0 else ""))
+                              + (f"（{_gt}，高开减仓）" if _gm < 1.0 else "")
+                              + _floor_txt)
 
         # ---- 行情全失败保护(2026-10-24新增): 双源均无数据时绝不误报"今日空仓" ----
         # 退出码2 → 工作流失败 → 自动建Issue告警; 不写入误导性auction.json

@@ -71,6 +71,7 @@ def _config_fp(cfg: dict) -> str:
         "score_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("score_tiers") or [])],  # 第九十六轮: 分档下注
         "gap_above": [(t.get("above"), t.get("mult")) for t in (e.get("gap_above_tiers") or [])],  # 第九十七轮: 高开降仓
         "pool_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("pool_n_tiers") or [])],  # 第九十九轮: 池深分档
+        "gap_floor": [(t.get("below"), t.get("min_pool"), t.get("floor")) for t in (e.get("gap_floor_tiers") or [])],  # 第一百零一轮: 深低开下限
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
@@ -118,6 +119,22 @@ def _pool_tier_mult(pool_n, ex: dict) -> tuple[float, str]:
             # 不是"买入只数"(恒为 1) —— 原写作"池深N只"与页面"候选 1 只"打架。
             return _m, (f"达标{_n}只→{_m:.0%}仓(仅买评分第1名)" if _m != 1.0 else "")
     return 1.0, ""
+
+
+def _gap_floor_mult(gap: float, pool_n, ex: dict) -> tuple[float, str]:
+    """深低开加仓下限(第一百零一轮, 与回测 do_buy 的 gap_floor_tiers 同口径)。
+
+    深低开是"错杀"的直接证据, 池深折价衡量的是"共振不足"的间接代理。
+    当直接证据足够强(缺口 <= below)且池子不算太窄(>= min_pool)时, 撤销池深折价回到满仓。
+    返回 (下限系数, 文案); 0 表示不适用(沿用叠乘结果)。
+    """
+    for t in (ex.get("gap_floor_tiers") or []):
+        try:
+            if gap <= float(t["below"]) and int(pool_n or 0) >= int(t.get("min_pool", 0)):
+                return float(t.get("floor", 1.0)), f"深低开{gap:.1f}%→撤销池深折价"
+        except (KeyError, TypeError, ValueError):
+            continue
+    return 0.0, ""
 
 
 def _exec_gate(rb, gap: float, ex: dict, floor: float) -> str | None:
@@ -171,6 +188,10 @@ def _position_note(ex: dict) -> str:
         seg = "/".join(f"≥{int(t['min'])}只→{float(t.get('mult', 1.0)):.0%}"
                        for t in ptiers)
         pos += f"; 池深分档: 当日达标票 {seg}(只降仓位, 不弃单; 达标≠买入只数, 恒买评分第1名)"
+    for _t in (ex.get("gap_floor_tiers") or []):
+        pos += (f"; 深低开回满仓: 竞价缺口 ≤{float(_t['below']):g}% 且达标≥{int(_t.get('min_pool', 0))}只"
+                f" → 撤销池深折价、回{float(_t.get('floor', 1.0)):.0%}仓")
+        break
     pos += "; 出场: " + _sell_rule_text(ex) + "(遵守A股T+1制度, 无当日卖出)"
     return pos
 
@@ -655,7 +676,11 @@ def main():
             _sm = _pos_tier_mult(p.get("score"), ex)
             _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
             _pm, _pt = _pool_tier_mult(p.get("pool_n"), ex)
-            _pos = round(bfrac * _cf * _sm * _gm * _pm * ex.get("alloc_frac_pct", 100.0), 1)
+            _fl, _ft = _gap_floor_mult(gap, p.get("pool_n"), ex)   # 第一百零一轮: 深低开下限
+            _base = bfrac * _cf
+            _pos = round(max(_base * _sm * _gm * _pm, _base * _fl) * ex.get("alloc_frac_pct", 100.0), 1)
+            if _fl and _pm < _fl:
+                _pt = (f"{_pt}·{_ft}" if _pt else _ft)
             return {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
@@ -763,6 +788,11 @@ def main():
             _sm = _pos_tier_mult(p.get("score"), ex)
             _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
             _pm, _pt = _pool_tier_mult(p.get("pool_n"), ex)
+            _fl, _ft = _gap_floor_mult(gap, p.get("pool_n"), ex)   # 第一百零一轮
+            _base = bfrac * _cf
+            _pos_final = round(max(_base * _sm * _gm * _pm, _base * _fl) * ex.get("alloc_frac_pct", 100.0), 1)
+            if _fl and _pm < _fl:
+                _pt = (f"{_pt}·{_ft}" if _pt else _ft)
             executed = {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
@@ -770,7 +800,7 @@ def main():
                 "sell_px": round(_spx / (float(sell_row["close_adj"]) / float(sell_row["close"]))
                                  if float(sell_row["close"]) else _spx, 2),
                 "ret_pct": round(float(r) * 100, 2),
-                "position_pct": round(bfrac * _cf * _sm * _gm * _pm * ex.get("alloc_frac_pct", 100.0), 1),
+                "position_pct": _pos_final,
                 "pos_note": ("·".join(x for x in [
                     (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
                     _gt, _pt] if x) or None),
@@ -965,6 +995,12 @@ def main():
     _pool_mult, _pool_txt = _pool_tier_mult((_pn_today if verified and verified[0].get("pool", "main") == "main" else None), ex)
     if _pool_mult < 1.0 and allow_buy:
         buy_note += f"; {_pool_txt}(当日候选池偏窄=孤立回调、缺共振)"
+    # 第一百零一轮: 深低开撤销池深折价 —— 缺口 T+1 开盘才知道, 盘前只给规则
+    _gft = ex.get("gap_floor_tiers") or []
+    if _gft and allow_buy and _pool_mult < 1.0:
+        _t0 = _gft[0]
+        buy_note += (f"; 若竞价缺口 ≤{float(_t0['below']):g}% 且达标≥{int(_t0.get('min_pool', 0))}只"
+                     f" → 撤销池深折价、回{float(_t0.get('floor', 1.0)):.0%}仓")
     _pos_frac = plan_frac * _tier_mult * _pool_mult
     steps = []
     _rk: dict[str, int] = {}   # 池内名次(主力/备用各自计数, 与回测 _rank 一致)
