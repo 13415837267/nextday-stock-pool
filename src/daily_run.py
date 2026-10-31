@@ -73,6 +73,7 @@ def _config_fp(cfg: dict) -> str:
         "pool_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("pool_n_tiers") or [])],  # 第九十九轮: 池深分档
         "gap_floor": [(t.get("below"), t.get("min_pool"), t.get("floor")) for t in (e.get("gap_floor_tiers") or [])],  # 第一百零一轮: 深低开下限
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
+        "blocked_frac": e.get("blocked_frac"),          # 第一百零二轮: 风控日参与系数
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -177,7 +178,7 @@ def _position_note(ex: dict) -> str:
     if gap:
         pos += f"; 仅买开盘缺口 <= {gap:g}% 的低开票(风控日以判定卡承接线为准)"
     else:
-        pos += "; 不设缺口门槛, T+1 开盘价直接成交(仅停牌/一字涨停买不到)"
+        pos += "; 平日不设缺口门槛, T+1 开盘价直接成交(仅停牌/一字涨停买不到)"
     gat = ex.get("gap_above_tiers") or []
     if gat:
         seg = "/".join(f"≥{float(t['above']):g}%→{float(t.get('mult', 1.0)):.0%}"
@@ -192,6 +193,9 @@ def _position_note(ex: dict) -> str:
         pos += (f"; 深低开回满仓: 竞价缺口 ≤{float(_t['below']):g}% 且达标≥{int(_t.get('min_pool', 0))}只"
                 f" → 撤销池深折价、回{float(_t.get('floor', 1.0)):.0%}仓")
         break
+    if float(ex.get("blocked_frac", 0) or 0) > 0 and ex.get("block_gap_below"):
+        pos += (f"; 风控日: 只在竞价缺口 ≤{float(ex['block_gap_below']):g}% 时按"
+                f"{float(ex['blocked_frac']):.0%}仓接恐慌深跌, 否则空仓")
     pos += "; 出场: " + _sell_rule_text(ex) + "(遵守A股T+1制度, 无当日卖出)"
     return pos
 
@@ -606,6 +610,18 @@ def main():
         history = _data.get("records", []) if isinstance(_data, dict) else _data
     else:
         history = []
+    # 第一百零二轮一次性口径修复: 风控日"幻影成交"。
+    # 旧代码在 max_block_days=0 时把每个风控日算成"全额参与日", 于是账本给风控期的计划
+    # 记了成交(2026-10-22/10-28/10-29 三笔), 而当日决策卡写的是"空仓观望" —— 实际未执行。
+    # 这里只回填 2026-11-01 之前、且 regime_ok=False 的已成交记录; 新口径下风控日若真按
+    # 深低开成交(blocked_frac>0), 记录里会带 pos_note, 不会被误清。
+    for _r in history:
+        if (_r.get("regime_ok") is False and _r.get("executed")
+                and str(_r.get("buy_date", "")).replace("-", "") < "20261101"):
+            _r["status"] = "无成交"
+            _r.pop("executed", None)
+            _r.pop("realized", None)
+            _r["skip_chain"] = ["大盘风控空仓(第一百零二轮口径修复: 旧版风控日幻影成交)"]
     ex = cfg["execution"]
 
     # 买入日风控状态(与回测口径一致): 超限参与日用专属承接线与参与系数(含渐近恢复)
@@ -623,7 +639,14 @@ def main():
         else:
             day_block_map[_d] = True
             _consec += 1
-            if _consec <= max_block:
+            if max_block <= 0:
+                # 第一百零二轮修复: max_block_days=0 的语义是"不设上限、风控期一直空仓"。
+                # 原实现直接落进 rf_ramp 分支 → min(1, 0.95+0.05*consec)=1.0, 把每个风控日
+                # 都当成"全额参与日"(还带着严承接线), 于是账本在风控期凭空记出成交,
+                # 与回测(blocked_frac=0 → 不买)和页面"空仓观望"自相矛盾。
+                # 现在: 风控日改用风控参与系数 blocked_frac(0=空仓), 承接线取 block_gap_below。
+                day_frac_map[_d] = float(ex.get("blocked_frac", 0.0) or 0.0)
+            elif _consec <= max_block:
                 day_frac_map[_d] = 0.0
             elif rf_ramp:
                 day_frac_map[_d] = min(1.0, reenter + 0.05 * (_consec - max_block))
@@ -898,6 +921,8 @@ def main():
                 break
             consec += 1
     over_limit = max_block > 0 and reenter > 0 and consec > max_block
+    # 第一百零二轮: 风控日参与系数(0=严格空仓) —— 只在"缺口 ≤ block_gap_below"时执行
+    _risk_frac = max(0.0, min(1.0, float(ex.get("blocked_frac", 0.0) or 0.0)))
     # 第五十二轮口径修正: 回测rf_ramp公式为min(1, reenter+0.05*(consec-max_block)),
     # 首个超限日(consec=max_block+1)即 0.95+0.05=1.0 封顶 —— "95%仓位"从未实际生效,
     # 回测中超限参与日实为"全额参与+严承接线"。此处按买入日(明日, consec+1)对齐同款公式。
@@ -916,7 +941,10 @@ def main():
                 else (f"大盘风控连续第{consec}日, 超过{max_block}日上限: 次日按{over_frac:.0%}仓位参与候选池"
                       f"{_bg_txt}"
                       if over_limit else
-                      (f"大盘风控触发(连续第{consec}日): 次日建议空仓观望" if reg_row is not None else "")),
+                      ((f"大盘风控触发(连续第{consec}日): 次日只在竞价缺口 ≤{float(ex.get('block_gap_below') or 0):g}% "
+                        f"时按{_risk_frac:.0%}仓位接恐慌深跌, 否则空仓")
+                       if (_risk_frac > 0 and ex.get("block_gap_below")) else
+                       (f"大盘风控触发(连续第{consec}日): 次日建议空仓观望" if reg_row is not None else ""))),
     }
     buy_d = cal[pos + 1] if pos + 1 < len(cal) else None
     sell_d = cal[pos + 2] if pos + 2 < len(cal) else None
@@ -940,7 +968,8 @@ def main():
         _m20 = float((reg["mkt_idx"].loc[signal_date] / reg["mkt_idx"].shift(20).loc[signal_date] - 1) * 100) \
             if signal_date in reg.index else 0.0
         panic_day = (_vol20 > cfg["regime"]["vol_max"]) and (_m20 < cfg["regime"].get("vol_mkt_ret_min", 0.0))
-    plan_frac = (over_frac if (over_limit_now and not regime_ok_now) else 1.0) * cap_frac
+    plan_frac = (over_frac if (over_limit_now and not regime_ok_now)
+                 else (_risk_frac if not regime_ok_now else 1.0)) * cap_frac
     floor_now = ex.get("buy_gap_below", 0)
     if not regime_ok_now:
         # 第九十二轮: 承接线判定提前到文案之前, 便于按"有无门槛"生成不同指引
@@ -955,6 +984,11 @@ def main():
     elif over_limit_now:
         allow_buy = True
         buy_note = f"超限参与日(连续风控第{consec}日): 按{over_frac:.0%}仓位参与, {_fill_txt}"
+    elif _risk_frac > 0 and floor_now:
+        # 第一百零二轮: 风控日只接"恐慌深跌" —— 缺口是错杀的直接证据, 宽度/均线只是间接代理
+        allow_buy = True
+        buy_note = (f"风控中(连续第{consec}日): 只接恐慌深跌 —— {_fill_txt}, "
+                    f"仓位按{_risk_frac:.0%}执行; 缺口不够深则当日空仓")
     else:
         allow_buy = False
         buy_note = f"大盘风控中(连续第{consec}日): 空仓观望"

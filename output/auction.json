@@ -1,41 +1,21 @@
 {
- "confirm_time": "2026-10-30 15:33:49",
- "buy_date": "2026-10-30",
- "signal_date": "2026-10-29",
- "for_today": true,
- "allow_buy": true,
- "floor_pct": -2.75,
- "position_pct": 100.0,
+ "confirm_time": "2026-11-01 00:24:45",
+ "buy_date": "2026-11-02",
+ "signal_date": "2026-10-30",
+ "for_today": false,
+ "allow_buy": false,
+ "floor_pct": -2.5,
+ "position_pct": 12.0,
  "data_ok": true,
- "action": "buy",
- "name": "领湃科技",
- "code": "300530.SZ",
- "rank": 1,
- "open_px": 21.42,
- "gap_pct": -3.99,
+ "action": "skip",
+ "name": "",
+ "code": "",
+ "rank": null,
+ "open_px": null,
+ "gap_pct": null,
  "chain": [],
- "note": "确认买入第1名 领湃科技(300530.SZ), 竞价缺口-3.99%, 开盘价21.42, 仓位100.0%",
- "sell_today": [
-  {
-   "code": "002811.SZ",
-   "name": "郑中设计",
-   "buy_date": "2026-10-29",
-   "buy_px": 17.45,
-   "sell_date": "2026-10-30",
-   "open_px": 15.55,
-   "est_ret_pct": -11.16,
-   "limit_down": true
-  }
- ],
- "positions": [
-  {
-   "code": "300530.SZ",
-   "name": "领湃科技",
-   "buy_px": 21.42,
-   "buy_date": "2026-10-30",
-   "cur_px": 22.14,
-   "float_pct": 3.36
-  }
- ],
- "positions_time": "2026-10-31 23:46:24"
+ "note": "第一百零二轮口径修复: 清空 2026-10-30 的风控日幻影买入(旧版 max_block_days=0 把风控日误判为全额参与日); 今日非买入日",
+ "sell_today": [],
+ "positions": [],
+ "positions_time": "2026-11-01 00:25:59"
 }

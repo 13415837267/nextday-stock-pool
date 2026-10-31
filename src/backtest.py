@@ -361,8 +361,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         reg_row = reg.loc[d] if d in reg.index else None
         day_ok = reg_row is None or bool(reg_row["trade_ok"])
         floor = ex.get("buy_gap_below", 0)
-        if (not day_ok) and day_frac and day_frac.get(d, 0) > 0:
-            floor = ex.get("block_gap_below", floor)
+        if not day_ok:
+            # 第一百零二轮: 风控日的"专属承接线"不再依赖超限复参与机制(max_block_days=0 时
+            # day_frac 为空、原逻辑形同虚设)。只要配置了 block_gap_below 就在风控日生效 ——
+            # 风控期只接"恐慌深跌"这一种票, 其余日照常空仓。
+            if day_frac and day_frac.get(d, 0) > 0:
+                floor = ex.get("block_gap_below", floor)
+            elif ex.get("block_gap_below"):
+                floor = float(ex.get("block_gap_below"))
         # ---- 多策略顺延(第七十八轮): 主力池 -> 备用池依序切换 ----
         # 主力池截到 exec_top_n; 备用池(fb1/fb2...)按各自 top_n 截断, 并按 segment 分段启用:
         #   all=全时段可用 / trend=仅指数>=MA30 / weak=仅指数<MA30
@@ -587,9 +593,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         # 注: A股T+1制度, 当日买入的股票当日不可卖出, 因此不存在任何
         #     "买入当日止损/止盈"逻辑; 所有持仓最早于次一交易日开盘卖出。
 
-    def do_sell(d: str, idx: int = 0):
+    def do_sell(d: str, idx: int = 0, has_buy: bool = False):
         hold_extra = int(ex.get("hold_extra_days", 0) or 0)  # T+2开盘后再多持有N个交易日(0=原口径)
         frac_open = min(1.0, max(0.0, float(ex.get("sell_open_frac", 1.0) or 0.0)))  # 开盘卖出占比
+        # 第一百零二轮(可选): 今日有买入计划时, 开盘一次性清仓(而非50/50) —— 把资金全部
+        # 腾给新仓位。理由: 分批出场让一半资金锁到收盘, 下一笔买入只能拿到 ~50% 的目标仓位,
+        # 仓位大小由"昨天卖没卖"决定而非由信号强度决定, 是现金流的路径噪声。
+        # 只在"确实有下一笔要买"的日子清仓, 没有信号的日子仍按 50/50 吃日内那一段。
+        if has_buy and ex.get("sell_full_on_rebuy"):
+            frac_open = 1.0
         nonlocal cash, fee_total, pending_cash, loss_streak
         remaining = []
         for h in holding:
@@ -716,7 +728,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         cash += pending_cash
         pending_cash = 0.0
         # 开盘: 先卖出昨日到期持仓(T-2信号的池), 再买入(T-1信号的池)
-        do_sell(d, idx)
+        do_sell(d, idx, has_buy=bool(pending_buy is not None and pending_buy[1]))
         if pending_buy is not None:
             _, picks = pending_buy
             do_buy(picks, d, idx)
