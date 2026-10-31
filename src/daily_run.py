@@ -114,7 +114,9 @@ def _pool_tier_mult(pool_n, ex: dict) -> tuple[float, str]:
     for t in (ex.get("pool_n_tiers") or []):
         if _n >= int(t["min"]):
             _m = float(t.get("mult", 1.0))
-            return _m, (f"池深{_n}只→{_m:.0%}仓" if _m != 1.0 else "")
+            # 第一百轮文案修正: pool_n 是"当日达标票数"(通过全部 dip 条件并完成评分),
+            # 不是"买入只数"(恒为 1) —— 原写作"池深N只"与页面"候选 1 只"打架。
+            return _m, (f"达标{_n}只→{_m:.0%}仓(仅买评分第1名)" if _m != 1.0 else "")
     return 1.0, ""
 
 
@@ -168,7 +170,7 @@ def _position_note(ex: dict) -> str:
     if ptiers:
         seg = "/".join(f"≥{int(t['min'])}只→{float(t.get('mult', 1.0)):.0%}"
                        for t in ptiers)
-        pos += f"; 池深分档: 当日候选 {seg}(只降仓位, 不弃单)"
+        pos += f"; 池深分档: 当日达标票 {seg}(只降仓位, 不弃单; 达标≠买入只数, 恒买评分第1名)"
     pos += "; 出场: " + _sell_rule_text(ex) + "(遵守A股T+1制度, 无当日卖出)"
     return pos
 

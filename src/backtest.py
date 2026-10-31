@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import time
 from datetime import datetime
@@ -309,6 +310,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     gap_above_tiers = ex.get("gap_above_tiers") or []   # 高开降仓: [{above: 0, mult: 0.5}, ...]
     pool_tiers = ex.get("pool_n_tiers") or []           # 池深分档下注: [{min: 41, mult: 1.0}, ...]
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
+    gate_scale = bool(ex.get("score_gate_pool_scale", False))   # 第一百轮: 门槛按池内z分理论上限缩放
+    gate_ref = float(ex.get("score_gate_ref_pool", 40) or 40)    # 缩放基准池深(该池深下门槛=min_top1_score)
     # 第九十六轮: 评分分档下注 [{min: 1.5, mult: 1.0}, {min: 1.1, mult: 0.6}, ...] 降序匹配
     # —— 门槛降低后不再"一刀切空仓", 低分票只给小仓, 高分票才满仓; 兼顾笔数与期望。
     score_tiers = ex.get("score_tiers") or []
@@ -440,8 +443,21 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if skip_gap_deep is not None and gap * 100 < skip_gap_deep:
                 trades.append(_trade(p, "skip", d, note=f"缺口{gap*100:.1f}%深于崩塌线{skip_gap_deep}%"))
                 continue
-            if min_top1_score is not None and p.get("score", 0) < min_top1_score:
-                trades.append(_trade(p, "skip", d, note=f"top1评分{p.get('score',0):.2f}低于门槛{min_top1_score}"))
+            # 第一百轮(实验): 评分门按池深缩放 —— 评分是"池内 z 分", 而 _zs 的
+            # 理论最大值为 (n-1)/sqrt(n)(n<≈10 时受此约束, 之后被 clip(±3) 截断),
+            # 因此同一个"1.0 门槛"在 5 只的池里要 56% 的理论最大、在 40 只的池里只要 33%,
+            # 池浅日被系统性卡死(池深与评分相关 0.53)。缩放后门槛与池深解耦,
+            # 浅池日由"池深分档"降仓而不是一票否决。
+            _gate = min_top1_score
+            if _gate is not None and gate_scale:
+                _n = int(p.get("_pool_n") or 0)
+                if _n >= 2:
+                    _zmax = min(3.0, (_n - 1) / math.sqrt(_n))
+                    _ref = min(3.0, (gate_ref - 1) / math.sqrt(gate_ref))
+                    if _ref > 0:
+                        _gate = _gate * min(1.0, _zmax / _ref)
+            if _gate is not None and p.get("score", 0) < _gate:
+                trades.append(_trade(p, "skip", d, note=f"top1评分{p.get('score',0):.2f}低于门槛{_gate:.2f}"))
                 continue
             qualified.append({**p, "_row": row, "_gap": gap, "_lim_px": _lim_px})
         if not qualified:
