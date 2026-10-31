@@ -52,6 +52,14 @@
   footer { margin-top: 32px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
   .chain { max-width: 340px; white-space: normal !important; font-size: 12px; }
   .tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  details { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+  summary { cursor: pointer; color: var(--gold); font-size: 14px; }
+  .note { font-size: 13px; color: var(--muted); }
+  .note p { margin: 7px 0; }
+  .note ul { padding-left: 20px; }
+  .note li { margin: 3px 0; }
+  .note b { color: var(--text); }
+  code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; font-size: 12px; color: var(--blue); }
   /* 手机端适配: 收窄留白/字号; 宽表(.rtable)转卡片布局免横滑, 其余表格在 .tscroll 内横向滚动 */
   @media (max-width: 640px) {
     .wrap { padding: 18px 10px 48px; }
@@ -108,10 +116,18 @@
   <div class="panel" style="margin-top:12px" id="bt-chart"></div>
   <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2>五、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
+  <h2 id="replay">五、历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
+  <div class="cards" id="rp-cards"><div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+  <div class="cards" id="rp-months" style="margin-top:12px"></div>
+  <div class="panel" style="margin-top:12px" id="rp-chart"></div>
+  <div style="margin-top:12px" id="rp-trades"></div>
+  <div style="margin-top:12px" id="rp-daily"></div>
+  <div class="panel note" style="margin-top:12px" id="rp-note"></div>
+
+  <h2>六、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
   <div id="health"><div class="loading">加载中...</div></div>
 
-  <h2>六、策略规则与披露</h2>
+  <h2>七、策略规则与披露</h2>
   <div class="panel">
     <b>执行时点</b>
     <ul class="rules">
@@ -168,7 +184,7 @@ async function loadLatest() {
   document.getElementById("meta").textContent =
     `信号日 ${fmtDate(d.signal_date)} · 更新于 ${d.update_time} · ${d.strategy}`;
   const badges = [];
-  badges.push(`<span class="badge"><a href="./replay.html" style="color:var(--gold);text-decoration:none">历史回放 9-10月 →</a></span>`);
+  badges.push(`<span class="badge"><a href="#replay" style="color:var(--gold);text-decoration:none">历史回放 9-10月 ↓</a></span>`);
   const ok = d.regime && d.regime.ok;
   badges.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日受限"}</span>`);
   if (d.regime && d.regime.note) badges.push(`<span class="badge">${esc(d.regime.note)}</span>`);
@@ -361,8 +377,8 @@ async function loadBacktest() {
     if (op.length) {
       const rows = op.map(x => {
         const u = x.unrealized_pct;
-        return `<tr><td data-label="买入日">${x.buy_date}</td><td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name || x.code)}</td>
-          <td data-label="买入价">${x.buy_px ?? "-"}</td><td data-label="成本占比">${x.cost_pct != null ? x.cost_pct + "%" : "-"}</td>
+        return `<tr><td data-label="买入日">${rpDate(x.buy_date)}</td><td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name || x.code)}</td>
+          <td data-label="买入价">${x.buy_px == null ? "-" : Number(x.buy_px).toFixed(2)}</td><td data-label="成本占比">${x.cost_pct != null ? x.cost_pct + "%" : "-"}</td>
           <td class="${pctCls(u)}" data-label="浮动盈亏">${u == null ? "—" : pctStr(u)}</td></tr>`;
       }).join("");
       document.getElementById("bt-chart").insertAdjacentHTML("beforeend",
@@ -452,10 +468,152 @@ async function loadHealth() {
     <div class="legend">${esc(h.sources || "")} · 更新于 ${fmtDate(h.updated)}</div>`;
 }
 
+/* ---------- 五: 历史回放(第九十四轮: 并入本页, 独立回放页已删除) ---------- */
+const rpDate = s => (s && String(s).length === 8)
+  ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (s || "-");
+
+async function loadReplay() {
+  const cEl = document.getElementById("rp-cards"), moEl = document.getElementById("rp-months");
+  const chEl = document.getElementById("rp-chart"), trEl = document.getElementById("rp-trades");
+  const dlEl = document.getElementById("rp-daily"), ntEl = document.getElementById("rp-note");
+  let d;
+  try { d = await jget("./data/replay.json"); }
+  catch (e) {
+    cEl.innerHTML = `<div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">回放数据未部署（运行 tools/replay.py 后随 output/*.json 一并发布）</div></div>`;
+    return;
+  }
+  const m = d.meta || {}, s = d.summary || {}, trades = d.trades || [], daily = d.daily || [];
+  const base = d.base_nav || m.initial_capital || 1e6;
+  document.getElementById("rp-sub").textContent =
+    `${rpDate(m.start)} ~ ${rpDate(m.end)} 逐笔复现 · 同引擎同口径 · 无未来函数`;
+
+  const rpCard = (k, v, cls, sub) =>
+    `<div class="card"><div class="k">${k}</div><div class="v ${cls || ""}">${v}</div>` +
+    (sub ? `<div class="legend" style="margin-top:2px">${sub}</div>` : "") + `</div>`;
+  cEl.innerHTML = [
+    rpCard("成交笔数", s.n_trades ?? "-", "", `胜 ${s.n_win ?? "-"} 负 ${(s.n_trades ?? 0) - (s.n_win ?? 0)}`),
+    rpCard("胜率", `${s.win_rate ?? "-"}%`),
+    rpCard("平均单笔", pctStr(s.avg_ret_pct), pctCls(s.avg_ret_pct)),
+    rpCard("区间收益", pctStr(s.range_ret_pct), pctCls(s.range_ret_pct),
+      `${(base / 1e4).toFixed(1)}万 → ${((s.end_nav || 0) / 1e4).toFixed(1)}万`),
+    rpCard("区间最大回撤", `${Number(s.range_mdd_pct ?? 0).toFixed(2)}%`, "down"),
+    rpCard("最好一笔", pctStr(s.best), "up"),
+    rpCard("最差一笔", pctStr(s.worst), "down"),
+  ].join("");
+
+  moEl.innerHTML = (d.monthly || []).map(x =>
+    `<div class="card"><div class="k">${x.month.slice(0, 4)}年${Number(x.month.slice(4))}月</div>
+     <div class="v ${pctCls(x.ret_pct)}">${pctStr(x.ret_pct)}</div></div>`).join("");
+
+  drawReplayChart(d.curve || [], base, s.base_date);
+
+  // 成交明细: T日信号 -> T+1开盘买入 -> T+2开盘卖出
+  let th = `<div class="tscroll"><table class="rtable"><tr class="h"><th>信号日</th><th>买入日</th><th>卖出日</th>
+    <th>代码</th><th>名称</th><th>买入价</th><th>卖出价</th><th>收益</th><th>名次</th><th>备注</th></tr>`;
+  trades.forEach(t => {
+    th += `<tr><td class="muted" data-label="信号日">${rpDate(t.signal_date)}</td>
+      <td data-label="买入日">${rpDate(t.buy_date)}</td><td data-label="卖出日">${rpDate(t.sell_date)}</td>
+      <td data-label="代码">${esc(t.code)}</td><td class="full" data-label="名称"><b>${esc(t.name)}</b></td>
+      <td data-label="买入价">${Number(t.buy_px).toFixed(2)}</td><td data-label="卖出价">${Number(t.sell_px).toFixed(2)}</td>
+      <td class="${pctCls(t.ret_pct)}" data-label="收益"><b>${pctStr(t.ret_pct)}</b></td>
+      <td class="muted" data-label="名次">${t.rank ?? "-"}</td>
+      <td class="muted full" data-label="备注" style="white-space:normal">${esc(t.note || "")}</td></tr>`;
+  });
+  trEl.innerHTML = th + `</table></div>
+    <div class="legend" style="margin-top:8px">买入取 T+1 真实开盘价、卖出取 T+2 真实开盘价（开盘跌停则当日收盘卖出）；
+    收益含佣金万2.5+印花税万5+滑点千1。共 ${trades.length} 笔，按买入日升序。</div>`;
+
+  // 逐日决策: 解释"这天为什么没买"
+  let dh = `<details><summary>展开 ${daily.length} 个交易日的选股/买入判定（解释"这天为什么没买"）</summary>
+    <div class="tscroll" style="margin-top:12px"><table class="rtable"><tr class="h"><th>买入日</th><th>风控</th><th>成交</th><th>候选与跳过原因</th></tr>`;
+  daily.forEach(x => {
+    const fills = (x.fills || []).map(f =>
+      `<span class="up">${esc(f.code)} ${esc(f.name)} ${pctStr(f.ret_pct)}</span>`).join("；");
+    const skips = (x.skipped || []).map(k => `${esc(k.code)} ${esc(k.name)}：${esc(k.note)}`).join("；");
+    const cand = fills || skips || `<span class="muted">无候选</span>`;
+    const gate = (x.alloc ?? 1) <= 0 ? `<span class="down">空仓</span>`
+      : (x.trade_ok ? `<span class="up">正常</span>` : `<span style="color:var(--gold)">超限满仓</span>`);
+    dh += `<tr><td data-label="买入日">${rpDate(x.date)}</td><td data-label="风控">${gate}</td>
+      <td data-label="成交">${(x.fills || []).length || `<span class="muted">0</span>`}</td>
+      <td class="muted full" data-label="候选与跳过原因" style="white-space:normal">${cand}</td></tr>`;
+  });
+  dlEl.innerHTML = dh + `</table></div></details>` +
+    `<div class="legend" style="margin-top:8px">风控列: 正常 = 市场宽度/指数达标；超限满仓 = 连续风控超上限后按系数参与；空仓 = 风控或恐慌熔断。</div>`;
+
+  // 口径说明(数据驱动: 笔数/空仓天数/放弃次数均由 payload 计算)
+  const nDay = daily.length, nTr = s.n_trades || 0;
+  const nSep = trades.filter(t => String(t.buy_date).startsWith("202609")).length;
+  const nOct = trades.filter(t => String(t.buy_date).startsWith("202610")).length;
+  const nFlat = daily.filter(x => (x.alloc ?? 1) <= 0).length;
+  const nSkip = daily.reduce((a, x) => a + (x.skipped || []).length, 0);
+  const bench = (d.perf || {})["同期市场等权基准%"];
+  const benchStr = bench == null ? "—" : (bench > 0 ? "+" : "") + Number(bench).toFixed(2) + "%";
+  ntEl.innerHTML = `
+    <p><b>为什么几乎每天都在成交？</b> 第九十三轮执行口径：每日从<b>沪深主板</b>发布 1 只计划票，
+    T+1 开盘集合竞价<b>按开盘价直接买入</b>，不设缺口门槛、不按低开幅度挑单——与实盘下单方式一致。
+    本区间 ${nDay} 个交易日成交 ${nTr} 笔（9 月 ${nSep} 笔、10 月 ${nOct} 笔），
+    其余 ${nDay - nTr} 天为空仓（${nFlat} 天大盘风控/恐慌熔断，其余为当日无合格候选）；
+    全区间放弃买入 ${nSkip} 次，均为停牌或开盘一字涨停（物理上买不到）。</p>
+    <p><b>这 ${nDay} 天为什么是负的？</b> 本区间是弱市段，同期全市场等权基准 ${benchStr}。
+    单只满仓下每笔成交都直接决定区间结果，${nTr} 笔样本方差极大：最好一笔 ${pctStr(s.best)}、
+    最差一笔 ${pctStr(s.worst)}。<b>不要用 ${nDay} 天推断长期期望</b>——同一套配置在 500 日窗口为
+    +447.43%（基准 +23.25%）、胜率 50.52%、最大回撤 -31.34%、卡玛 4.33、388 笔成交；
+    恢复"缺口 ≤ -0.8% 才买"的挑单口径同窗为 +468.27% / 回撤 -15.56% / 卡玛 9.00 / 98 笔，
+    即<b>收益几乎不变、回撤减半</b>。选择每日无条件成交，等于用一倍的回撤换"不漏掉任何计划"的执行确定性。</p>
+    <p><b>无未来函数的三条保证：</b></p>
+    <ul>
+      <li>指标（MA/动量/波动/振幅）全部为 <code>rolling</code> / <code>shift(1)</code> 向后看，无 <code>center=True</code>、无 <code>shift(-n)</code>；</li>
+      <li>选股只传当日截面数据，不包含任何后续交易日行；风控序列同样只依赖当日及之前；</li>
+      <li>买入取 T+1 真实开盘价、卖出取 T+2 真实开盘价（跌停回退当日收盘），绩效门控只用已发生的成交。</li>
+    </ul>
+    <p><b>回放不是实盘流水（对账前必读）：</b>实盘 10-28 信号日选出 3 只（含创业板 301311、301239），
+    次日买入第 2 名 002811 郑中设计、亏 -11.16%；而回放当日只扫沪深主板、且要求 120 日上市历史，
+    判定为无候选、空仓。<b>两头都是真实记录，差在选股域与面板长度，不是引擎口径。</b>
+    本页回答的是"若严格按当前规则逐日重放会怎样"；真实成交以"三、单吊执行记录"为准。</p>
+    <p class="muted">差异说明：实盘每日只加载 30 日面板（<code>listed_min_bars=0</code>），
+    回放用连续 ${m.warmup_days ?? 155} 交易日预热面板（<code>listed_min_bars=120</code>），次新股过滤口径不同，
+    个别日期的候选池会有出入。数据源：<code>output/replay.json</code>（${rpDate(m.panel_first)} 起面板）。</p>`;
+}
+
+function drawReplayChart(curve, base, baseDate) {
+  const el = document.getElementById("rp-chart");
+  if (!curve || curve.length < 2) { el.innerHTML = `<div class="muted">回放净值数据不足</div>`; return; }
+  const W = 1120, H = 300, P = { l: 62, r: 16, t: 16, b: 28 };
+  const navs = [base].concat(curve.map(p => p.nav));
+  let lo = Math.min(...navs), hi = Math.max(...navs);
+  const pad = (hi - lo) * 0.12 || hi * 0.01; lo -= pad * 0.7; hi += pad * 0.7;
+  const n = navs.length;
+  const xs = i => P.l + (W - P.l - P.r) * i / (n - 1);
+  const ys = v => P.t + (H - P.t - P.b) * (1 - (v - lo) / (hi - lo));
+  const pts = navs.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
+  const color = navs[n - 1] >= navs[0] ? "var(--red)" : "var(--green)";
+  let grid = "", labels = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4, y = ys(v);
+    grid += `<line x1="${P.l}" y1="${y.toFixed(1)}" x2="${W - P.r}" y2="${y.toFixed(1)}" stroke="#232a36"/>`;
+    labels += `<text x="${P.l - 8}" y="${(y + 4).toFixed(1)}" fill="#8b949e" font-size="11" text-anchor="end">${((v / base - 1) * 100).toFixed(1)}%</text>`;
+  }
+  const ticks = [0, Math.floor((n - 1) / 3), Math.floor(2 * (n - 1) / 3), n - 1].map(i => {
+    const dt = curve[Math.min(Math.max(i - 1, 0), curve.length - 1)].d.slice(5);
+    return `<text x="${xs(i).toFixed(1)}" y="${H - 8}" fill="#8b949e" font-size="11" text-anchor="${i === 0 ? "start" : (i === n - 1 ? "end" : "middle")}">${dt}</text>`;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+    <defs><linearGradient id="rpGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity=".28"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}${labels}
+    <polygon points="${xs(0).toFixed(1)},${ys(lo).toFixed(1)} ${pts} ${xs(n - 1).toFixed(1)},${ys(lo).toFixed(1)}" fill="url(#rpGrad)"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"/>
+    <line x1="${P.l}" y1="${ys(base).toFixed(1)}" x2="${W - P.r}" y2="${ys(base).toFixed(1)}" stroke="#8b949e" stroke-dasharray="4 4" stroke-width="1"/>
+    ${ticks}
+  </svg><div class="legend">起点 ${(base / 1e4).toFixed(2)} 万（${rpDate(baseDate)} 收盘）· 纵轴为相对起点的百分比 · 每日收盘估值</div>`;
+}
+
 loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class="loading">候选池加载失败: ${esc(e.message)}</div>`);
 loadExecHistory();
 loadBacktest();
 loadHealth();
+loadReplay();
 </script>
 </body>
 </html>
