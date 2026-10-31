@@ -636,6 +636,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 **p, "buy_date": d, "units": units, "buy_eff": buy_eff, "buy_adj": buy_adj,
                 "buy_px_raw": round(float(_lp) / _f, 4) if (_lp and _f) else float(row["open"]),
                 "fill": "limit" if _lp else "open", "buy_idx": idx,
+                "pos_frac": round(pick_frac, 4),   # 第一百零四轮: 记下这笔的下注比例, 供"仓位与右尾是否匹配"审计
             })
         # 未成交部分留在现金中, 复利滚动
         # 注: A股T+1制度, 当日买入的股票当日不可卖出, 因此不存在任何
@@ -724,7 +725,17 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 一部分按开盘价卖(资金当日回笼可再投)、其余按收盘价卖(资金次日回笼)。
             # 动机: "日内是正还是负"随市场结构翻转(2021~24 日内正向、2025~26 负向),
             # 押单一时点等于押结构不变; 两条腿各走一半, 两种结构下都只吃一半亏。
-            u_o = 0.0 if sold_at_close else h["units"] * frac_open
+            # 第一百零四轮(可选): 高浮盈开盘一次性清仓 —— 与 scd(深跌延卖) 严格对称的另一半。
+            # 逐笔证据(575笔): T+2 开盘相对买入价浮盈 >=5% 的 49 笔(8.5%), 当日日内 -0.83%/胜率35%,
+            #   再拿一天(开盘对开盘) -1.00%/胜率35%; 而浮盈 <5% 的 526 笔日内 +0.37%/53%。
+            #   这 49 笔贡献了全部复利(等权 +3154%, 其余 526 笔合计 -53%) —— 右尾已经把利润
+            #   全部前置到开盘这一刻, 再等收盘只是把它交回去。
+            hfrac = frac_open
+            sfg = ex.get("sell_full_if_open_gain")
+            if (not sold_at_close) and sfg and open_adj / h["buy_eff"] - 1 >= float(sfg) / 100:
+                hfrac = 1.0
+                note = (note + f" 开盘浮盈{sced_lbl(float(sfg))}全卖").strip()
+            u_o = 0.0 if sold_at_close else h["units"] * hfrac
             u_c = h["units"] - u_o
             gross_o = u_o * open_adj * (1 - slip)
             gross_c = u_c * close_adj * (1 - slip)
@@ -739,8 +750,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 cash += net_o
             if u_c:
                 pending_cash += net_c
-            if 0 < frac_open < 1 and not sold_at_close:
-                note = (note + f" 分批{frac_open:.0%}开盘/{1 - frac_open:.0%}收盘").strip()
+            if 0 < hfrac < 1 and not sold_at_close:
+                note = (note + f" 分批{hfrac:.0%}开盘/{1 - hfrac:.0%}收盘").strip()
             denom = h["units"] * h["buy_eff"] * (1 + comm)
             r = proceeds / denom - 1 if denom and denom > 0 else 0.0
             trades.append({
@@ -756,6 +767,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "score": h.get("score"),
                 "gap_pct": (round(float(h["_gap"]) * 100, 2) if h.get("_gap") is not None else None),
                 "pool_n": h.get("_pool_n"),
+                "pos_frac": h.get("pos_frac"),
             })
             if r <= 0:
                 loss_streak += 1
