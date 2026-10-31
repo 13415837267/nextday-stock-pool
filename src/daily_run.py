@@ -65,6 +65,8 @@ def _config_fp(cfg: dict) -> str:
         "scd": e.get("sell_close_if_open_drop"),
         "max_buy": e.get("max_buy_per_day"),
         "alloc": e.get("alloc_frac_pct"),
+        "score_gate": e.get("min_top1_score"),          # 第九十五轮: 质量门槛
+        "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -805,6 +807,19 @@ def main():
     else:
         allow_buy = False
         buy_note = f"大盘风控中(连续第{consec}日): 空仓观望"
+    # 第九十五轮: 质量门槛 —— 首选评分(横截面 z 分)不足则当日不参与, 与回测 min_top1_score 同口径。
+    # 独立于风控判定: 即使当日已因风控空仓, 也在文案里点出评分状态, 避免"风控放开才发现没票"。
+    _gate = ex.get("min_top1_score")
+    _top_score = verified[0].get("score") if verified else None
+    _gate_blocked = bool(_gate is not None and verified and
+                         (_top_score is None or float(_top_score) < float(_gate)))
+    _gate_txt = (f"首选评分 {float(_top_score):.2f} < 门槛 {float(_gate):g}(横截面 z 分)"
+                 if _top_score is not None and _gate is not None else "首选评分缺失")
+    if _gate_blocked and allow_buy:
+        allow_buy = False
+        buy_note = f"{_gate_txt}: 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)"
+    elif _gate_blocked:
+        buy_note += f"; 另: {_gate_txt}, 即使风控解除也不参与"
     if allow_buy and cap_frac < 1.0:
         buy_note += f"; {cap_note}"
     steps = []
@@ -833,9 +848,11 @@ def main():
             "close": p.get("close"), "pct": p.get("pct"),
             "pool": p.get("pool", "main"), "strategy": _strategy,
             "strategy_cn": p.get("strategy_cn", _strategy),
-            "rule": (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{plan_frac:.0%}仓位买入"
-                     if _floor else
-                     f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{plan_frac:.0%}仓位买入"),
+            "rule": ((f"评分 {float(_top_score):.2f} < 门槛 {float(_gate):g} → 不参与(空仓)"
+                      if _gate_blocked else
+                      (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{plan_frac:.0%}仓位买入"
+                       if _floor else
+                       f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{plan_frac:.0%}仓位买入"))),
             "fallback": f"不达标 → 顺延第{i+1}名" if i < len(verified) else "",
         })
     if not verified:
@@ -849,6 +866,9 @@ def main():
         "month_gain_pct": round(month_gain_pct, 1),
         "month_cap_active": cap_frac < 1.0,
         "cap_note": cap_note,
+        "score_gate": (float(_gate) if _gate is not None else None),
+        "top_score": (round(float(_top_score), 3) if _top_score is not None else None),
+        "gate_blocked": _gate_blocked,
         "steps": steps,
         "sell_plan": (f"T+2 开盘集合竞价卖出(开盘跌幅≥{float(ex.get('sell_close_if_open_drop') or 0):g}%或跌停则当日收盘卖出)"
                       if float(ex.get("sell_close_if_open_drop") or 0) > 0

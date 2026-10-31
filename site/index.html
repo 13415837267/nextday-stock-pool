@@ -111,7 +111,7 @@
   <div class="cards" id="exec-cards"></div>
   <div style="margin-top:12px" id="exec-table"></div>
 
-  <h2>四、回测绩效 <span class="sub">近500交易日 · 实盘口径复利（样本内，前瞻预期见披露）</span></h2>
+  <h2>四、回测绩效 <span class="sub">1500 交易日（2020-08~2026-10）· 实盘口径复利（样本内，前瞻预期见披露）</span></h2>
   <div class="cards" id="bt-cards"></div>
   <div class="panel" style="margin-top:12px" id="bt-chart"></div>
   <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
@@ -134,7 +134,8 @@
       <li>T日收盘后：系统在沪深主板中选股，主力(dip)有候选时固定只发布「次日计划」1只；主力当日无任何候选时，按备用策略顺序（隔夜动量→深跌阳线反转→趋势回踩5日线）补位，网页最多列3只</li>
       <li>T+1日开盘集合竞价：<b>按开盘价直接买入计划票</b>、全仓进出（每日最多买1只）；第九十二轮起不设缺口门槛，仅停牌/开盘一字涨停（买不到）或开盘涨幅≥10%时放弃</li>
       <li>T+2日开盘集合竞价：卖出；若T+2开盘跌幅≥2%且未跌停，改为当日收盘卖出，资金复利滚动</li>
-      <li>风控触发时（市场宽度&lt;25% 或市场等权指数低于MA30）：次日空仓；连续风控超5个交易日后恢复参与（系数95%起步、每多1日+5%至满仓），同样按开盘价直接买入</li>
+      <li>风控触发时（市场宽度&lt;25% 或市场等权指数低于MA30）：次日空仓，<b>一直空到宽度/指数重新达标为止</b>（第九十五轮取消"连续风控超5日强制复参与"——14年全史里那条规则把-51%放大到-96%）</li>
+      <li><b>评分门槛（第九十五轮）</b>：首选票的综合评分是当日候选池内的横截面 z 分，须 <b>≥ 1.5</b> 才买；不足当日空仓。评分不达标 ≈ 今天这只票"只是矮子里拔将军"，不值得用满仓去赌</li>
       <li>月度盈利熔断已于 2026-10-26 删除（top30 口径下成本 646pp 且回撤零改善，纯右尾压制；单只主板口径维持删除）</li>
     </ul>
     <b>选股条件（T日收盘：趋势内缩量回调）</b>
@@ -149,9 +150,10 @@
     </ul>
     <b>披露</b>
     <ul class="rules">
-      <li>回测为样本内结果，存在优化选择偏差；沪深主板单只 + 每日开盘价无条件成交口径 500 日实测 <b>+447.43%</b>（同期等权基准 +23.25%）、最大回撤 <b>-31.34%</b>、胜率 50.52%、盈亏比 1.43；对照"缺口≤-0.8%才买"挑单口径为 +468.27%/回撤 -15.56%/卡玛 9.00 —— 收益接近、回撤差一倍。理性前瞻锚取月均 3~5%、回撤 -30% 量级</li>
+      <li>回测为样本内结果，存在优化选择偏差。当前口径（第九十五轮：评分≥1.5 + 风控不强制复参与 + 开盘价直接成交）<b>1500 个交易日（2020-08~2026-10）实测 +521.07%</b>、年化 35.91%、最大回撤 <b>-23.63%</b>、卡玛 1.52、271 笔、胜率 54.61%、盈亏比 1.82，同期等权基准 +37.05%；14 年全史（2012-11~2026-10，3378 日）+890.1%/回撤 -46.8%/532 笔/单笔 +0.49%。理性前瞻锚取年化 20~30%、回撤 -30% 量级</li>
+      <li><b>为什么之前显示 +447%？</b> 旧口径只在"最近 500 个交易日"上测，那段正好是 2024-10 起的小盘牛市；同一份配置挪到前一个 500 日窗口是 <b>-86.7%</b>、挪到 14 年全史是 <b>-95.8%（回撤 -99.6%）</b>。近 500 日新旧对比：旧 +447.43%/回撤 -31.34% → 新 <b>+232.2%/回撤 -23.63%</b>。数字变小了，但它不再是"只在牛市成立的数字"</li>
       <li>滑点敏感性（top30口径留档）：双边千2滑点下总收益由 2275.75% 降至 1894.36%（回撤 -9.05%→-9.51%）；实盘务必限价单集合竞价执行</li>
-      <li>单吊口径隔夜方差极大，绝对波动远高于分散组合；第九十二轮起固定单只、无顺延，第九十三轮起<b>每日计划按开盘价直接成交</b>——500 日 388 笔 / 空仓 82 天 / 跳过买入 0 次，几乎每个交易日都持仓</li>
+      <li>单吊口径隔夜方差极大，绝对波动远高于分散组合；第九十二轮起固定单只、无顺延，第九十五轮起<b>评分不足即不参与</b>——1500 日 271 笔 / 空仓 680 天 / 跳过买入 578 次，<b>约 6 个交易日 1 笔</b>，多数日子没有计划是常态而非故障</li>
       <li>Bootstrap 置信区间（块长10日×3000次，2026-10-29 第八十八轮挑单口径留档，非当前口径）：总收益 P5~P95 = +266.47%~+12507.85%（实际+1634.81%处于中位附近）；最大回撤 P5~P95 = -19.77%~-7.24%；重采样无法覆盖市场结构变化风险</li>
       <li>⚠ 长周期压力检验（2500交易日/2016-07~2026-10，第八十八轮挑单口径留档）：总收益 +1676.81%（基准+41.26%）、最大回撤 -30.88%——策略优势依赖市场环境（era前均笔+0.169%、era后+5.217%）。已内置恐慌型波动熔断（十年信号扫描+走前验证：恐慌期信号均值-1.72%/胜率41%，双段一致）</li>
     </ul>
@@ -184,7 +186,7 @@ async function loadLatest() {
   document.getElementById("meta").textContent =
     `信号日 ${fmtDate(d.signal_date)} · 更新于 ${d.update_time} · ${d.strategy}`;
   const badges = [];
-  badges.push(`<span class="badge"><a href="#replay" style="color:var(--gold);text-decoration:none">历史回放 9-10月 ↓</a></span>`);
+  badges.push(`<span class="badge"><a href="#replay" style="color:var(--gold);text-decoration:none">历史回放（近12个月）↓</a></span>`);
   const ok = d.regime && d.regime.ok;
   badges.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日受限"}</span>`);
   if (d.regime && d.regime.note) badges.push(`<span class="badge">${esc(d.regime.note)}</span>`);
@@ -217,13 +219,19 @@ async function loadLatest() {
   const capLine = td.month_gain_pct != null
     ? `<div class="row" style="color:var(--muted);font-size:12px">当月净值增益 +${td.month_gain_pct}%（月度盈利熔断已于2026-10-26删除，仅展示）</div>`
     : "";
+  // 第九十五轮: 评分门槛(横截面 z 分) —— 首选评分不足即不参与
+  const gateLine = td.score_gate == null ? ""
+    : `<div class="row"><b>评分门槛：</b>≥ ${td.score_gate}（首选 <b>${td.top_score ?? "-"}</b> ${
+        td.gate_blocked ? `<span class="down">未达标 → 不参与</span>` : `<span class="up">达标</span>`}）</div>`;
   const judgeHead = allow
     ? `<div class="big" style="color:var(--up)">✅ 明日可买入 · 仓位 ${td.position_pct ?? 100}%</div>
        <div class="row"><b>判定：</b>${esc(td.buy_note || "")}</div>
        <div class="row"><b>买入口径：</b>${td.floor_pct != null ? `开盘缺口 ≤ <b>${td.floor_pct}%</b> 才买（高开≥10%/一字/停牌放弃）` : `<b>不设缺口门槛，9:25 集合竞价按开盘价直接买入</b>（仅停牌/一字涨停买不到，当日空仓）`}</div>
+       ${gateLine}
        ${capLine}`
     : `<div class="big" style="color:var(--muted)">⛔ 明日不买入（空仓）</div>
-       <div class="row"><b>判定：</b>${esc(td.buy_note || (d.picks.length === 0 ? "今日无合格候选" : "风控限制"))}</div>`;
+       <div class="row"><b>判定：</b>${esc(td.buy_note || (d.picks.length === 0 ? "今日无合格候选" : "风控限制"))}</div>
+       ${gateLine}`;
   const stepsHtml = (td.steps || []).filter(s => s.rank > 0).map(s =>
     `<div class="row">▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}${s.strategy_cn ? `，<span class="badge" style="font-size:11px">${esc(s.strategy_cn)}</span>` : ""}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}</div>`).join("")
     || `<div class="row">▸ 今日候选池为空${td.empty_funnel ? `：` + Object.entries(td.empty_funnel).filter(([k,v])=>v!=null).map(([k,v])=>`${k} ${v}`).join(" → ") + " → 全部过滤" : ""}，明日空仓</div>`;
@@ -347,7 +355,7 @@ async function loadExecHistory() {
       ht.innerHTML = html + "</table></div>" +
       `<div class="legend" style="margin-top:8px">明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。「实盘买/卖价」列用于记录你的真实成交价与模拟价对照(现为空, 成交后告知即写入)。<br>` +
       `2026-10-30 及之前的历史成交按当时口径(含创业板多票、缺口挑单)记录且<b>不改写</b>；` +
-      `第九十二~九十三轮口径(沪深主板单只、每日开盘价直接成交)自 2026-11-02 买入起执行。</div>`;
+      `第九十二~九十五轮口径(沪深主板单只、开盘价直接成交、评分≥1.5、风控不强制复参与)自 2026-11-02 买入起执行。</div>`;
   } catch (e) { ht.innerHTML = `<div class="loading">执行记录加载失败: ${esc(e.message)}</div>`; }
 }
 
@@ -531,14 +539,16 @@ async function loadReplay() {
       `<span class="up">${esc(f.code)} ${esc(f.name)} ${pctStr(f.ret_pct)}</span>`).join("；");
     const skips = (x.skipped || []).map(k => `${esc(k.code)} ${esc(k.name)}：${esc(k.note)}`).join("；");
     const cand = fills || skips || `<span class="muted">无候选</span>`;
+    const reason = (x.skipped || []).some(k => String(k.note || "").includes("评分"));
     const gate = (x.alloc ?? 1) <= 0 ? `<span class="down">空仓</span>`
-      : (x.trade_ok ? `<span class="up">正常</span>` : `<span style="color:var(--gold)">超限满仓</span>`);
+      : (!x.trade_ok ? `<span class="down">空仓</span>`
+        : (reason ? `<span style="color:var(--gold)">评分不足</span>` : `<span class="up">正常</span>`));
     dh += `<tr><td data-label="买入日">${rpDate(x.date)}</td><td data-label="风控">${gate}</td>
       <td data-label="成交">${(x.fills || []).length || `<span class="muted">0</span>`}</td>
       <td class="muted full" data-label="候选与跳过原因" style="white-space:normal">${cand}</td></tr>`;
   });
   dlEl.innerHTML = dh + `</table></div></details>` +
-    `<div class="legend" style="margin-top:8px">风控列: 正常 = 市场宽度/指数达标；超限满仓 = 连续风控超上限后按系数参与；空仓 = 风控或恐慌熔断。</div>`;
+    `<div class="legend" style="margin-top:8px">风控列: 正常 = 市场宽度/指数达标，允许开仓；空仓 = 风控/恐慌熔断，或首选评分未达门槛。第九十五轮起取消"超限满仓"（连续风控超上限后强行参与）。</div>`;
 
   // 口径说明(数据驱动: 笔数/空仓天数/放弃次数均由 payload 计算)
   const nDay = daily.length, nTr = s.n_trades || 0;
@@ -546,20 +556,40 @@ async function loadReplay() {
   const nOct = trades.filter(t => String(t.buy_date).startsWith("202610")).length;
   const nFlat = daily.filter(x => (x.alloc ?? 1) <= 0).length;
   const nSkip = daily.reduce((a, x) => a + (x.skipped || []).length, 0);
+  // 第九十五轮: 把"为什么没成交"四分类(互斥, 合计 = 空仓天数)
+  const noFill = daily.filter(x => !(x.fills || []).length);
+  const nGate = noFill.filter(x => (x.alloc ?? 1) > 0
+    && (x.skipped || []).some(k => String(k.note || "").includes("评分"))).length;
+  const nNone = noFill.filter(x => (x.alloc ?? 1) > 0 && !(x.skipped || []).length).length;
+  const nOther = noFill.length - nFlat - nGate - nNone;
   const bench = (d.perf || {})["同期市场等权基准%"];
+  // 9-10 月子区间(用户最初要看的区间): 从净值曲线取区间首尾, 不做近似
+  const navAt = dt => {
+    const hit = (d.curve || []).filter(p => String(p.d).replace(/-/g, "") <= dt);
+    return hit.length ? hit[hit.length - 1].nav : null;
+  };
+  const n0 = navAt("20260901"), n1 = navAt("20261030");
+  const sepOctRet = (n0 && n1) ? (n1 / n0 - 1) * 100 : null;
   const benchStr = bench == null ? "—" : (bench > 0 ? "+" : "") + Number(bench).toFixed(2) + "%";
   ntEl.innerHTML = `
-    <p><b>为什么几乎每天都在成交？</b> 第九十三轮执行口径：每日从<b>沪深主板</b>发布 1 只计划票，
-    T+1 开盘集合竞价<b>按开盘价直接买入</b>，不设缺口门槛、不按低开幅度挑单——与实盘下单方式一致。
-    本区间 ${nDay} 个交易日成交 ${nTr} 笔（9 月 ${nSep} 笔、10 月 ${nOct} 笔），
-    其余 ${nDay - nTr} 天为空仓（${nFlat} 天大盘风控/恐慌熔断，其余为当日无合格候选）；
-    全区间放弃买入 ${nSkip} 次，均为停牌或开盘一字涨停（物理上买不到）。</p>
-    <p><b>这 ${nDay} 天为什么是负的？</b> 本区间是弱市段，同期全市场等权基准 ${benchStr}。
-    单只满仓下每笔成交都直接决定区间结果，${nTr} 笔样本方差极大：最好一笔 ${pctStr(s.best)}、
-    最差一笔 ${pctStr(s.worst)}。<b>不要用 ${nDay} 天推断长期期望</b>——同一套配置在 500 日窗口为
-    +447.43%（基准 +23.25%）、胜率 50.52%、最大回撤 -31.34%、卡玛 4.33、388 笔成交；
-    恢复"缺口 ≤ -0.8% 才买"的挑单口径同窗为 +468.27% / 回撤 -15.56% / 卡玛 9.00 / 98 笔，
-    即<b>收益几乎不变、回撤减半</b>。选择每日无条件成交，等于用一倍的回撤换"不漏掉任何计划"的执行确定性。</p>
+    <p><b>${nDay} 个交易日只成交 ${nTr} 笔，是两道闸筛出来的，不是漏跑。</b>
+    ① <b>大盘风控</b>——市场宽度&lt;25% 或等权指数低于 MA30 就空仓，本区间 ${nFlat} 天；
+    ② <b>评分门槛</b>——首选票的横截面 z 分须 ≥ 1.5，本区间 ${nGate} 天因评分不足放弃；
+    ③ 当日无合格候选 ${nNone} 天；④ 停牌/开盘一字涨停等物理买不到 ${nOther} 天。
+    逐日决策里每一天都写着属于哪一种，全部是当日盘后就能算出来的，不是事后挑的。</p>
+
+    <p><b>笔数少，所以每一笔都重要。</b> ${nTr} 笔平均 ${pctStr(s.avg_ret_pct)}、胜率 ${s.win_rate}%，
+    最好一笔 ${pctStr(s.best)}、最差 ${pctStr(s.worst)}——最差只有 ${pctStr(s.worst)}，
+    因为低分票根本不进场。同期全市场等权基准 ${benchStr}，本区间 <b>${pctStr(s.range_ret_pct)}</b>、
+    最大回撤 ${pctStr(s.range_mdd_pct)}。</p>
+
+    <p><b>9-10 月单独看：</b>${nSep + nOct} 笔、<b>${pctStr(sepOctRet)}</b>。
+    旧口径（无评分门槛、风控满 5 日强制复参与、开盘价无条件成交）在同样这 38 天成交 24 笔、亏 <b>-10.63%</b>、
+    回撤 -25.56%——<b>弱市里不交易本身就是收益</b>。</p>
+
+    <p><b>别用 ${nDay} 天推断长期期望。</b> 同一套配置在 1500 个交易日（2020-08~2026-10）为 +521.07%、
+    年化 35.91%、最大回撤 -23.63%、271 笔、胜率 54.61%；14 年全史（2012-11~2026-10，3378 日）
+    +890.1%/-46.8%/532 笔。单笔期望只有 +0.5~0.9%，靠的是几百笔复利，任何一年的片段都不足以判断好坏。</p>
     <p><b>无未来函数的三条保证：</b></p>
     <ul>
       <li>指标（MA/动量/波动/振幅）全部为 <code>rolling</code> / <code>shift(1)</code> 向后看，无 <code>center=True</code>、无 <code>shift(-n)</code>；</li>
@@ -567,9 +597,10 @@ async function loadReplay() {
       <li>买入取 T+1 真实开盘价、卖出取 T+2 真实开盘价（跌停回退当日收盘），绩效门控只用已发生的成交。</li>
     </ul>
     <p><b>回放不是实盘流水（对账前必读）：</b>实盘 10-28 信号日选出 3 只（含创业板 301311、301239），
-    次日买入第 2 名 002811 郑中设计、亏 -11.16%；而回放当日只扫沪深主板、且要求 120 日上市历史，
-    判定为无候选、空仓。<b>两头都是真实记录，差在选股域与面板长度，不是引擎口径。</b>
-    本页回答的是"若严格按当前规则逐日重放会怎样"；真实成交以"三、单吊执行记录"为准。</p>
+    次日买入第 2 名 002811 郑中设计、亏 -11.16%；回放当天判定为<b>大盘风控</b>（宽度/指数不达标）直接空仓，
+    这笔不在回放里。差异来自风控序列的样本长度（实盘每日只加载 30 日面板，回放用连续 155 日预热）
+    与选股域（回放只扫沪深主板），<b>不是成交口径</b>。本页回答的是"若严格按当前规则逐日重放会怎样"；
+    真实成交以"三、单吊执行记录"为准。</p>
     <p class="muted">差异说明：实盘每日只加载 30 日面板（<code>listed_min_bars=0</code>），
     回放用连续 ${m.warmup_days ?? 155} 交易日预热面板（<code>listed_min_bars=120</code>），次新股过滤口径不同，
     个别日期的候选池会有出入。数据源：<code>output/replay.json</code>（${rpDate(m.panel_first)} 起面板）。</p>`;

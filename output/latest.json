@@ -1,7 +1,7 @@
 {
- "update_time": "2026-10-31 04:25:48",
+ "update_time": "2026-10-31 14:23:45",
  "signal_date": "2026-10-30",
- "config_fp": "a77ea8ea6e88",
+ "config_fp": "557202a5c6af",
  "plan": {
   "buy_date": "2026-11-02",
   "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
@@ -15,9 +15,9 @@
   "breadth": 0.162,
   "mkt_above_ma": false,
   "block_days": 10,
-  "max_block_days": 5,
-  "reenter_frac": 1.0,
-  "note": "大盘风控连续第10日, 超过5日上限: 次日按100%仓位参与候选池(不设缺口门槛, 按开盘价买入)"
+  "max_block_days": 0,
+  "reenter_frac": null,
+  "note": "大盘风控触发(连续第10日): 次日建议空仓观望"
  },
  "stats": {
   "universe": 5577,
@@ -46,14 +46,17 @@
   }
  ],
  "t1_decision": {
-  "allow_buy": true,
-  "buy_note": "超限参与日(连续风控第10日): 按100%仓位参与, 开盘价直接买入(不设缺口门槛)",
+  "allow_buy": false,
+  "buy_note": "大盘风控中(连续第10日): 空仓观望; 另: 首选评分 0.95 < 门槛 1.5(横截面 z 分), 即使风控解除也不参与",
   "panic_day": false,
   "floor_pct": null,
   "position_pct": 100.0,
   "month_gain_pct": 0.0,
   "month_cap_active": false,
   "cap_note": "",
+  "score_gate": 1.5,
+  "top_score": 0.953,
+  "gate_blocked": true,
   "steps": [
    {
     "rank": 1,
@@ -65,7 +68,7 @@
     "pool": "main",
     "strategy": "dip",
     "strategy_cn": "主力·趋势缩量回调",
-    "rule": "9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < 10%、未停牌未一字) → 按100%仓位买入",
+    "rule": "评分 0.95 < 门槛 1.5 → 不参与(空仓)",
     "fallback": ""
    }
   ],
@@ -74,11 +77,11 @@
  },
  "monitor": {
   "level": "样本不足",
-  "n": 4,
+  "n": 2,
   "window": 20,
-  "mean_pct": -4.19,
+  "mean_pct": -5.78,
   "win_pct": 0.0,
-  "note": "已结算4/20笔, 随实盘积累自动生效(期间维持现有风控纪律)",
+  "note": "已结算2/20笔, 随实盘积累自动生效(期间维持现有风控纪律)",
   "thresholds": {
    "watch_mean_pct": 1.0,
    "warn_mean_pct": 0.0,
@@ -88,8 +91,8 @@
  },
  "observe": {
   "n": 2,
-  "avg_pct": -4.78,
-  "win_pct": 0.0,
+  "avg_pct": -2.68,
+  "win_pct": 50.0,
   "note": "风控空仓日对照: 若当日完全放行(其余执行闸不变)的虚拟top1收益, 前瞻验证风控机会成本(第45轮回顾: era后贡献+1183pp), 不参与决策"
  },
  "audit": {
