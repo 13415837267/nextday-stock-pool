@@ -307,6 +307,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
     gap_tiers = ex.get("gap_size_tiers") or []   # 缺口分级下注: [{below: -4.0, mult: 1.0}, ...]
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
+    # 第九十六轮: 评分分档下注 [{min: 1.5, mult: 1.0}, {min: 1.1, mult: 0.6}, ...] 降序匹配
+    # —— 门槛降低后不再"一刀切空仓", 低分票只给小仓, 高分票才满仓; 兼顾笔数与期望。
+    score_tiers = ex.get("score_tiers") or []
     skip_gap_deep = ex.get("skip_gap_deep")       # 可选: 缺口深于该值(更恐慌)也放弃(崩塌保护)
     cash = float(bt_cfg["initial_capital"])
     curve: dict[str, float] = {}
@@ -471,6 +474,13 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 break
             row = p.pop("_row")
             pick_frac = frac
+            # 评分分档下注(可选): 评分越高仓位越重(降序匹配, 未命中则用最低档)
+            if score_tiers:
+                _sc = float(p.get("score") or 0.0)
+                for _t in score_tiers:
+                    if _sc >= float(_t["min"]):
+                        pick_frac *= float(_t.get("mult", 1.0))
+                        break
             # 缺口分级下注(可选): 竞价缺口越深=错杀越极端/edge越强, 仓位越高; 缺省关闭
             if gap_tiers:
                 g100 = p["_gap"] * 100

@@ -66,6 +66,7 @@ def _config_fp(cfg: dict) -> str:
         "max_buy": e.get("max_buy_per_day"),
         "alloc": e.get("alloc_frac_pct"),
         "score_gate": e.get("min_top1_score"),          # 第九十五轮: 质量门槛
+        "score_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("score_tiers") or [])],  # 第九十六轮: 分档下注
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
@@ -96,8 +97,15 @@ def _position_note(ex: dict) -> str:
     frac = float(ex.get("alloc_frac_pct", 5.0))
     maxn = int(ex.get("max_buy_per_day", 0))
     gap = float(ex.get("buy_gap_below", 0) or 0)
+    tiers = ex.get("score_tiers") or []
+    tier_txt = ""
+    if tiers:
+        seen = []
+        for t in tiers:
+            seen.append(f"≥{float(t['min']):g}→{float(t.get('mult', 1.0)) * frac:g}%")
+        tier_txt = "(评分分档: " + "/".join(seen) + " 总资产)"
     if maxn == 1:
-        pos = f"若开仓: 买入评分第1名 1 只, 约 {frac:g}% 总资产仓位"
+        pos = f"若开仓: 买入评分第1名 1 只, 最高 {frac:g}% 总资产仓位" + tier_txt
     elif maxn > 1:
         pos = f"若开仓: 按评分买入最多 {maxn} 只, 每笔约 {frac:g}% 总资产"
     else:
@@ -820,8 +828,20 @@ def main():
         buy_note = f"{_gate_txt}: 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)"
     elif _gate_blocked:
         buy_note += f"; 另: {_gate_txt}, 即使风控解除也不参与"
+    # 第九十六轮: 评分分档下注 —— 门槛降到 1.0 后, 1.0~1.6 的票不再一刀切空仓, 而是按档位减仓
+    _tiers = ex.get("score_tiers") or []
+    _tier_mult, _tier_txt = 1.0, ""
+    if _tiers and _top_score is not None and not _gate_blocked:
+        for _t in _tiers:
+            if float(_top_score) >= float(_t["min"]):
+                _tier_mult = float(_t.get("mult", 1.0))
+                _tier_txt = f"评分{float(_top_score):.2f}→{_tier_mult:.0%}仓({float(_t['min']):g}档)"
+                break
+        if _tier_mult < 1.0 and allow_buy:
+            buy_note += f"; {_tier_txt}"
     if allow_buy and cap_frac < 1.0:
         buy_note += f"; {cap_note}"
+    _pos_frac = plan_frac * _tier_mult
     steps = []
     _rk: dict[str, int] = {}   # 池内名次(主力/备用各自计数, 与回测 _rank 一致)
     # 顺延指引覆盖整个发布池(第六十一轮: 5→display_top_n只): 网页展示N只=指引N只=回测exec_top_n,
@@ -850,9 +870,9 @@ def main():
             "strategy_cn": p.get("strategy_cn", _strategy),
             "rule": ((f"评分 {float(_top_score):.2f} < 门槛 {float(_gate):g} → 不参与(空仓)"
                       if _gate_blocked else
-                      (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{plan_frac:.0%}仓位买入"
+                      (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{_pos_frac:.0%}仓位买入"
                        if _floor else
-                       f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{plan_frac:.0%}仓位买入"))),
+                       f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{_pos_frac:.0%}仓位买入"))),
             "fallback": f"不达标 → 顺延第{i+1}名" if i < len(verified) else "",
         })
     if not verified:
@@ -862,13 +882,15 @@ def main():
         "buy_note": buy_note,
         "panic_day": panic_day,
         "floor_pct": (floor_now if (allow_buy and floor_now) else None),
-        "position_pct": round(plan_frac * ex.get("alloc_frac_pct", 100.0), 1),
+        "position_pct": round(_pos_frac * ex.get("alloc_frac_pct", 100.0), 1),
         "month_gain_pct": round(month_gain_pct, 1),
         "month_cap_active": cap_frac < 1.0,
         "cap_note": cap_note,
         "score_gate": (float(_gate) if _gate is not None else None),
         "top_score": (round(float(_top_score), 3) if _top_score is not None else None),
         "gate_blocked": _gate_blocked,
+        "score_tier_mult": (round(_tier_mult, 3) if _tiers else None),
+        "score_tier_note": (_tier_txt or None),
         "steps": steps,
         "sell_plan": (f"T+2 开盘集合竞价卖出(开盘跌幅≥{float(ex.get('sell_close_if_open_drop') or 0):g}%或跌停则当日收盘卖出)"
                       if float(ex.get("sell_close_if_open_drop") or 0) > 0
@@ -930,7 +952,7 @@ def main():
             "position": _position_note(ex),
         },
         "strategy": "次日开盘买入-再次日开盘卖出({}{})".format(
-            "趋势内缩量回调+次日低开承接" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)",
+            "趋势内缩量回调+次日开盘价成交" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)",
             ("＋备选补位:" + "/".join(STRATEGY_CN.get(fb.get("mode"), str(fb.get("mode")))
                                    for fb in (cfg["selection"].get("fallbacks") or [])))
             if cfg["selection"].get("fallbacks") else "",
