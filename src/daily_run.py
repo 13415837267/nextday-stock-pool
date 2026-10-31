@@ -67,10 +67,35 @@ def _config_fp(cfg: dict) -> str:
         "alloc": e.get("alloc_frac_pct"),
         "score_gate": e.get("min_top1_score"),          # 第九十五轮: 质量门槛
         "score_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("score_tiers") or [])],  # 第九十六轮: 分档下注
+        "gap_above": [(t.get("above"), t.get("mult")) for t in (e.get("gap_above_tiers") or [])],  # 第九十七轮: 高开降仓
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+
+
+def _pos_tier_mult(score, ex: dict) -> float:
+    """评分分档下注乘数(与回测 do_buy 的 score_tiers 同口径, 降序匹配)。"""
+    for t in (ex.get("score_tiers") or []):
+        if score is not None and float(score) >= float(t["min"]):
+            return float(t.get("mult", 1.0))
+    return 1.0
+
+
+def _gap_tier_mult(gap: float, ex: dict, score=None) -> tuple[float, str]:
+    """高开降仓乘数(与回测 do_buy 的 gap_above_tiers 同口径, 降序匹配)。
+
+    gap 单位为百分数(T+1 开盘相对 T 日收盘)。返回 (乘数, 说明文案)。
+    只降仓、不拒单 —— 每日计划票仍按开盘价成交, 交易次数不变。
+    档内 `score_below` 与回测一致: 评分达到该值的票跳过本档(强势股抢筹不降仓)。
+    """
+    for t in (ex.get("gap_above_tiers") or []):
+        if "score_below" in t and score is not None and float(score) >= float(t["score_below"]):
+            continue
+        if float(gap) >= float(t.get("above", 0.0)):
+            _m = float(t.get("mult", 1.0))
+            return _m, f"缺口{gap:+.1f}%→{_m:.0%}仓({float(t['above']):g}档)"
+    return 1.0, ""
 
 
 def _exec_gate(rb, gap: float, ex: dict, floor: float) -> str | None:
@@ -114,6 +139,11 @@ def _position_note(ex: dict) -> str:
         pos += f"; 仅买开盘缺口 <= {gap:g}% 的低开票(风控日以判定卡承接线为准)"
     else:
         pos += "; 不设缺口门槛, T+1 开盘价直接成交(仅停牌/一字涨停买不到)"
+    gat = ex.get("gap_above_tiers") or []
+    if gat:
+        seg = "/".join(f"≥{float(t['above']):g}%→{float(t.get('mult', 1.0)):.0%}"
+                       for t in gat)
+        pos += f"; 高开减仓: 竞价缺口 {seg}(照常成交, 只降仓位)"
     pos += "; T+1买入, T+2开盘卖出(遵守A股T+1制度, 无当日卖出)"
     scd = float(ex.get("sell_close_if_open_drop") or 0)
     if scd > 0:
@@ -561,12 +591,20 @@ def main():
                 continue
             # 第五十三轮: 买入日仓位含月度盈利熔断系数(仅已结算口径, 本记录浮盈不属买入时点)
             _, _cf, _ = _month_gain_state([], history, (buy_d or "")[:6], None, cfg, include_hold=False)
+            # 第九十七轮: 仓位口径补齐 —— 评分档 × 高开降仓档(与回测 do_buy 同尺度),
+            # 此前只记 bfrac*熔断系数, 页面显示的执行仓位与回测实际仓位不同。
+            _sm = _pos_tier_mult(p.get("score"), ex)
+            _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
+            _pos = round(bfrac * _cf * _sm * _gm * ex.get("alloc_frac_pct", 100.0), 1)
             return {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
                 "sell_date": _fmt(sell_d) if sell_d else "", "sell_px": None,
                 "ret_pct": None,
-                "position_pct": round(bfrac * _cf * ex.get("alloc_frac_pct", 100.0), 1),
+                "position_pct": _pos,
+                "pos_note": ("·".join(x for x in [
+                    (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
+                    _gt] if x) or None),
                 "gap_pct": round(gap, 2),
                 "chain": chain,
                 "holding": True,
@@ -655,13 +693,19 @@ def main():
             last_sell_dd = sell_dd
             # 第五十三轮: 结算仓位含月度盈利熔断系数(买入日口径, 仅已结算复利)
             _, _cf, _ = _month_gain_state([], history, (buy_d or "")[:6], None, cfg, include_hold=False)
+            # 第九十七轮: 同 _settle_holding —— 补上评分档与高开降仓档, 执行记录与回测同尺度
+            _sm = _pos_tier_mult(p.get("score"), ex)
+            _gm, _gt = _gap_tier_mult(gap, ex, p.get("score"))
             executed = {
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
                 "sell_date": _fmt(sell_dd),
                 "sell_px": round(float(sell_row["close" if sold_close else "open"]), 2),
                 "ret_pct": round(float(r) * 100, 2),
-                "position_pct": round(bfrac * _cf * ex.get("alloc_frac_pct", 100.0), 1),
+                "position_pct": round(bfrac * _cf * _sm * _gm * ex.get("alloc_frac_pct", 100.0), 1),
+                "pos_note": ("·".join(x for x in [
+                    (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
+                    _gt] if x) or None),
                 "gap_pct": round(gap, 2),
                 "chain": chain,
             }
@@ -841,6 +885,12 @@ def main():
             buy_note += f"; {_tier_txt}"
     if allow_buy and cap_frac < 1.0:
         buy_note += f"; {cap_note}"
+    # 第九十七轮: 高开降仓 —— 缺口数据 T+1 开盘才有, 盘前只给规则, 9:25 竞价确认时按实际缺口执行
+    _gat = ex.get("gap_above_tiers") or []
+    _gat_txt = "/".join(f"≥{float(t['above']):g}%→{float(t.get('mult', 1.0)):.0%}" for t in _gat)
+    _gat_rule = (f"; 若竞价缺口 {_gat_txt} 则按该比例减仓(照常成交, 不弃单)" if _gat else "")
+    if _gat and allow_buy:
+        buy_note += _gat_rule
     _pos_frac = plan_frac * _tier_mult
     steps = []
     _rk: dict[str, int] = {}   # 池内名次(主力/备用各自计数, 与回测 _rank 一致)
@@ -870,9 +920,9 @@ def main():
             "strategy_cn": p.get("strategy_cn", _strategy),
             "rule": ((f"评分 {float(_top_score):.2f} < 门槛 {float(_gate):g} → 不参与(空仓)"
                       if _gate_blocked else
-                      (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{_pos_frac:.0%}仓位买入"
+                      (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{_pos_frac:.0%}仓位买入{_gat_rule}"
                        if _floor else
-                       f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{_pos_frac:.0%}仓位买入"))),
+                       f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{_pos_frac:.0%}仓位买入{_gat_rule}"))),
             "fallback": f"不达标 → 顺延第{i+1}名" if i < len(verified) else "",
         })
     if not verified:
@@ -891,6 +941,7 @@ def main():
         "gate_blocked": _gate_blocked,
         "score_tier_mult": (round(_tier_mult, 3) if _tiers else None),
         "score_tier_note": (_tier_txt or None),
+        "gap_tier_note": (_gat_txt or None),
         "steps": steps,
         "sell_plan": (f"T+2 开盘集合竞价卖出(开盘跌幅≥{float(ex.get('sell_close_if_open_drop') or 0):g}%或跌停则当日收盘卖出)"
                       if float(ex.get("sell_close_if_open_drop") or 0) > 0

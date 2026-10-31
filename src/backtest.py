@@ -306,6 +306,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     ex = cfg["execution"]
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
     gap_tiers = ex.get("gap_size_tiers") or []   # 缺口分级下注: [{below: -4.0, mult: 1.0}, ...]
+    gap_above_tiers = ex.get("gap_above_tiers") or []   # 高开降仓: [{above: 0, mult: 0.5}, ...]
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
     # 第九十六轮: 评分分档下注 [{min: 1.5, mult: 1.0}, {min: 1.1, mult: 0.6}, ...] 降序匹配
     # —— 门槛降低后不再"一刀切空仓", 低分票只给小仓, 高分票才满仓; 兼顾笔数与期望。
@@ -469,6 +470,17 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 frac *= mc_cut
             if ml_cap > 0 and ml_cut < 1.0 and mret < -ml_cap:
                 frac *= ml_cut
+        # 绩效门控仓位(第九十七轮, 可选): 近 window 笔"已结算"成交的均值低于 cut_below 时,
+        # 说明当前市场结构对本策略不利(如 2025 全年胜率 45%/单笔 +0.15%), 主动降仓等待;
+        # 均值回到 cut_below 之上自动恢复。纯已实现信息, 无未来函数(与 depth_gate 同源)。
+        _pg = ex.get("perf_gate") or {}
+        if _pg:
+            _w = int(_pg.get("window", 20))
+            _real = [t["ret_pct"] for t in trades if t.get("ret_pct") is not None]
+            if len(_real) >= _w:
+                _m = sum(_real[-_w:]) / _w
+                if _m < float(_pg.get("cut_below", 0.0)):
+                    frac *= float(_pg.get("cut_mult", 0.5))
         for p in qualified:
             if cash <= 0:
                 break
@@ -488,8 +500,27 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     if g100 <= t["below"]:
                         pick_frac *= t["mult"]
                         break
+            # 高开降仓(第九十七轮, 可选): 缺口 >= above 时按 mult 缩仓(不拒单)。
+            # 逻辑: 本策略的 edge 来自"深低开后的恐慌修复"; 缺口>=0 意味着开盘就已修复,
+            # 承接逻辑不成立 —— 实测 260 笔(48%)均值 +0.03%/胜率 44%, 等于零期望占半仓。
+            # 与 buy_gap_below 的"挑单"不同: 这里每天照常按开盘价成交, 只是高开不下重注,
+            # 因此不减少交易次数(用户约束)。降序匹配第一条满足的档。
+            if gap_above_tiers:
+                g100 = p["_gap"] * 100
+                _sc = float(p.get("score") or 0.0)
+                for t in gap_above_tiers:
+                    # 可选 score_below: 该档只对"评分不足"的票生效 —— 高开+高分(强势股抢筹)
+                    # 与高开+低分(单纯追高)是两种东西, 前者不必减仓。缺省=不限评分。
+                    if "score_below" in t and _sc >= float(t["score_below"]):
+                        continue
+                    if g100 >= float(t["above"]):
+                        pick_frac *= float(t.get("mult", 1.0))
+                        break
             alloc = min(pick_frac * equity, cash)
-            if alloc < frac * equity * 0.3:  # 剩余资金不足单笔最低规模(30%)则放弃
+            # 剩余现金不足"本笔目标仓位"的30%才放弃(第九十七轮修正: 原以满仓 frac 为基准,
+            # 在评分档×缺口档叠加把目标仓位压到 30% 以下时会把本可成交的单直接丢弃 ——
+            # 高开降仓的实验里因此凭空少掉 159 笔交易; 判据应与本笔实际目标仓位同尺度)。
+            if alloc < pick_frac * equity * 0.3:
                 break
             _lp = p.get("_lim_px")
             buy_eff = (float(_lp) if _lp else float(row["open_adj"])) * (1 + slip)
@@ -586,6 +617,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "fill": h.get("fill", "open"),
                 "sell_date": sell_d, "sell_px": float(row["close" if sold_at_close else "open"]),
                 "ret_pct": round(r * 100, 2), "note": note,
+                # 第九十七轮: 成交明细记录"下注依据"(评分/竞价缺口/当日候选池深度),
+                # 便于事后审计"为什么这笔下多重" —— 此前 trades 只有结果没有依据。
+                "score": h.get("score"),
+                "gap_pct": (round(float(h["_gap"]) * 100, 2) if h.get("_gap") is not None else None),
+                "pool_n": h.get("_pool_n"),
             })
             if r <= 0:
                 loss_streak += 1
@@ -635,8 +671,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 注: 大盘风控触发仅限制次一交易日不买入; 持仓(含当日买入票)
             #     均按既定 T+2(或之后)开盘卖出, 遵守T+1制度, 无任何当日卖出。
         else:
-            picks, _ = select_stocks(d, by_date[d], cfg, names)
-            pending_buy = (d, [{**p, "signal_date": d} for p in picks])
+            picks, _sel_stats = select_stocks(d, by_date[d], cfg, names)
+            # 第九十七轮: 当日候选池深度(通过 dip 筛选并完成评分的只数)随计划下发,
+            # 用于诊断"机会丰度"; 纯观测字段, 不改变任何买入判定。
+            _pn = int((_sel_stats or {}).get("scored") or 0)
+            pending_buy = (d, [{**p, "signal_date": d, "_pool_n": _pn} for p in picks])
         # 若持仓未在开盘卖出(停牌顺延中), 继续每日估值
     print(f"  模拟完成, 耗时 {time.time()-t0:.0f}s")
 

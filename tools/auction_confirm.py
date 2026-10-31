@@ -15,6 +15,7 @@ sys.path.insert(0, ROOT)
 CST = timezone(timedelta(hours=8))
 
 from src.config import load_config   # noqa: E402  (需先注入ROOT)
+from src.daily_run import _gap_tier_mult   # noqa: E402  (第九十七轮: 高开降仓同口径)
 
 
 def limit_ratio(code):
@@ -92,6 +93,7 @@ def main():
         "data_ok": True,
         "action": "skip", "name": "", "code": "", "rank": None,
         "open_px": None, "gap_pct": None, "chain": [],
+        "gap_tier_note": None,   # 第九十七轮: 高开减仓说明(仅当触发时写入)
     }
     cands = []
     if buy_date != today:
@@ -131,9 +133,18 @@ def main():
             result["note"] = ("全部候选未达标 → 今日空仓" if cands
                               else "空池日(无合格候选) → 今日空仓")
         if result["action"] == "buy":
+            # 第九十七轮: 高开降仓 —— 盘前仓位只含评分档, 9:25 拿到真实竞价缺口后再乘缺口档,
+            # 与回测 do_buy / daily_run._settle_holding 同口径(评分 ≥1.6 的高开票不减)。
+            _sc = next((s.get("score") for s in td.get("steps", [])
+                        if s.get("code") == result["code"]), None)
+            _gm, _gt = _gap_tier_mult(result["gap_pct"], ex, _sc)
+            if _gm < 1.0:
+                result["position_pct"] = round(float(result["position_pct"] or 0) * _gm, 1)
+                result["gap_tier_note"] = _gt
             result["note"] = (f"确认买入第{result['rank']}名 {name}({code}), "
                               f"竞价缺口{result['gap_pct']:.2f}%, 开盘价{result['open_px']}, "
-                              f"仓位{result['position_pct']}%")
+                              f"仓位{result['position_pct']}%"
+                              + (f"（{_gt}，高开减仓）" if _gm < 1.0 else ""))
 
         # ---- 行情全失败保护(2026-10-24新增): 双源均无数据时绝不误报"今日空仓" ----
         # 退出码2 → 工作流失败 → 自动建Issue告警; 不写入误导性auction.json
