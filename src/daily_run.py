@@ -63,6 +63,8 @@ def _config_fp(cfg: dict) -> str:
         "gap": e.get("buy_gap_below"),
         "block_gap": e.get("block_gap_below"),
         "scd": e.get("sell_close_if_open_drop"),
+        "spb": e.get("sell_close_if_profit_below"),   # 第九十八轮: 浮亏延卖阈值
+        "sell_frac": e.get("sell_open_frac"),          # 第九十八轮: 分批出场(开盘卖出占比)
         "max_buy": e.get("max_buy_per_day"),
         "alloc": e.get("alloc_frac_pct"),
         "score_gate": e.get("min_top1_score"),          # 第九十五轮: 质量门槛
@@ -144,11 +146,29 @@ def _position_note(ex: dict) -> str:
         seg = "/".join(f"≥{float(t['above']):g}%→{float(t.get('mult', 1.0)):.0%}"
                        for t in gat)
         pos += f"; 高开减仓: 竞价缺口 {seg}(照常成交, 只降仓位)"
-    pos += "; T+1买入, T+2开盘卖出(遵守A股T+1制度, 无当日卖出)"
-    scd = float(ex.get("sell_close_if_open_drop") or 0)
-    if scd > 0:
-        pos += f"; 若T+2开盘跌幅≥{scd:g}%且未跌停, 改为当日收盘卖出"
+    pos += "; 出场: " + _sell_rule_text(ex) + "(遵守A股T+1制度, 无当日卖出)"
     return pos
+
+
+def _sell_rule_text(ex: dict) -> str:
+    """出场规则一句话(第九十八轮, 计划/决策卡/规则区共用同一口径):
+    T+2 开盘卖; 开盘相对买入价浮亏超阈值、或开盘跌停 -> 当日收盘卖。
+    """
+    f = min(1.0, max(0.0, float(ex.get("sell_open_frac", 1.0) or 0.0)))
+    spb = ex.get("sell_close_if_profit_below")
+    scd = float(ex.get("sell_close_if_open_drop") or 0)
+    if spb is not None:
+        tail = f"相对买入价浮亏超 {abs(float(spb)):g}%（或开盘跌停）"
+    elif scd > 0:
+        tail = f"开盘跌幅≥{scd:g}%（或跌停）"
+    else:
+        tail = "开盘跌停"
+    if 0 < f < 1:
+        return (f"T+2 开盘卖 {f:.0%}（9:25 集合竞价）、当日收盘卖 {1 - f:.0%}（14:55）；"
+                f"若{tail}，剩余部分也留到收盘")
+    if f <= 0:
+        return "T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）"
+    return f"T+2 开盘集合竞价卖出；若{tail}，改为当日收盘卖出"
 
 
 def _month_gain_state(led_exec: list, history: list, ym: str, close_of: dict | None,
@@ -193,7 +213,7 @@ def _month_gain_state(led_exec: list, history: list, ym: str, close_of: dict | N
     return gain, 1.0, ""
 
 
-def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict):
+def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict, buy_adj: float | None = None):
     """卖出日退出判定(第五十四轮, 与回测 do_sell 逐条对齐):
     T+2停牌 -> 向后顺延最多5个交易日开盘卖; 开盘触及跌停且sell_limit_down_fallback
     (config已启用) -> 保守按当日收盘卖。返回 (sell_row, sell_dd, sold_at_close, note);
@@ -203,6 +223,7 @@ def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict):
     0笔、跌停保守2笔(002881.SZ/002612.SZ), 影响面见CHANGELOG第五十四轮量化。
     """
     row, dd, sold_close, note = rs, sell_d, False, ""
+    frac_open = min(1.0, max(0.0, float(ex.get("sell_open_frac", 1.0) or 0.0)))
     if row is not None and (row["is_paused"] == 1 or row["vol"] <= 0):
         row = None
     if row is None:
@@ -229,7 +250,15 @@ def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict):
             and (float(row["open"]) / float(row["pre_close"]) - 1) * 100 <= -scd:
         sold_close = True
         note = (note + f" 开盘深跌{scd:g}%按收盘").strip()
-    return row, dd, sold_close, note
+    # 第九十八轮: T+2开盘相对**买入价**浮亏 -> 延卖至收盘(与 backtest do_sell 同口径)。
+    # 与上面 scd 的区别: scd 看"相对昨收的跳空", 这里看"相对我的成本"——同一个跳空,
+    # T+1 大涨后是浮盈、T+1 崩盘后是深亏, 日内修复概率完全不同。仅用 T+2 开盘瞬时信息。
+    spb = ex.get("sell_close_if_profit_below")
+    if (not sold_close) and spb is not None and buy_adj and float(buy_adj) > 0 \
+            and (float(row["open_adj"]) / float(buy_adj) - 1) * 100 < float(spb):
+        sold_close = True
+        note = (note + " 开盘浮亏按收盘").strip()
+    return row, dd, sold_close, note, (0.0 if sold_close else frac_open)
 
 
 def _refresh_auction_positions(out_dir: Path, day_df: pd.DataFrame, now_str: str) -> None:
@@ -684,11 +713,16 @@ def main():
             # 第五十四轮: 卖出端对齐回测 do_sell(停牌顺延5日+开盘跌停保守收盘卖),
             # 原实现sell_d固定T+2且无条件按开盘价 —— 跌停日按开盘高估收益,
             # 停牌日真实成交回报永久丢失(记录卡"无成交")。顺延后每日重跑自然续结。
-            sx = _sell_exit(rs, row_of, cal, sell_d, p["code"], ex)
+            sx = _sell_exit(rs, row_of, cal, sell_d, p["code"], ex,
+                            buy_adj=(float(rb["open_adj"]) if rb is not None else None))
             if sx is None:
                 continue  # 顺延窗口内未恢复: 留待后续结算
-            sell_row, sell_dd, sold_close, sell_note = sx
-            r = (float(sell_row["close_adj" if sold_close else "open_adj"]) / rb["open_adj"]) * gap_fee - 1
+            sell_row, sell_dd, sold_close, sell_note, _sfo = sx
+            # 第九十八轮: 分批出场(与回测 do_sell 同口径) —— 开盘腿按开盘价、收盘腿按收盘价,
+            # 加权得卖出净价; 开盘跌停/延卖日 _sfo=0(全按收盘)。
+            _so, _sc = float(sell_row["open_adj"]), float(sell_row["close_adj"])
+            _spx = _sc if sold_close else (_sfo * _so + (1 - _sfo) * _sc)
+            r = (_spx / rb["open_adj"]) * gap_fee - 1
             rets.append(float(r))
             last_sell_dd = sell_dd
             # 第五十三轮: 结算仓位含月度盈利熔断系数(买入日口径, 仅已结算复利)
@@ -700,7 +734,8 @@ def main():
                 "rank": rank_i, "code": p["code"], "name": p.get("name", p["code"]),
                 "buy_date": _fmt(buy_d), "buy_px": round(float(rb["open"]), 2),
                 "sell_date": _fmt(sell_dd),
-                "sell_px": round(float(sell_row["close" if sold_close else "open"]), 2),
+                "sell_px": round(_spx / (float(sell_row["close_adj"]) / float(sell_row["close"]))
+                                 if float(sell_row["close"]) else _spx, 2),
                 "ret_pct": round(float(r) * 100, 2),
                 "position_pct": round(bfrac * _cf * _sm * _gm * ex.get("alloc_frac_pct", 100.0), 1),
                 "pos_note": ("·".join(x for x in [
@@ -943,9 +978,7 @@ def main():
         "score_tier_note": (_tier_txt or None),
         "gap_tier_note": (_gat_txt or None),
         "steps": steps,
-        "sell_plan": (f"T+2 开盘集合竞价卖出(开盘跌幅≥{float(ex.get('sell_close_if_open_drop') or 0):g}%或跌停则当日收盘卖出)"
-                      if float(ex.get("sell_close_if_open_drop") or 0) > 0
-                      else "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)"),
+        "sell_plan": _sell_rule_text(ex),
         "empty_funnel": ({"全市场": stats.get("universe"), "流动性/次新": stats.get("liquidity"),
                           "回调形态": stats.get("price_action"), "趋势条件": stats.get("trend_ok"),
                           "评分入池": stats.get("scored")} if not verified else None),
@@ -997,9 +1030,7 @@ def main():
             "buy_date": _fmt(buy_d) if buy_d else "",
             "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
             "sell_date": _fmt(sell_d) if sell_d else "",
-            "sell_point": (f"次日开盘集合竞价卖出(开盘跌幅≥{float(ex.get('sell_close_if_open_drop') or 0):g}%且未跌停则当日收盘卖出)"
-                           if float(ex.get("sell_close_if_open_drop") or 0) > 0
-                           else "次日开盘集合竞价卖出"),
+            "sell_point": _sell_rule_text(ex),
             "position": _position_note(ex),
         },
         "strategy": "次日开盘买入-再次日开盘卖出({}{})".format(

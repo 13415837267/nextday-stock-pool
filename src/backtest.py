@@ -523,14 +523,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if alloc < pick_frac * equity * 0.3:
                 break
             _lp = p.get("_lim_px")
-            buy_eff = (float(_lp) if _lp else float(row["open_adj"])) * (1 + slip)
+            buy_adj = float(_lp) if _lp else float(row["open_adj"])   # 不含滑点的成交参考价
+            buy_eff = buy_adj * (1 + slip)
             units = alloc / (buy_eff * (1 + comm))
             fee = alloc * comm
             fee_total += fee
             cash -= alloc
             _f = (float(row["close_adj"]) / float(row["close"]) if float(row["close"]) else 0.0)
             holding.append({
-                **p, "buy_date": d, "units": units, "buy_eff": buy_eff,
+                **p, "buy_date": d, "units": units, "buy_eff": buy_eff, "buy_adj": buy_adj,
                 "buy_px_raw": round(float(_lp) / _f, 4) if (_lp and _f) else float(row["open"]),
                 "fill": "limit" if _lp else "open", "buy_idx": idx,
             })
@@ -540,6 +541,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
 
     def do_sell(d: str, idx: int = 0):
         hold_extra = int(ex.get("hold_extra_days", 0) or 0)  # T+2开盘后再多持有N个交易日(0=原口径)
+        frac_open = min(1.0, max(0.0, float(ex.get("sell_open_frac", 1.0) or 0.0)))  # 开盘卖出占比
         nonlocal cash, fee_total, pending_cash, loss_streak
         remaining = []
         for h in holding:
@@ -590,6 +592,19 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 sell_px_adj = close_adj
                 sold_at_close = True
                 note = (note + f" 开盘深跌{sced_lbl(scd)}按收盘").strip()
+            # 可选(第九十八轮): T+2 开盘"相对我的买入成本"浮亏 -> 延卖至当日收盘。
+            # 与 sell_close_if_open_drop 的本质区别 —— 那个看"相对昨收的跳空"(d2),
+            # 这个看"相对我的成本"(r2)。同一个 -2% 跳空, 在 T+1 大涨后是浮盈 +1%,
+            # 在 T+1 崩盘后是浮亏 -7%, 两者的日内修复概率完全不同; 用 r2 才是
+            # "我现在是赚是亏"的正确刻度。实测(545 笔, 仅盘中信息, 无未来函数):
+            #   开盘卖 单笔 +0.712%/胜率 56.5%; 跳空延卖(现行) +0.741%/57.1%;
+            #   浮亏延卖 +0.920%/67.0%; 且 r_open 落在 -3~-2% 的 49 笔日内平均修复 +1.11%。
+            spb = ex.get("sell_close_if_profit_below")
+            if (not sold_at_close) and spb is not None \
+                    and open_adj / h["buy_adj"] - 1 < float(spb) / 100:
+                sell_px_adj = close_adj
+                sold_at_close = True
+                note = (note + " 开盘浮亏按收盘").strip()
             # 条件延迟卖出(可选): T+2开盘相对买入成交价涨幅超阈值(强势高开)时,
             # 延迟至当日收盘卖出让利润奔跑; 卖出所得收盘后回笼, 次日开盘方可投入
             if (not sold_at_close) and ex.get("hold_if_open_gain", 0) > 0 \
@@ -597,16 +612,27 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 sell_px_adj = close_adj
                 sold_at_close = True
                 note = (note + " 高开强延卖").strip()
-            sell_eff = sell_px_adj * (1 - slip)
-            proceeds = h["units"] * sell_eff * (1 - stamp) * (1 - comm)
-            fee = h["units"] * sell_eff * (stamp + comm)
+            # 分批出场(第九十八轮, 可选; 缺省 frac_open=1.0 时与旧口径逐位等价):
+            # 一部分按开盘价卖(资金当日回笼可再投)、其余按收盘价卖(资金次日回笼)。
+            # 动机: "日内是正还是负"随市场结构翻转(2021~24 日内正向、2025~26 负向),
+            # 押单一时点等于押结构不变; 两条腿各走一半, 两种结构下都只吃一半亏。
+            u_o = 0.0 if sold_at_close else h["units"] * frac_open
+            u_c = h["units"] - u_o
+            gross_o = u_o * open_adj * (1 - slip)
+            gross_c = u_c * close_adj * (1 - slip)
+            net_o = gross_o * (1 - stamp) * (1 - comm)
+            net_c = gross_c * (1 - stamp) * (1 - comm)
+            proceeds = net_o + net_c
+            fee = gross_o * (stamp + comm) + gross_c * (stamp + comm)
             fee_total += fee
-            # T+2开盘卖: 资金当日开盘即回笼可再投入; 收盘卖(整日/跌停回退/高开延卖):
+            # 开盘卖出: 资金当日开盘即回笼可再投入; 收盘卖出(整日/跌停回退/延卖/分批尾腿):
             # 资金收盘后回笼, 次一交易日开盘才可用于买入(防止虚假资金复用)
-            if not sold_at_close:
-                cash += proceeds
-            else:
-                pending_cash += proceeds
+            if u_o:
+                cash += net_o
+            if u_c:
+                pending_cash += net_c
+            if 0 < frac_open < 1 and not sold_at_close:
+                note = (note + f" 分批{frac_open:.0%}开盘/{1 - frac_open:.0%}收盘").strip()
             denom = h["units"] * h["buy_eff"] * (1 + comm)
             r = proceeds / denom - 1 if denom and denom > 0 else 0.0
             trades.append({
