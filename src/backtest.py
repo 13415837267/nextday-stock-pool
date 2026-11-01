@@ -543,7 +543,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             return   # 第五十二轮修复: 信号日可买但买入日突发风控/恐慌(frac==0)时,
                      # 原实现alloc=0且"0<0"不拦截, 产生units=0的幽灵成交(ret_pct=0.0,
                      # 污染交易次数/胜率/连亏计数; 资金路径本就无影响, 此处不产生任何记录)
-        equity = cash + sum(
+        # 第一百一十六轮修复: equity 必须含 pending_cash。
+        # 原实现漏掉它 —— 今日开盘按收盘价结算卖出的持仓已从 holding 移除, 其回笼款
+        # 只进了 pending_cash, 于是 equity 被系统性低估成"仅剩的可动用现金"。sf=0 时
+        # equity=0 被 cash<=0 提前拦住, 无影响; 但只要 sf 微小正值(如 0.005), equity
+        # 就缩成那 0.5%, 买入额按 0.5% 计 —— 造出一批"名义满仓、实际 0.5% 仓位"的
+        # 注水成交(1500 日 379→455 笔全部来自此处), 使 sf 细扫的笔数曲线失真。
+        # 总资产 = 可用现金 + 今日收盘腿未到账款 + 持仓市值, 与收盘估值口径一致。
+        equity = cash + pending_cash + sum(
             h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
             for h in holding if d in per_code[h["code"]].index
         )
