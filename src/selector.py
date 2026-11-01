@@ -318,6 +318,12 @@ def _select_one(
             score = score + w["neg_dist_ma5"] * _zs(-df["dist_ma5"])     # 贴5日线越近(跌幅未失控)越好
         if w.get("neg_dist_low20"):
             score = score + w["neg_dist_low20"] * _zs(-df["dist_low20"]) # 距20日低点越近(弹性越大)越好
+        # 第一百一十五轮新增(可选): 个股超额涨跌因子 —— 把"刀口保护"从二值阈值连续化。
+        # 机制: 同样跌 4%, 全市场跌 5% 时它是"跟跌"(系统性错杀, 次日修复有共振), 全市场涨 1% 时
+        #   它是"独跌"(利空/资金出逃)。第一百零三轮的 knife_tiers 已用 -4pp 阈值证实这层区分有效,
+        #   但二值剔除很粗糙(阈值附近一刀切)。连续因子让"抗跌越强排名越前", 与阈值规则互补。
+        if w.get("res_pct"):
+            score = score + w["res_pct"] * _zs(df["resid_pct"].fillna(0.0))
 
     elif mode == "momentum":
         # 隔夜动量(备用): 温和放量上涨, 均线多头
