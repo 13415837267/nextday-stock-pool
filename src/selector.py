@@ -103,6 +103,12 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     put("prev_low", g["low"].transform(lambda s: s.shift(1)))                             # T-1日最低价
     panel["below_prev_low"] = (panel["low"] < panel["prev_low"]).astype("int8")           # T日盘中破前日低
     panel["hold_prev_low"] = (panel["close"] > panel["prev_low"]).astype("int8")          # T日收盘守住前日低
+    # 换手降温(第一百一十三轮扩展因子): 近3日均换手 / 近20日均换手, <1 = 筹码活跃度持续下降
+    # 机制: vol_ratio 只对比"前5日均量"(单日缩量), 无法区分"回调全过程持续降温"与"单日假缩量 +
+    #       前一日放量"。换手率是自由流通口径, 不受除权影响, 3/20 比能刻画抛压是否在衰减。
+    put("to_ma3", g["turnover_rate"].transform(lambda s: s.rolling(3).mean()))
+    put("to_ma20", g["turnover_rate"].transform(lambda s: s.rolling(20).mean()))
+    panel["turnover_cool"] = panel["to_ma3"] / panel["to_ma20"].replace(0, np.nan)
     return panel
 
 
@@ -139,10 +145,13 @@ def regime_base(panel: pd.DataFrame, cfg: dict) -> pd.DataFrame:
 
 
 def apply_regime(reg_base: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    """按风控参数在基础序列上生成 trade_ok(均仅用截至当日数据, 无未来函数)。"""
+    """按风控参数在基础序列上生成 trade_ok / soft_ok(均仅用截至当日数据, 无未来函数)。"""
     reg = reg_base.copy()
     reg["mkt_ma"] = reg["mkt_idx"].rolling(cfg["regime"].get("market_ma", 20)).mean()
     ok = True
+    breadth_ok = pd.Series(True, index=reg.index)
+    trend_ok = pd.Series(True, index=reg.index)
+    panic = pd.Series(False, index=reg.index)
     if cfg["regime"].get("enabled", True):
         breadth_ok = reg["breadth"] >= cfg["regime"].get("breadth_min", 0.35)
         trend_ok = reg["mkt_idx"] >= reg["mkt_ma"]
@@ -165,12 +174,15 @@ def apply_regime(reg_base: pd.DataFrame, cfg: dict) -> pd.DataFrame:
             ok = ok & ~panic
     reg["trade_ok"] = ok
     # panic 标记: 供回测引擎区分"恐慌日"(不计入连续风控天数, 防止被超限参与机制绕过)
-    # 注意: enabled=False时panic计算块被跳过, 此处必须同时检查enabled(2026-10-25修复:
-    # 否则enabled=False且vol_max>0的组合触发UnboundLocalError)
-    if cfg["regime"].get("enabled", True) and cfg["regime"].get("vol_max"):
-        reg["panic"] = panic
+    reg["panic"] = panic
+    # 分档参与(第一百一十三轮新增, 默认关闭): 指数跌破MA20 但"市场宽度尚可 且 非恐慌"的日子,
+    # 说明是权重拖累/温和调整而非全面普跌, 全额空仓过于粗暴 —— 允许降档参与(soft_trend_frac)。
+    # 宽度也破位的日子(真普跌)仍严格空仓, 恐慌熔断日同样不参与。
+    soft_frac = float(cfg["regime"].get("soft_trend_frac", 0.0) or 0.0)
+    if soft_frac > 0:
+        reg["soft_ok"] = (~trend_ok) & breadth_ok & (~panic) & reg["mkt_ma"].notna()
     else:
-        reg["panic"] = False
+        reg["soft_ok"] = False
     return reg
 
 
@@ -269,6 +281,10 @@ def _select_one(
             trend &= df["down2"] >= sel_cfg["dip_down2_min"]
         if sel_cfg.get("dip_dist_low20_min") is not None:   # 距20日最低涨幅下限(排除已深跌票)
             trend &= df["dist_low20"] >= sel_cfg["dip_dist_low20_min"]
+        if sel_cfg.get("dip_dist_low20_max") is not None:   # 距20日最低涨幅上限(第一百一十三轮新增):
+                                                            # 排除"已从底部大幅拉起"的高位票——回调只是高位派发,
+                                                            # 与低位启动后的首次回踩(弹性最大)本质不同
+            trend &= df["dist_low20"] <= sel_cfg["dip_dist_low20_max"]
         if sel_cfg.get("dip_below_prev_low_max") is not None:  # 破前日低天数上限(1=允许盘中破前低)
             trend &= df["below_prev_low"] <= sel_cfg["dip_below_prev_low_max"]
         if sel_cfg.get("dip_hold_prev_low_min") is not None:   # 守住前日低下限(1=必须收盘守在前日低上)
@@ -293,6 +309,9 @@ def _select_one(
             score = score + w["neg_vol_ratio"] * _zs(-df["vol_ratio"])   # 缩量越极致越好
         if w.get("low_tail"):
             score = score + w["low_tail"] * _zs(df["low_tail"])          # 下影线越长(盘中承接越强)越好
+        if w.get("neg_turnover_cool"):
+            score = score + w["neg_turnover_cool"] * _zs(
+                -df["turnover_cool"].fillna(1.0))                        # 换手降温越快(3日/20日<1)越好
         if w.get("ivol"):
             score = score + w["ivol"] * _zs(df["ivol20"])                # 特质波动率越高(分歧越大, 深低开修复越强)越好
         if w.get("neg_dist_ma5"):
