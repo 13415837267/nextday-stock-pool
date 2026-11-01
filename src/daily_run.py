@@ -55,6 +55,7 @@ def _config_fp(cfg: dict) -> str:
         "exec_n": s.get("exec_top_n"),
         "dip": [s.get("dip_pct_min"), s.get("dip_pct_max"), s.get("dip_vol_ratio_max"),
                 s.get("dip_mom20_min"), s.get("dip_mom20_max"), s.get("dip_dist_low20_min"),
+                s.get("dip_dist_low20_max"),   # 第一百一十三轮: 距20日低点涨幅上限(可选)
                 s.get("dip_close_pos_max"), s.get("dip_weights")],
         "bias20_max": s.get("bias20_max"),
         "fallbacks": [(f.get("mode"), f.get("top_n"), f.get("gap_below"), f.get("segment"))
@@ -74,6 +75,7 @@ def _config_fp(cfg: dict) -> str:
         "gap_floor": [(t.get("below"), t.get("min_pool"), t.get("floor")) for t in (e.get("gap_floor_tiers") or [])],  # 第一百零一轮: 深低开下限
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
         "blocked_frac": e.get("blocked_frac"),          # 第一百零二轮: 风控日参与系数
+        "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
