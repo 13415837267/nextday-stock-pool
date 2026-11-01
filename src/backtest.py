@@ -376,10 +376,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         day_ok = reg_row is None or bool(reg_row["trade_ok"])
         floor = ex.get("buy_gap_below", 0)
         if not day_ok:
+            # 第一百一十三轮"分档参与": 软参与日(指数<MA20 但宽度尚可且非恐慌)沿用常规承接线
+            # —— 这类日子是权重拖累/温和调整, 不必要求"恐慌深跌"才接, 否则与 blocked_frac 同义。
+            if reg_row is not None and bool(reg_row.get("soft_ok", False)):
+                pass
             # 第一百零二轮: 风控日的"专属承接线"不再依赖超限复参与机制(max_block_days=0 时
             # day_frac 为空、原逻辑形同虚设)。只要配置了 block_gap_below 就在风控日生效 ——
             # 风控期只接"恐慌深跌"这一种票, 其余日照常空仓。
-            if day_frac and day_frac.get(d, 0) > 0:
+            elif day_frac and day_frac.get(d, 0) > 0:
                 floor = ex.get("block_gap_below", floor)
             elif ex.get("block_gap_below"):
                 floor = float(ex.get("block_gap_below"))
@@ -499,6 +503,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         if not day_ok:
             if day_frac:
                 frac *= day_frac.get(d, 0.0)  # 连续空仓超限后的降仓参与系数
+            elif reg_row is not None and bool(reg_row.get("soft_ok", False)):
+                # 分档参与(第一百一十三轮): 指数<MA20 但宽度尚可的非恐慌日 → 按 soft_trend_frac 降档
+                frac *= float(_rm.get("soft_trend_frac", 0.0) or 0.0)
             else:
                 frac *= ex.get("blocked_frac", 0.0)  # 大盘风控期参与系数: 0=空仓(默认), 0.5=半仓
         if frac <= 0:
@@ -799,11 +806,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         curve[d] = total
         # 收盘后: 决定明日计划
         reg_row = reg.loc[d] if d in reg.index else None
+        # 分档参与(第一百一十三轮): 软参与日也照常出计划(买入端按 soft_trend_frac 打折)
+        soft_today = (reg_row is not None and bool(reg_row.get("soft_ok", False))
+                      and float(_rm.get("soft_trend_frac", 0.0) or 0.0) > 0)
         if day_frac:
             eff_today = day_frac.get(d, 1.0)
         else:
             eff_today = 0.0 if (reg_row is not None and not bool(reg_row["trade_ok"])) \
-                and not ex.get("blocked_frac", 0.0) else 1.0
+                and not ex.get("blocked_frac", 0.0) and not soft_today else 1.0
         blocked = reg_row is not None and not bool(reg_row["trade_ok"]) and eff_today <= 0
         # 连亏熔断: 连续亏损达阈值后, 从当日起再暂停 pause_days 个交易日(买入端)
         paused = False
