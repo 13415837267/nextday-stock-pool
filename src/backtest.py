@@ -487,6 +487,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     _ref = min(3.0, (gate_ref - 1) / math.sqrt(gate_ref))
                     if _ref > 0:
                         _gate = _gate * min(1.0, _zmax / _ref)
+            # 第一百一十四轮(可选, 默认关闭): 深低开日放宽评分门 ——
+            # 缺口是"错杀"的直接证据(第一百零一轮 92 笔 gap<=-1% 均值+1.85%/胜率75%),
+            # 而评分只是池内相对强弱。当直接证据足够强时, 不必再用相对评分一票否决,
+            # 允许这类票以更低评分门槛参与(仓位仍由 gap_floor_tiers / 池深分档决定)。
+            _relax_gap = ex.get("gate_relax_gap_below")
+            _relax_to = ex.get("gate_relax_score")
+            if (_gate is not None and _relax_gap is not None and _relax_to is not None
+                    and gap * 100 <= float(_relax_gap)):
+                _gate = min(_gate, float(_relax_to))
             if _gate is not None and p.get("score", 0) < _gate:
                 trades.append(_trade(p, "skip", d, note=f"top1评分{p.get('score',0):.2f}低于门槛{_gate:.2f}"))
                 continue
@@ -617,10 +626,13 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 与 day 级 frac<=0 的守卫同源, 只是那一层拦不住单笔被乘成 0。
             if pick_frac <= 0:
                 continue
-            # 剩余现金不足"本笔目标仓位"的30%才放弃(第九十七轮修正: 原以满仓 frac 为基准,
+            # 剩余现金不足"本笔目标仓位"的 30% 才放弃(第九十七轮修正: 原以满仓 frac 为基准,
             # 在评分档×缺口档叠加把目标仓位压到 30% 以下时会把本可成交的单直接丢弃 ——
             # 高开降仓的实验里因此凭空少掉 159 笔交易; 判据应与本笔实际目标仓位同尺度)。
-            if alloc < pick_frac * equity * 0.3:
+            # 第一百一十四轮(可选): 阈值改为可配置 min_fill_frac(缺省 0.3, 与旧口径逐位等价)。
+            # 该阈值直接决定"资金未回笼日要不要用小仓参与", 是成交笔数的开关之一。
+            _min_fill = float(ex.get("min_fill_frac", 0.3) if ex.get("min_fill_frac") is not None else 0.3)
+            if alloc < pick_frac * equity * _min_fill:
                 break
             _lp = p.get("_lim_px")
             # 分批建仓(第九十九轮, 可选; 缺省 1.0=全开盘买, 与旧口径逐位等价):
