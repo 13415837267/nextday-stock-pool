@@ -301,6 +301,25 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     day_frac[d_i] = min(1.0, reenter_frac + 0.05 * (consec - max_block))
                 else:
                     day_frac[d_i] = reenter_frac
+    # 风控解除后渐进建仓(第一百一十五轮新增, 可选; reentry_ramp_days=0 即关闭, 与旧口径逐位等价):
+    # 指数刚重新站上 MA20 的头 N 个交易日, 方向尚未被确认 —— 第一百零八轮把 market_ma 30→20
+    # 换来"更快抓住反弹初期"的收益, 代价正是 2015 年 -15.6pp 的"接假反弹"。折中: 反弹头几天
+    # 照常参与(不必等到 MA30 才敢动手), 但按线性 ramp 从 start 系数逐步加回满仓, 第 N 日恢复。
+    # 与 rf_ramp 的区别: rf_ramp 作用于"风控持续期内"的系数, 本项作用于"风控刚结束"的建仓节奏,
+    # 两者互不重叠; 只用截至当日已实现的风控状态, 无未来函数。
+    _rrd = int(_rm.get("reentry_ramp_days", 0) or 0)
+    _rrs = float(_rm.get("reentry_ramp_start", 0.5) or 0.5)
+    reentry_map: dict[str, float] = {}
+    if _rrd > 0 and len(reg):
+        _streak = 0
+        for _d in reg.index:
+            if bool(reg.loc[_d, "trade_ok"]):
+                _streak += 1
+                if _streak <= _rrd:
+                    _f = _rrs + (1.0 - _rrs) * (_streak - 1) / max(1, _rrd - 1)
+                    reentry_map[_d] = min(1.0, _f)
+            else:
+                _streak = 0
     per_code, names = ctx["per_code"], ctx["names"]
     bt_cfg = cfg["backtest"]
 
@@ -517,6 +536,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 frac *= float(_rm.get("soft_trend_frac", 0.0) or 0.0)
             else:
                 frac *= ex.get("blocked_frac", 0.0)  # 大盘风控期参与系数: 0=空仓(默认), 0.5=半仓
+        else:
+            # 风控解除后的渐进建仓(第一百一十五轮, 可选): 只削"刚恢复"那几天的仓位上限
+            frac *= reentry_map.get(d, 1.0)
         if frac <= 0:
             return   # 第五十二轮修复: 信号日可买但买入日突发风控/恐慌(frac==0)时,
                      # 原实现alloc=0且"0<0"不拦截, 产生units=0的幽灵成交(ret_pct=0.0,
@@ -673,8 +695,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         nonlocal cash, fee_total, pending_cash, loss_streak
         remaining = []
         for h in holding:
-            if idx - h.get("buy_idx", 0) < 1 + hold_extra:
-                remaining.append(h)   # 未到卖出时点(持有期延长口径)
+            cur_idx = idx   # 停牌顺延分支会把 idx 覆盖成子表索引, 后续判断统一用 cur_idx
+            due_i = int(h.get("due_idx", h.get("buy_idx", 0) + 1 + hold_extra))
+            if cur_idx < due_i:
+                remaining.append(h)   # 未到卖出时点(持有期延长/跨日分批的尾腿)
                 continue
             sub = per_code.get(h["code"])
             row = sub.loc[d] if sub is not None and d in sub.index else None
@@ -756,6 +780,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 note = (note + f" 开盘浮盈{sced_lbl(float(sfg))}全卖").strip()
             u_o = 0.0 if sold_at_close else h["units"] * hfrac
             u_c = h["units"] - u_o
+            # 跨日分批出场(第一百一十五轮新增, 可选; defer_frac=0 即关闭, 与旧口径逐位等价):
+            # 正常卖出日只卖 (1-defer_frac) 的仓位, 余下部分延后 defer_days 个交易日再按同样规则卖。
+            # 动机: 收盘腿从 40% 加到 90%(第一百一十一轮)证明"T+2 日内仍向上"; 但那是**日内的斜率**,
+            #   不等于"隔夜仍有溢价"。尾仓多拿一天是独立的赌注 —— T+3 隔夜涨则赚、跌则吐回,
+            #   必须实测, 不能从 sf 的单调性外推。
+            # 资金含义: 延迟部分 T+3 收盘后才回笼(实盘=T+4 开盘可用), 会挤占下一笔的仓位, 是真实成本。
+            _df = float(ex.get("defer_frac", 0.0) or 0.0)
+            _defer_units = 0.0
+            if _df > 0 and not h.get("_deferred") and cur_idx == due_i:
+                _defer_units = h["units"] * min(1.0, max(0.0, _df))
+                u_o *= (1 - _df)
+                u_c *= (1 - _df)
             gross_o = u_o * open_adj * (1 - slip)
             gross_c = u_c * close_adj * (1 - slip)
             net_o = gross_o * (1 - stamp) * (1 - comm)
@@ -771,7 +807,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 pending_cash += net_c
             if 0 < hfrac < 1 and not sold_at_close:
                 note = (note + f" 分批{hfrac:.0%}开盘/{1 - hfrac:.0%}收盘").strip()
-            denom = h["units"] * h["buy_eff"] * (1 + comm)
+            if _defer_units > 0:
+                note = (note + f" 跨日分批卖{1 - _df:.0%}余{_df:.0%}延后").strip()
+            # 收益率分母只计"本次真正卖出的份额"(跨日分批时尾腿未卖, 不能算进本笔)
+            denom = (h["units"] - _defer_units) * h["buy_eff"] * (1 + comm)
             r = proceeds / denom - 1 if denom and denom > 0 else 0.0
             trades.append({
                 "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
@@ -788,6 +827,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "pool_n": h.get("_pool_n"),
                 "pos_frac": h.get("pos_frac"),
             })
+            if _defer_units > 0:
+                # 尾腿: 保留原成本价与前收, 仅把应卖日推到 defer_days 之后(仍按同样规则卖出)
+                remaining.append({**h, "units": _defer_units,
+                                  "due_idx": cur_idx + max(1, int(ex.get("defer_days", 1) or 1)),
+                                  "_deferred": True, "buy_idx": cur_idx})
             if r <= 0:
                 loss_streak += 1
             else:
