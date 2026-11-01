@@ -156,7 +156,7 @@ def _mkt_context(pct_stock, mkt_ret: float, ex: dict) -> tuple[float, str, float
 
     返回 (刀口乘数, 刀口文案, 恐慌日仓位下限, 恐慌日文案):
       - 刀口: 大盘平稳/上涨(中位数 > mkt_above)而个股超额下跌(个股-市场) <= res_below
-        → 个股自己的事, 不是系统性错杀, 乘 mult 缩仓;
+        → 个股自己的事, 不是系统性错杀, 乘 mult 缩仓(第一百一十四轮起 mult=0 → 直接剔除);
       - 恐慌日: 全市场跌到 mkt_below 以下 → 系统性错杀, 仓位不低于 frac*floor。
     """
     km, kt = 1.0, ""
@@ -168,7 +168,7 @@ def _mkt_context(pct_stock, mkt_ret: float, ex: dict) -> tuple[float, str, float
         if mkt_ret > float(t.get("mkt_above", -0.5)) and (_pct - mkt_ret) <= float(t.get("res_below", -4.0)):
             km = float(t.get("mult", 1.0))
             kt = (f"大盘中位数{mkt_ret:+.1f}%而个股超额{_pct - mkt_ret:+.1f}pp"
-                  f"→{km:.0%}仓(个股独跌)")
+                  + ("→不参与(个股独跌)" if km <= 0 else f"→{km:.0%}仓(个股独跌)"))
             break
     mf, ft = 0.0, ""
     for t in (ex.get("mkt_floor_tiers") or []):
@@ -235,8 +235,10 @@ def _position_note(ex: dict) -> str:
                 f" → 撤销池深折价、回{float(_t.get('floor', 1.0)):.0%}仓")
         break
     for _t in (ex.get("knife_tiers") or []):
+        _km = float(_t.get("mult", 1.0))
         pos += (f"; 刀口保护: 信号日全市场涨跌中位数 >{float(_t['mkt_above']):g}% 且个股超额下跌"
-                f"≤{float(_t['res_below']):g}pp → {float(_t.get('mult', 1.0)):.0%}仓(个股独跌≠系统性错杀)")
+                f"≤{float(_t['res_below']):g}pp → "
+                + ("不参与(个股独跌≠系统性错杀)" if _km <= 0 else f"{_km:.0%}仓(个股独跌≠系统性错杀)"))
         break
     for _t in (ex.get("mkt_floor_tiers") or []):
         pos += (f"; 恐慌日回满仓: 全市场涨跌中位数 ≤{float(_t['mkt_below']):g}% → 撤销评分/池深折价回"
@@ -1104,7 +1106,13 @@ def main():
         _pos_frac *= _knife_mult
         if _mf_frac and _pos_frac < plan_frac * _mf_frac:
             _pos_frac = plan_frac * _mf_frac
-    if allow_buy and _knife_txt:
+    # 第一百一十四轮: 刀口乘数 0 = 剔除(与回测 knife_tiers mult=0 同口径) ——
+    # 个股独立下跌属"自己的事", 零期望票占用单吊唯一的名额是负贡献, 当日直接不参与。
+    if allow_buy and _knife_mult <= 0:
+        allow_buy = False
+        buy_note = (f"{_knife_txt}: 个股独立下跌(非系统性错杀), 当日不参与"
+                    f"(与回测 knife_tiers mult=0 同口径)")
+    elif allow_buy and _knife_txt:
         buy_note += f"; {_knife_txt}"
     if allow_buy and _mkt_floor_txt:
         buy_note += f"; {_mkt_floor_txt}"
@@ -1137,9 +1145,11 @@ def main():
             "pool_n": p.get("pool_n"),
             "rule": ((f"评分 {float(_top_score):.2f} < 门槛 {float(_gate):g} → 不参与(空仓)"
                       if _gate_blocked else
-                      (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{_pos_frac:.0%}仓位买入{_gat_rule}"
-                       if _floor else
-                       f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{_pos_frac:.0%}仓位买入{_gat_rule}"))),
+                      (f"当日不参与 —— {buy_note}"
+                       if not allow_buy else
+                       (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{_pos_frac:.0%}仓位买入{_gat_rule}"
+                        if _floor else
+                        f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{_pos_frac:.0%}仓位买入{_gat_rule}")))),
             "fallback": f"不达标 → 顺延第{i+1}名" if i < len(verified) else "",
         })
     if not verified:
