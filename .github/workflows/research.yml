@@ -1,0 +1,94 @@
+# 远程研究通道 —— 第一百二十八轮新增
+#
+# 为什么需要它
+# -----------
+# 行情面板 data/panel 是 500MB+ 的逐日 csv.gz, 版本化在仓库里。本地/沙盒只做**分析**
+# (读 output/*.json 与逐笔 csv), 跑不了回测 —— 没有面板就没有 prepare_context。
+# 于是"想验证一个假设"只有两条路: ①在沙盒里拉 500MB(网络不允许) ②在 Actions 里跑。
+# 本工作流就是 ②: 一个只读的、按需触发的脚本执行器, 产物(小 json)直接提交回 output/。
+#
+# 与 evolve.yml 的分工
+# --------------------
+#   evolve.yml : 对**预注册的结构性候选**做五道门裁决, 会改 config(经 PR/自动)。
+#   research.yml: 只跑**诊断脚本**, 不碰 config、不碰 latest.json, 产出 output/exp_*.json。
+# 先 research 找到方向, 再 evolve 立候选 —— 顺序不能反, 反了就是"先改再找理由"。
+#
+# 安全边界: 只接受 tools/<name>.py 形式的脚本名(不含路径分隔符), 且必须是仓库内已有文件;
+# 触发需要 write 权限; 不接收任意 shell。
+name: 研究通道
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "tools 下的脚本名(不含 .py), 例如 exp_dow"
+        type: string
+        default: "exp_dow"
+      args:
+        description: "脚本参数(留空=默认)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: research
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 校验脚本名
+        run: |
+          S="${{ inputs.script }}"
+          case "$S" in
+            */*|*..*|"") echo "非法脚本名: $S"; exit 1 ;;
+          esac
+          test -f "tools/$S.py" || { echo "不存在 tools/$S.py"; exit 1; }
+          echo "SCRIPT=$S" >> "$GITHUB_ENV"
+
+      - name: 运行研究脚本
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
+        run: |
+          echo "== python tools/$SCRIPT.py ${{ inputs.args }} =="
+          python "tools/$SCRIPT.py" ${{ inputs.args }}
+
+      - name: 汇总到运行页
+        if: always()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "script: ${{ inputs.script }} ${{ inputs.args }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 提交研究产物
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output
+          if git diff --cached --quiet; then
+            echo "产物无变化, 跳过提交"
+          else
+            git commit -m "研究: $(TZ=Asia/Shanghai date +%F) ${{ inputs.script }} 诊断产物 [skip ci]"
+            git push || (git pull --rebase --autostash && git push)
+          fi
