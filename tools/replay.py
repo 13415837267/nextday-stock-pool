@@ -31,6 +31,7 @@ import pandas as pd
 
 from src.backtest import prepare_context, run_backtest
 from src.config import load_config
+from src.rule_text import rules_line, sell_rule_text
 
 
 def _fmt(d: str) -> str:
@@ -55,6 +56,7 @@ def _monthly(curve: list[dict], base_nav: float, base_date: str) -> list[dict]:
 def build(start: str, end: str) -> dict:
     cfg = load_config()
     bt = cfg["backtest"]
+    ex = cfg["execution"]
     warmup = int(bt["warmup_days"])
 
     # 先量出区间需要多少交易日，再多留 10 天缓冲（避免边界缺失）
@@ -154,11 +156,15 @@ def build(start: str, end: str) -> dict:
         "meta": {
             "start": _fmt(span[0]),
             "end": _fmt(span[-1]),
-            "strategy": "T日收盘选股 → T+1开盘竞价买入 → T+2收盘卖出(14:55；开盘浮盈≥阈值则开盘兑现)",
-            "initial_capital": float(cfg["backtest"]["initial_capital"]),
+            # 第一百二十五轮: 出场口径按 config 生成。原文"T+2收盘卖出(14:55；开盘浮盈≥阈值
+            # 则开盘兑现)"同时错了两处: ①"浮盈"应为"浮亏"(sell_close_if_profit_below 是浮亏
+            # 保护); ②该保护只在存在开盘腿时才有意义, 现行 sell_open_frac=0 全额收盘卖。
+            "strategy": "T日收盘选股 → T+1开盘竞价买入 → " + sell_rule_text(ex, short=True),
+            "initial_capital": float(bt["initial_capital"]),
             "base_date": base_date,
-            "rules": ("T+1 开盘买入 / T+2 收盘卖出(14:55) / 复利 / "
-                      "佣金万2.5+印花税万5+滑点千1"),
+            "rules": rules_line(ex, "复利/" + (
+                f"佣金万{ex['commission_rate'] * 10000:g}+印花税万{ex['stamp_tax'] * 10000:g}"
+                f"+滑点千{ex['slippage'] * 1000:g}")),
             "generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "note": ("复用回测引擎, 指标仅用截至当日数据; 买入取 T+1 真实开盘价, "
                      "卖出按 T+2 开盘/收盘两条腿加权(比例见每笔 sell_frac_open), "
