@@ -68,7 +68,11 @@ jobs:
         run: |
           mkdir -p deploy/data
           cp site/index.html deploy/
-          cp output/*.json deploy/data/ 2>/dev/null || true
+          # 只发布前端真正读取的 5 个文件(第一百二十五轮): 原 cp output/*.json 会把 60+ 个
+          # 回测/审计中间产物一起推到 Pages(48.7MB), 站点实际只需约 0.5MB。
+          for f in latest history backtest health replay; do
+            cp "output/$f.json" deploy/data/ 2>/dev/null || true
+          done
 
       - name: 上传 Pages 产物
         uses: actions/upload-pages-artifact@v3
