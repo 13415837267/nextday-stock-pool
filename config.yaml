@@ -410,6 +410,21 @@ selection:
                              #   修复后重扫 0.00/0.01/0.02/0.03/0.05/0.08 = 5823/5308/5004/4950/3613/3262
                              #   (1500 日单调递减, 0.00 最好), 但全史 0.00=86934 vs 0.03=89856 ->
                              #   两窗口方向相反, 按判据不采信, 暂维持 0.03。它是弱因子, 别当核心 alpha。
+  # ---- 【第一百二十六轮诊断】下列"可选微观结构过滤"已实现但从未启用 —— 不要再启用 ----
+  # 代码在 src/selector.py 的 dip 段, 全靠 `sel_cfg.get(x) is not None` 控制, 此处不配置即为关闭:
+  #   dip_bias20_min / dip_mom3_min / dip_amp_max / dip_low_tail_min /
+  #   dip_prev_pct_min / dip_prev_pct_max / dip_down2_max / dip_down2_min /
+  #   dip_below_prev_low_max / dip_hold_prev_low_min / dip_dist_ma5_max
+  # 为什么关着别开 —— 不是"没试过", 是"试过了没信息":
+  #   ① 379 笔成交按 19 个微观特征做 Spearman: 18 个 p>0.1; 唯一的 bias20(rho=-0.103, p=0.045)
+  #      在 19 次比较的多重校正下 p≈0.86, 不显著;
+  #   ② 5 档分组全部非单调(U 形/锯齿), 且与更细阈值的扫描结论互相矛盾
+  #      (如分组显示 close_pos 0.19~0.27 档最差, 但第一百一十一轮扫 dip_close_pos_max
+  #       0.26 比 0.32 更差) -> 分段差异是噪声, 不是信号;
+  #   ③ 唯一像样的 amp_pct 也有三条否证: 与 vol_ratio rho=+0.435(信息已被量比覆盖)、
+  #      7 年里 4 年方向反向、剔除 20.8% 票只提升 +0.185pp/笔(远小于 500pp 噪声线)。
+  # 复现: tools/diag_micro.py(特征归因) / tools/diag_amp.py(代理变量检验) /
+  #       tools/diag_skipped.py(跳过票虚拟成交)。**加过滤器前先跑这三个, 再决定要不要回测。**
   # ---- momentum 模式参数(备用) ----
   pct_min: 1.0               # T日涨幅下限(%)
   pct_max: 7.0               # T日涨幅上限(%)
