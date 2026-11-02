@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 
@@ -668,7 +667,9 @@ def main():
         if day_ok and day_block_map.get(buy_d, False):
             # 超限小仓参与日(风控期但允许小仓): 用专属承接线, 与回测口径一致
             floor = ex.get("block_gap_below", floor)
-        maxn = int(ex.get("max_buy_per_day", 0))
+        # 注意(第一百二十五轮): 实盘结算端只支持"单吊"—— _settle_holding 命中第一只可成交票即
+        # return, 配 max_buy_per_day > 1 不会生效(与回测的多只口径不同)。当前 config 为 1,
+        # 行为正确; 此处原先的无用赋值 maxn 已删, 避免让人误以为改配置就能多买。
         chain = []
         for rank_i, p in enumerate(rec.get("picks", []), 1):
             rb = row_of(buy_d, p["code"]) if buy_d else None
