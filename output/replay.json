@@ -1,2520 +1,2154 @@
 {
  "meta": {
-  "start": "20251101",
-  "end": "20261031",
-  "panel_first": "20250228",
-  "panel_last": "20261030",
-  "warmup_days": 160,
-  "strategy": "T日收盘选股 → T+1开盘竞价买入 → T+2开盘卖出",
+  "start": "2025-11-03",
+  "end": "2026-10-30",
+  "strategy": "T日收盘选股 → T+1开盘竞价买入 → T+2收盘卖出(14:55；开盘浮盈≥阈值则开盘兑现)",
   "initial_capital": 1000000.0,
-  "note": "复用回测引擎, 指标仅用截至当日数据, 买卖用当日真实开盘价, 无未来函数"
+  "base_date": "2025-10-31",
+  "rules": "T+1 开盘买入 / T+2 收盘卖出(14:55) / 复利 / 佣金万2.5+印花税万5+滑点千1",
+  "generated": "2026-11-02 17:39:49",
+  "note": "复用回测引擎, 指标仅用截至当日数据; 买入取 T+1 真实开盘价, 卖出按 T+2 开盘/收盘两条腿加权(比例见每笔 sell_frac_open), 收益含佣金万2.5+印花税万5+滑点千1; 跨区间边界的持仓(区间前买入/区间后卖出)不计入成交明细, 但其盈亏已体现在起点与终点净值中"
  },
  "summary": {
-  "n_trades": 107,
-  "n_win": 58,
-  "win_rate": 54.2,
-  "avg_ret_pct": 0.71,
-  "sum_ret_pct": 76.2,
-  "best": 16.29,
-  "worst": -6.46,
-  "range_ret_pct": 80.33,
-  "range_mdd_pct": -7.4,
-  "base_date": "2025-11-01",
-  "base_nav": 1019321.0,
-  "end_nav": 1838127.0
+  "n_trades": 52,
+  "n_win": 29,
+  "win_rate": 55.8,
+  "avg_ret_pct": 1.54,
+  "sum_ret_pct": 79.97,
+  "best": 18.13,
+  "worst": -7.03,
+  "range_ret_pct": 78.59,
+  "range_mdd_pct": -9.94,
+  "base_date": "2025-10-31",
+  "base_nav": 958554.0,
+  "end_nav": 1711846.0
  },
  "trades": [
   {
-   "signal_date": "20251031",
-   "buy_date": "20251103",
-   "sell_date": "20251104",
-   "code": "000630.SZ",
-   "name": "铜陵有色",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 5.26,
-   "sell_px": 5.1,
-   "ret_pct": -4.01,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251103",
-   "buy_date": "20251104",
-   "sell_date": "20251105",
-   "code": "603878.SH",
-   "name": "武进不锈",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 10.15,
-   "sell_px": 10.15,
-   "ret_pct": 0.23,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
    "signal_date": "20251104",
-   "buy_date": "20251105",
-   "sell_date": "20251106",
    "code": "600711.SH",
    "name": "盛屯矿业",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251105",
    "buy_px": 10.05,
-   "sell_px": 10.34,
-   "ret_pct": 5.73,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251105",
-   "buy_date": "20251106",
-   "sell_date": "20251107",
-   "code": "600635.SH",
-   "name": "大众公用",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 6.83,
-   "sell_px": 6.7,
-   "ret_pct": -3.07,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251106",
+   "sell_px": 10.87,
+   "sell_px_open": 10.34,
+   "sell_px_close": 10.87,
+   "sell_frac_open": 0.0,
+   "ret_pct": 7.84,
+   "note": "",
+   "score": 1.204,
+   "gap_pct": -2.43,
+   "pool_n": 23,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251106",
-   "buy_date": "20251107",
-   "sell_date": "20251110",
    "code": "603903.SH",
    "name": "中持股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251107",
    "buy_px": 14.48,
-   "sell_px": 14.15,
-   "ret_pct": -2.61,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251107",
-   "buy_date": "20251110",
-   "sell_date": "20251111",
-   "code": "002040.SZ",
-   "name": "南京港",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 11.05,
-   "sell_px": 11.16,
-   "ret_pct": -0.34,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251111",
-   "buy_date": "20251112",
-   "sell_date": "20251113",
-   "code": "603933.SH",
-   "name": "睿能科技",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 20.8,
-   "sell_px": 20.25,
-   "ret_pct": -2.13,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251110",
+   "sell_px": 14.14,
+   "sell_px_open": 14.15,
+   "sell_px_close": 14.14,
+   "sell_frac_open": 0.0,
+   "ret_pct": -2.64,
+   "note": "",
+   "score": 1.65,
+   "gap_pct": 1.19,
+   "pool_n": 24,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251112",
-   "buy_date": "20251113",
-   "sell_date": "20251114",
    "code": "002320.SZ",
    "name": "海峡股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251113",
    "buy_px": 13.08,
-   "sell_px": 13.13,
-   "ret_pct": 4.47,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251114",
+   "sell_px": 14.09,
+   "sell_px_open": 13.13,
+   "sell_px_close": 14.09,
+   "sell_frac_open": 0.0,
+   "ret_pct": 7.4,
+   "note": "",
+   "score": 1.8,
+   "gap_pct": -0.68,
+   "pool_n": 24,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251114",
-   "buy_date": "20251117",
-   "sell_date": "20251118",
    "code": "600601.SH",
    "name": "方正科技",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251117",
    "buy_px": 10.81,
-   "sell_px": 10.8,
-   "ret_pct": 0.11,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251117",
-   "buy_date": "20251118",
-   "sell_date": "20251119",
-   "code": "000777.SZ",
-   "name": "中核科技",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 21.96,
-   "sell_px": 21.55,
-   "ret_pct": -2.02,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251118",
-   "buy_date": "20251119",
-   "sell_date": "20251120",
-   "code": "000901.SZ",
-   "name": "航天科技",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 18.22,
-   "sell_px": 18.27,
-   "ret_pct": 0.83,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251119",
-   "buy_date": "20251120",
-   "sell_date": "20251121",
-   "code": "002733.SZ",
-   "name": "雄韬股份",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 21.2,
-   "sell_px": 20.51,
-   "ret_pct": -6.06,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251118",
+   "sell_px": 10.89,
+   "sell_px_open": 10.8,
+   "sell_px_close": 10.89,
+   "sell_frac_open": 0.0,
+   "ret_pct": 0.44,
+   "note": "",
+   "score": 1.771,
+   "gap_pct": 0.0,
+   "pool_n": 67,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251120",
-   "buy_date": "20251121",
-   "sell_date": "20251124",
    "code": "002160.SZ",
    "name": "常铝股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251121",
    "buy_px": 5.23,
-   "sell_px": 5.13,
-   "ret_pct": -3.12,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251124",
+   "sell_px": 5.05,
+   "sell_px_open": 5.13,
+   "sell_px_close": 5.05,
+   "sell_frac_open": 0.0,
+   "ret_pct": -3.73,
+   "note": "",
+   "score": 1.366,
+   "gap_pct": -3.33,
+   "pool_n": 37,
+   "pos_frac": 0.4
+  },
+  {
+   "signal_date": "20251209",
+   "code": "000695.SZ",
+   "name": "滨海能源",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_date": "20251210",
+   "buy_px": 13.52,
+   "fill": "open",
+   "sell_date": "20251211",
+   "sell_px": 13.03,
+   "sell_px_open": 13.37,
+   "sell_px_close": 13.03,
+   "sell_frac_open": 0.0,
+   "ret_pct": -3.91,
+   "note": "",
+   "score": 1.847,
+   "gap_pct": 0.22,
+   "pool_n": 22,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251218",
-   "buy_date": "20251219",
-   "sell_date": "20251222",
    "code": "603327.SH",
    "name": "福蓉科技",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251219",
    "buy_px": 10.74,
-   "sell_px": 10.75,
-   "ret_pct": 1.3,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251222",
-   "buy_date": "20251223",
-   "sell_date": "20251224",
-   "code": "603709.SH",
-   "name": "中源家居",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 17.03,
-   "sell_px": 16.4,
-   "ret_pct": -3.25,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251222",
+   "sell_px": 11.02,
+   "sell_px_open": 10.75,
+   "sell_px_close": 11.02,
+   "sell_frac_open": 0.0,
+   "ret_pct": 2.3,
+   "note": "",
+   "score": 1.727,
+   "gap_pct": 0.75,
+   "pool_n": 21,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251223",
-   "buy_date": "20251224",
-   "sell_date": "20251225",
    "code": "600868.SH",
    "name": "梅雁吉祥",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251224",
    "buy_px": 3.53,
-   "sell_px": 3.54,
-   "ret_pct": -1.37,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251224",
-   "buy_date": "20251225",
-   "sell_date": "20251226",
-   "code": "002769.SZ",
-   "name": "普路通",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 11.44,
-   "sell_px": 11.16,
-   "ret_pct": 3.33,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251225",
+   "sell_px": 3.46,
+   "sell_px_open": 3.54,
+   "sell_px_close": 3.46,
+   "sell_frac_open": 0.0,
+   "ret_pct": -2.28,
+   "note": "",
+   "score": 1.795,
+   "gap_pct": 1.15,
+   "pool_n": 44,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251225",
-   "buy_date": "20251226",
-   "sell_date": "20251229",
    "code": "000735.SZ",
    "name": "罗牛山",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251226",
    "buy_px": 9.66,
-   "sell_px": 9.88,
-   "ret_pct": 0.18,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251226",
-   "buy_date": "20251229",
-   "sell_date": "20251230",
-   "code": "002105.SZ",
-   "name": "信隆健康",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 7.61,
-   "sell_px": 7.56,
-   "ret_pct": -2.45,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251229",
+   "sell_px": 9.59,
+   "sell_px_open": 9.88,
+   "sell_px_close": 9.59,
+   "sell_frac_open": 0.0,
+   "ret_pct": -1.02,
+   "note": "",
+   "score": 1.118,
+   "gap_pct": -1.23,
+   "pool_n": 11,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20251229",
-   "buy_date": "20251230",
-   "sell_date": "20251231",
    "code": "001330.SZ",
    "name": "博纳影业",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20251230",
    "buy_px": 7.8,
-   "sell_px": 7.87,
-   "ret_pct": -1.48,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251230",
-   "buy_date": "20251231",
-   "sell_date": "20260105",
-   "code": "600280.SH",
-   "name": "中央商场",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 3.99,
-   "sell_px": 3.9,
-   "ret_pct": -2.7,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20251231",
-   "buy_date": "20260105",
-   "sell_date": "20260106",
-   "code": "601933.SH",
-   "name": "永辉超市",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 4.65,
-   "sell_px": 4.63,
-   "ret_pct": 3.52,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20251231",
+   "sell_px": 7.6,
+   "sell_px_open": 7.87,
+   "sell_px_close": 7.6,
+   "sell_frac_open": 0.0,
+   "ret_pct": -2.86,
+   "note": "",
+   "score": 1.905,
+   "gap_pct": 1.04,
+   "pool_n": 33,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260106",
-   "buy_date": "20260107",
-   "sell_date": "20260108",
    "code": "001359.SZ",
    "name": "平安电工",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260107",
    "buy_px": 68.5,
-   "sell_px": 70.91,
-   "ret_pct": 2.82,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260107",
-   "buy_date": "20260108",
-   "sell_date": "20260109",
-   "code": "601279.SH",
-   "name": "英利汽车",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 5.05,
-   "sell_px": 5.12,
-   "ret_pct": 0.61,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260108",
+   "sell_px": 70.47,
+   "sell_px_open": 70.91,
+   "sell_px_close": 70.47,
+   "sell_frac_open": 0.0,
+   "ret_pct": 2.57,
+   "note": "",
+   "score": 1.11,
+   "gap_pct": -1.38,
+   "pool_n": 7,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260108",
-   "buy_date": "20260109",
-   "sell_date": "20260112",
    "code": "601869.SH",
    "name": "长飞光纤",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260109",
    "buy_px": 110.0,
-   "sell_px": 111.89,
-   "ret_pct": 0.65,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260112",
-   "buy_date": "20260113",
-   "sell_date": "20260114",
-   "code": "603757.SH",
-   "name": "大元泵业",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 43.65,
-   "sell_px": 41.85,
-   "ret_pct": -3.04,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260112",
+   "sell_px": 110.48,
+   "sell_px_open": 111.89,
+   "sell_px_close": 110.48,
+   "sell_frac_open": 0.0,
+   "ret_pct": 0.14,
+   "note": "",
+   "score": 1.605,
+   "gap_pct": -1.46,
+   "pool_n": 23,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260113",
-   "buy_date": "20260114",
-   "sell_date": "20260115",
    "code": "002536.SZ",
    "name": "飞龙股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260114",
    "buy_px": 28.28,
-   "sell_px": 28.3,
-   "ret_pct": 2.29,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260114",
-   "buy_date": "20260115",
-   "sell_date": "20260116",
-   "code": "605376.SH",
-   "name": "博迁新材",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 60.68,
-   "sell_px": 61.8,
-   "ret_pct": 2.72,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260115",
-   "buy_date": "20260116",
-   "sell_date": "20260119",
-   "code": "002163.SZ",
-   "name": "海南发展",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 17.61,
-   "sell_px": 17.21,
-   "ret_pct": 2.12,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260116",
-   "buy_date": "20260119",
-   "sell_date": "20260120",
-   "code": "002163.SZ",
-   "name": "海南发展",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 17.21,
-   "sell_px": 18.41,
-   "ret_pct": 3.21,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260115",
+   "sell_px": 29.49,
+   "sell_px_open": 28.3,
+   "sell_px_close": 29.49,
+   "sell_frac_open": 0.0,
+   "ret_pct": 3.97,
+   "note": "",
+   "score": 2.253,
+   "gap_pct": 1.11,
+   "pool_n": 157,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260119",
-   "buy_date": "20260120",
-   "sell_date": "20260121",
    "code": "603696.SH",
    "name": "安记食品",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260120",
    "buy_px": 21.9,
-   "sell_px": 21.12,
-   "ret_pct": -4.48,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260120",
-   "buy_date": "20260121",
-   "sell_date": "20260122",
-   "code": "002383.SZ",
-   "name": "合众思壮",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 11.42,
-   "sell_px": 11.46,
-   "ret_pct": 1.52,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260121",
+   "sell_px": 20.89,
+   "sell_px_open": 21.12,
+   "sell_px_close": 20.89,
+   "sell_frac_open": 0.0,
+   "ret_pct": -4.9,
+   "note": "",
+   "score": 1.372,
+   "gap_pct": -1.17,
+   "pool_n": 22,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260121",
-   "buy_date": "20260122",
-   "sell_date": "20260123",
    "code": "603698.SH",
    "name": "航天工程",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260122",
    "buy_px": 34.88,
-   "sell_px": 36.07,
-   "ret_pct": 5.85,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260122",
-   "buy_date": "20260123",
-   "sell_date": "20260126",
-   "code": "600629.SH",
-   "name": "华建集团",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 21.51,
-   "sell_px": 21.5,
-   "ret_pct": -2.35,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260123",
+   "sell_px": 37.67,
+   "sell_px_open": 36.07,
+   "sell_px_close": 37.67,
+   "sell_frac_open": 0.0,
+   "ret_pct": 7.68,
+   "note": "",
+   "score": 2.234,
+   "gap_pct": -0.06,
+   "pool_n": 20,
+   "pos_frac": 0.5
   },
   {
    "signal_date": "20260126",
-   "buy_date": "20260127",
-   "sell_date": "20260128",
    "code": "600629.SH",
    "name": "华建集团",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260127",
    "buy_px": 20.78,
-   "sell_px": 20.21,
-   "ret_pct": -3.75,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260127",
-   "buy_date": "20260128",
-   "sell_date": "20260129",
-   "code": "603896.SH",
-   "name": "寿仙谷",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 20.56,
-   "sell_px": 20.23,
-   "ret_pct": -0.82,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260128",
+   "sell_px": 19.96,
+   "sell_px_open": 20.21,
+   "sell_px_close": 19.96,
+   "sell_frac_open": 0.0,
+   "ret_pct": -4.23,
+   "note": "",
+   "score": 1.532,
+   "gap_pct": 0.0,
+   "pool_n": 140,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260128",
-   "buy_date": "20260129",
-   "sell_date": "20260130",
    "code": "002465.SZ",
    "name": "海格通信",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260129",
    "buy_px": 17.16,
-   "sell_px": 17.36,
-   "ret_pct": 1.32,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260129",
-   "buy_date": "20260130",
-   "sell_date": "20260202",
-   "code": "000559.SZ",
-   "name": "万向钱潮",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 17.19,
-   "sell_px": 17.06,
-   "ret_pct": -0.43,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260130",
-   "buy_date": "20260202",
-   "sell_date": "20260203",
-   "code": "002519.SZ",
-   "name": "银河电子",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 7.82,
-   "sell_px": 7.93,
-   "ret_pct": 3.4,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260130",
+   "sell_px": 17.49,
+   "sell_px_open": 17.36,
+   "sell_px_close": 17.49,
+   "sell_frac_open": 0.0,
+   "ret_pct": 1.62,
+   "note": "",
+   "score": 1.995,
+   "gap_pct": -0.41,
+   "pool_n": 72,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260202",
-   "buy_date": "20260203",
-   "sell_date": "20260204",
    "code": "002428.SZ",
    "name": "云南锗业",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260203",
    "buy_px": 34.12,
-   "sell_px": 35.88,
-   "ret_pct": 3.9,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260204",
+   "sell_px": 35.34,
+   "sell_px_open": 35.88,
+   "sell_px_close": 35.34,
+   "sell_frac_open": 0.0,
+   "ret_pct": 3.27,
+   "note": "",
+   "score": 1.849,
+   "gap_pct": 1.64,
+   "pool_n": 107,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260205",
-   "buy_date": "20260206",
-   "sell_date": "20260209",
    "code": "603090.SH",
    "name": "宏盛股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260206",
    "buy_px": 69.1,
-   "sell_px": 70.95,
-   "ret_pct": 2.96,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260206",
-   "buy_date": "20260209",
-   "sell_date": "20260210",
-   "code": "603929.SH",
-   "name": "亚翔集成",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 141.02,
-   "sell_px": 153.0,
-   "ret_pct": 5.21,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260209",
-   "buy_date": "20260210",
-   "sell_date": "20260211",
-   "code": "600800.SH",
-   "name": "渤海化学",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 4.38,
-   "sell_px": 4.4,
-   "ret_pct": 0.7,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260209",
+   "sell_px": 71.63,
+   "sell_px_open": 70.95,
+   "sell_px_close": 71.63,
+   "sell_frac_open": 0.0,
+   "ret_pct": 3.35,
+   "note": "",
+   "score": 2.358,
+   "gap_pct": -0.9,
+   "pool_n": 62,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260210",
-   "buy_date": "20260211",
-   "sell_date": "20260212",
    "code": "000603.SZ",
    "name": "盛达资源",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260211",
    "buy_px": 47.2,
-   "sell_px": 47.44,
-   "ret_pct": -0.6,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260211",
-   "buy_date": "20260212",
-   "sell_date": "20260213",
-   "code": "002851.SZ",
-   "name": "麦格米特",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 117.5,
-   "sell_px": 119.93,
-   "ret_pct": 1.32,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260212",
-   "buy_date": "20260213",
-   "sell_date": "20260224",
-   "code": "600785.SH",
-   "name": "新华百货",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 20.9,
-   "sell_px": 20.52,
-   "ret_pct": 0.09,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260212",
+   "sell_px": 46.8,
+   "sell_px_open": 47.44,
+   "sell_px_close": 46.8,
+   "sell_frac_open": 0.0,
+   "ret_pct": -1.14,
+   "note": "",
+   "score": 1.279,
+   "gap_pct": 0.06,
+   "pool_n": 29,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260213",
-   "buy_date": "20260224",
-   "sell_date": "20260225",
    "code": "000603.SZ",
    "name": "盛达资源",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260224",
    "buy_px": 47.87,
-   "sell_px": 50.0,
-   "ret_pct": 4.81,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260224",
-   "buy_date": "20260225",
-   "sell_date": "20260226",
-   "code": "002931.SZ",
-   "name": "锋龙股份",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 85.0,
-   "sell_px": 87.51,
-   "ret_pct": 0.13,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260225",
+   "sell_px": 50.54,
+   "sell_px_open": 50.0,
+   "sell_px_close": 50.54,
+   "sell_frac_open": 0.0,
+   "ret_pct": 5.26,
+   "note": "",
+   "score": 2.004,
+   "gap_pct": 5.91,
+   "pool_n": 59,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260226",
-   "buy_date": "20260227",
-   "sell_date": "20260302",
    "code": "000995.SZ",
    "name": "皇台酒业",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260227",
    "buy_px": 15.78,
-   "sell_px": 15.64,
-   "ret_pct": -2.66,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260302",
+   "sell_px": 15.25,
+   "sell_px_open": 15.64,
+   "sell_px_close": 15.25,
+   "sell_frac_open": 0.0,
+   "ret_pct": -3.65,
+   "note": "",
+   "score": 1.542,
+   "gap_pct": 0.19,
+   "pool_n": 14,
+   "pos_frac": 0.5
   },
   {
    "signal_date": "20260227",
-   "buy_date": "20260302",
-   "sell_date": "20260303",
    "code": "605287.SH",
    "name": "德才股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260302",
    "buy_px": 50.6,
-   "sell_px": 53.15,
-   "ret_pct": 1.77,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260305",
-   "buy_date": "20260306",
-   "sell_date": "20260309",
-   "code": "002099.SZ",
-   "name": "海翔药业",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 7.26,
-   "sell_px": 7.53,
-   "ret_pct": 3.41,
-   "note": "开盘深跌2%按收盘"
+   "fill": "open",
+   "sell_date": "20260303",
+   "sell_px": 50.65,
+   "sell_px_open": 53.15,
+   "sell_px_close": 50.65,
+   "sell_frac_open": 0.0,
+   "ret_pct": -0.2,
+   "note": "",
+   "score": 1.226,
+   "gap_pct": -1.36,
+   "pool_n": 7,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260306",
-   "buy_date": "20260309",
-   "sell_date": "20260310",
    "code": "002009.SZ",
    "name": "天奇股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260309",
    "buy_px": 26.6,
-   "sell_px": 27.8,
-   "ret_pct": 5.84,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260310",
+   "sell_px": 28.53,
+   "sell_px_open": 27.8,
+   "sell_px_close": 28.53,
+   "sell_frac_open": 0.0,
+   "ret_pct": 6.93,
+   "note": "",
+   "score": 1.206,
+   "gap_pct": -3.38,
+   "pool_n": 11,
+   "pos_frac": 0.4
   },
   {
-   "signal_date": "20260310",
-   "buy_date": "20260311",
-   "sell_date": "20260312",
-   "code": "002162.SZ",
-   "name": "悦心健康",
+   "signal_date": "20260309",
+   "code": "605033.SH",
+   "name": "美邦股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
-   "buy_px": 5.43,
-   "sell_px": 5.4,
-   "ret_pct": -4.38,
-   "note": "分批40%开盘/60%收盘"
+   "buy_date": "20260310",
+   "buy_px": 23.0,
+   "fill": "open",
+   "sell_date": "20260311",
+   "sell_px": 23.52,
+   "sell_px_open": 23.52,
+   "sell_px_close": 23.52,
+   "sell_frac_open": 0.0,
+   "ret_pct": 1.95,
+   "note": "",
+   "score": 1.213,
+   "gap_pct": 0.44,
+   "pool_n": 14,
+   "pos_frac": 0.5
   },
   {
    "signal_date": "20260311",
-   "buy_date": "20260312",
-   "sell_date": "20260313",
    "code": "600331.SH",
    "name": "宏达股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260312",
    "buy_px": 17.92,
-   "sell_px": 18.16,
-   "ret_pct": -0.93,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260312",
-   "buy_date": "20260313",
-   "sell_date": "20260316",
-   "code": "603980.SH",
-   "name": "吉华集团",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 7.6,
-   "sell_px": 7.3,
-   "ret_pct": -4.63,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260313",
+   "sell_px": 17.57,
+   "sell_px_open": 18.16,
+   "sell_px_close": 17.57,
+   "sell_frac_open": 0.0,
+   "ret_pct": -2.25,
+   "note": "",
+   "score": 1.041,
+   "gap_pct": 0.0,
+   "pool_n": 22,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260324",
-   "buy_date": "20260325",
-   "sell_date": "20260326",
    "code": "002918.SZ",
    "name": "蒙娜丽莎",
    "rank": 1,
    "pool": "fb2",
    "strategy": "oversold",
+   "buy_date": "20260325",
    "buy_px": 11.15,
-   "sell_px": 11.4,
-   "ret_pct": 0.7,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260408",
-   "buy_date": "20260409",
-   "sell_date": "20260410",
-   "code": "603202.SH",
-   "name": "天有为",
-   "rank": 1,
-   "pool": "fb1",
-   "strategy": "momentum",
-   "buy_px": 96.08,
-   "sell_px": 96.2,
-   "ret_pct": -0.36,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260326",
+   "sell_px": 11.17,
+   "sell_px_open": 11.4,
+   "sell_px_close": 11.17,
+   "sell_frac_open": 0.0,
+   "ret_pct": -0.12,
+   "note": "",
+   "score": 1.18,
+   "gap_pct": -0.36,
+   "pool_n": 0,
+   "pos_frac": 0.4
   },
   {
    "signal_date": "20260414",
-   "buy_date": "20260415",
-   "sell_date": "20260416",
    "code": "000876.SZ",
    "name": "新希望",
    "rank": 1,
    "pool": "fb1",
    "strategy": "momentum",
+   "buy_date": "20260415",
    "buy_px": 8.89,
-   "sell_px": 8.98,
-   "ret_pct": 0.24,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260416",
-   "buy_date": "20260417",
-   "sell_date": "20260420",
-   "code": "600676.SH",
-   "name": "久事动娱",
-   "rank": 1,
-   "pool": "fb1",
-   "strategy": "momentum",
-   "buy_px": 8.04,
-   "sell_px": 7.98,
-   "ret_pct": -1.42,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260417",
-   "buy_date": "20260420",
-   "sell_date": "20260421",
-   "code": "000720.SZ",
-   "name": "新能泰山",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 4.83,
-   "sell_px": 4.94,
-   "ret_pct": 1.97,
-   "note": "开盘深跌2%按收盘"
-  },
-  {
-   "signal_date": "20260420",
-   "buy_date": "20260421",
-   "sell_date": "20260422",
-   "code": "603937.SH",
-   "name": "丽岛新材",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 13.09,
-   "sell_px": 12.48,
-   "ret_pct": -4.63,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260416",
+   "sell_px": 8.91,
+   "sell_px_open": 8.98,
+   "sell_px_close": 8.91,
+   "sell_frac_open": 0.0,
+   "ret_pct": -0.08,
+   "note": "",
+   "score": 1.12,
+   "gap_pct": -0.45,
+   "pool_n": 0,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260421",
-   "buy_date": "20260422",
-   "sell_date": "20260423",
    "code": "002729.SZ",
    "name": "好利科技",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260422",
    "buy_px": 19.0,
-   "sell_px": 19.0,
-   "ret_pct": -1.31,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260422",
-   "buy_date": "20260423",
-   "sell_date": "20260424",
-   "code": "002788.SZ",
-   "name": "鹭燕医药",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 14.18,
-   "sell_px": 13.93,
-   "ret_pct": -2.65,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260423",
+   "sell_px": 18.68,
+   "sell_px_open": 19.0,
+   "sell_px_close": 18.68,
+   "sell_frac_open": 0.0,
+   "ret_pct": -1.98,
+   "note": "",
+   "score": 1.138,
+   "gap_pct": -0.78,
+   "pool_n": 32,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260423",
-   "buy_date": "20260424",
-   "sell_date": "20260427",
    "code": "002370.SZ",
    "name": "亚太药业",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260424",
    "buy_px": 6.8,
-   "sell_px": 6.85,
-   "ret_pct": -0.53,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260424",
-   "buy_date": "20260427",
-   "sell_date": "20260428",
-   "code": "002038.SZ",
-   "name": "双鹭药业",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 6.9,
-   "sell_px": 6.85,
-   "ret_pct": -1.2,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260427",
-   "buy_date": "20260428",
-   "sell_date": "20260429",
-   "code": "002051.SZ",
-   "name": "中工国际",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 10.16,
-   "sell_px": 10.02,
-   "ret_pct": -1.14,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260427",
+   "sell_px": 6.74,
+   "sell_px_open": 6.85,
+   "sell_px_close": 6.74,
+   "sell_frac_open": 0.0,
+   "ret_pct": -1.18,
+   "note": "",
+   "score": 1.575,
+   "gap_pct": -0.58,
+   "pool_n": 81,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260428",
-   "buy_date": "20260429",
-   "sell_date": "20260430",
    "code": "605162.SH",
    "name": "新中港",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260429",
    "buy_px": 11.32,
-   "sell_px": 11.36,
-   "ret_pct": -1.0,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260430",
+   "sell_px": 11.16,
+   "sell_px_open": 11.36,
+   "sell_px_close": 11.16,
+   "sell_frac_open": 0.0,
+   "ret_pct": -1.71,
+   "note": "",
+   "score": 2.12,
+   "gap_pct": -1.74,
+   "pool_n": 70,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260430",
-   "buy_date": "20260506",
-   "sell_date": "20260507",
    "code": "600654.SH",
    "name": "中安科",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260506",
    "buy_px": 3.96,
-   "sell_px": 4.01,
-   "ret_pct": 2.92,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260507",
-   "buy_date": "20260508",
-   "sell_date": "20260511",
-   "code": "600596.SH",
-   "name": "新安股份",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 11.87,
-   "sell_px": 12.04,
-   "ret_pct": 3.24,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260507",
+   "sell_px": 4.14,
+   "sell_px_open": 4.01,
+   "sell_px_close": 4.14,
+   "sell_frac_open": 0.0,
+   "ret_pct": 4.23,
+   "note": "",
+   "score": 1.378,
+   "gap_pct": 1.02,
+   "pool_n": 25,
+   "pos_frac": 0.3
   },
   {
    "signal_date": "20260508",
-   "buy_date": "20260511",
-   "sell_date": "20260512",
    "code": "603659.SH",
    "name": "璞泰来",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260511",
    "buy_px": 33.6,
-   "sell_px": 33.74,
-   "ret_pct": -0.79,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260511",
-   "buy_date": "20260512",
-   "sell_date": "20260513",
-   "code": "603101.SH",
-   "name": "汇嘉时代",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 8.88,
-   "sell_px": 8.5,
-   "ret_pct": -5.04,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260512",
+   "sell_px": 33.23,
+   "sell_px_open": 33.74,
+   "sell_px_close": 33.23,
+   "sell_frac_open": 0.0,
+   "ret_pct": -1.4,
+   "note": "",
+   "score": 1.203,
+   "gap_pct": -1.15,
+   "pool_n": 21,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260512",
-   "buy_date": "20260513",
-   "sell_date": "20260514",
    "code": "002940.SZ",
    "name": "昂利康",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260513",
    "buy_px": 33.82,
-   "sell_px": 38.51,
-   "ret_pct": 16.29,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260513",
-   "buy_date": "20260514",
-   "sell_date": "20260515",
-   "code": "001203.SZ",
-   "name": "大中矿业",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 44.0,
-   "sell_px": 43.02,
-   "ret_pct": -3.4,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260514",
+   "sell_px": 40.07,
+   "sell_px_open": 38.51,
+   "sell_px_close": 40.07,
+   "sell_frac_open": 0.0,
+   "ret_pct": 18.13,
+   "note": "",
+   "score": 1.677,
+   "gap_pct": 2.11,
+   "pool_n": 66,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260514",
-   "buy_date": "20260515",
-   "sell_date": "20260518",
    "code": "600510.SH",
    "name": "黑牡丹",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260515",
    "buy_px": 9.05,
-   "sell_px": 9.82,
-   "ret_pct": 4.28,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260515",
-   "buy_date": "20260518",
-   "sell_date": "20260519",
-   "code": "002201.SZ",
-   "name": "九鼎新材",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 12.68,
-   "sell_px": 12.68,
-   "ret_pct": -3.18,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260518",
-   "buy_date": "20260519",
-   "sell_date": "20260520",
-   "code": "601778.SH",
-   "name": "晶科科技",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 6.58,
-   "sell_px": 6.55,
-   "ret_pct": -1.85,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260519",
-   "buy_date": "20260520",
-   "sell_date": "20260521",
-   "code": "002176.SZ",
-   "name": "江特电机",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 12.6,
-   "sell_px": 13.08,
-   "ret_pct": 1.84,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260518",
+   "sell_px": 9.23,
+   "sell_px_open": 9.82,
+   "sell_px_close": 9.23,
+   "sell_frac_open": 0.0,
+   "ret_pct": 1.68,
+   "note": "",
+   "score": 2.174,
+   "gap_pct": -0.66,
+   "pool_n": 131,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260605",
-   "buy_date": "20260608",
-   "sell_date": "20260609",
    "code": "002885.SZ",
    "name": "京泉华",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260608",
    "buy_px": 40.11,
-   "sell_px": 40.35,
-   "ret_pct": 2.49,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260609",
+   "sell_px": 41.82,
+   "sell_px_open": 40.35,
+   "sell_px_close": 41.82,
+   "sell_frac_open": 0.0,
+   "ret_pct": 3.95,
+   "note": "",
+   "score": 1.306,
+   "gap_pct": -4.09,
+   "pool_n": 24,
+   "pos_frac": 0.4
+  },
+  {
+   "signal_date": "20260701",
+   "code": "002585.SZ",
+   "name": "双星新材",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_date": "20260702",
+   "buy_px": 11.6,
+   "fill": "open",
+   "sell_date": "20260703",
+   "sell_px": 11.04,
+   "sell_px_open": 11.44,
+   "sell_px_close": 11.04,
+   "sell_frac_open": 0.0,
+   "ret_pct": -5.11,
+   "note": "",
+   "score": 1.017,
+   "gap_pct": -3.49,
+   "pool_n": 18,
+   "pos_frac": 0.4
   },
   {
    "signal_date": "20260710",
-   "buy_date": "20260713",
-   "sell_date": "20260714",
    "code": "600961.SH",
    "name": "株冶集团",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260713",
    "buy_px": 25.8,
-   "sell_px": 25.45,
-   "ret_pct": -0.49,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260714",
+   "sell_px": 25.95,
+   "sell_px_open": 25.45,
+   "sell_px_close": 25.95,
+   "sell_frac_open": 0.0,
+   "ret_pct": 0.28,
+   "note": "",
+   "score": 1.08,
+   "gap_pct": -2.71,
+   "pool_n": 42,
+   "pos_frac": 0.4
+  },
+  {
+   "signal_date": "20260730",
+   "code": "002841.SZ",
+   "name": "视源股份",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
+   "buy_date": "20260731",
+   "buy_px": 43.8,
+   "fill": "open",
+   "sell_date": "20260803",
+   "sell_px": 45.68,
+   "sell_px_open": 45.48,
+   "sell_px_close": 45.68,
+   "sell_frac_open": 0.0,
+   "ret_pct": 3.98,
+   "note": "",
+   "score": 1.688,
+   "gap_pct": 3.67,
+   "pool_n": 13,
+   "pos_frac": 0.5
   },
   {
    "signal_date": "20260805",
-   "buy_date": "20260806",
-   "sell_date": "20260807",
-   "code": "000060.SZ",
-   "name": "中金岭南",
+   "code": "600650.SH",
+   "name": "锦江在线",
    "rank": 1,
    "pool": "fb1",
    "strategy": "momentum",
-   "buy_px": 6.77,
-   "sell_px": 6.63,
-   "ret_pct": -0.77,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260806",
-   "buy_date": "20260807",
-   "sell_date": "20260810",
-   "code": "002546.SZ",
-   "name": "新联电子",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 8.51,
-   "sell_px": 8.52,
-   "ret_pct": 0.66,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260807",
-   "buy_date": "20260810",
-   "sell_date": "20260811",
-   "code": "689009.SH",
-   "name": "九号公司",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 39.8,
-   "sell_px": 44.6,
-   "ret_pct": 13.08,
-   "note": "分批40%开盘/60%收盘"
+   "buy_date": "20260806",
+   "buy_px": 10.68,
+   "fill": "open",
+   "sell_date": "20260807",
+   "sell_px": 10.71,
+   "sell_px_open": 10.91,
+   "sell_px_close": 10.71,
+   "sell_frac_open": 0.0,
+   "ret_pct": -0.02,
+   "note": "开盘深跌2%按收盘",
+   "score": 1.162,
+   "gap_pct": -3.96,
+   "pool_n": 0,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260811",
-   "buy_date": "20260812",
-   "sell_date": "20260813",
    "code": "600486.SH",
    "name": "扬农化工",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260812",
    "buy_px": 53.92,
-   "sell_px": 54.04,
-   "ret_pct": -1.4,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260813",
+   "sell_px": 52.85,
+   "sell_px_open": 54.04,
+   "sell_px_close": 52.85,
+   "sell_frac_open": 0.0,
+   "ret_pct": -2.28,
+   "note": "",
+   "score": 1.606,
+   "gap_pct": -0.33,
+   "pool_n": 36,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260813",
-   "buy_date": "20260814",
-   "sell_date": "20260817",
    "code": "002545.SZ",
    "name": "东方铁塔",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260814",
    "buy_px": 17.36,
-   "sell_px": 17.25,
-   "ret_pct": 1.41,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260814",
-   "buy_date": "20260817",
-   "sell_date": "20260818",
-   "code": "000526.SZ",
-   "name": "学大教育",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 33.03,
-   "sell_px": 35.54,
-   "ret_pct": 7.28,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260817",
-   "buy_date": "20260818",
-   "sell_date": "20260819",
-   "code": "600418.SH",
-   "name": "江淮汽车",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 22.72,
-   "sell_px": 21.88,
-   "ret_pct": -6.46,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260817",
+   "sell_px": 17.93,
+   "sell_px_open": 17.25,
+   "sell_px_close": 17.93,
+   "sell_frac_open": 0.0,
+   "ret_pct": 2.97,
+   "note": "",
+   "score": 1.682,
+   "gap_pct": 0.29,
+   "pool_n": 88,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260818",
-   "buy_date": "20260819",
-   "sell_date": "20260820",
    "code": "000820.SZ",
    "name": "神雾节能",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260819",
    "buy_px": 3.35,
-   "sell_px": 3.36,
-   "ret_pct": 0.71,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260819",
-   "buy_date": "20260820",
-   "sell_date": "20260821",
-   "code": "002498.SZ",
-   "name": "汉缆股份",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 6.38,
-   "sell_px": 6.22,
-   "ret_pct": -2.33,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260820",
+   "sell_px": 3.4,
+   "sell_px_open": 3.36,
+   "sell_px_close": 3.4,
+   "sell_frac_open": 0.0,
+   "ret_pct": 1.19,
+   "note": "",
+   "score": 1.597,
+   "gap_pct": -0.59,
+   "pool_n": 57,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260820",
-   "buy_date": "20260821",
-   "sell_date": "20260824",
    "code": "002703.SZ",
    "name": "浙江世宝",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260821",
    "buy_px": 13.3,
-   "sell_px": 14.99,
-   "ret_pct": 9.85,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260821",
-   "buy_date": "20260824",
-   "sell_date": "20260825",
-   "code": "002580.SZ",
-   "name": "圣阳股份",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 19.09,
-   "sell_px": 21.42,
-   "ret_pct": 11.27,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260824",
+   "sell_px": 14.43,
+   "sell_px_open": 14.99,
+   "sell_px_close": 14.43,
+   "sell_frac_open": 0.0,
+   "ret_pct": 8.17,
+   "note": "",
+   "score": 1.708,
+   "gap_pct": -1.04,
+   "pool_n": 21,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260824",
-   "buy_date": "20260825",
-   "sell_date": "20260826",
    "code": "002131.SZ",
    "name": "利欧股份",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260825",
    "buy_px": 4.37,
-   "sell_px": 4.51,
-   "ret_pct": 2.76,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260825",
-   "buy_date": "20260826",
-   "sell_date": "20260827",
-   "code": "603988.SH",
-   "name": "中电电机",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 20.1,
-   "sell_px": 20.1,
-   "ret_pct": 0.5,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260826",
-   "buy_date": "20260827",
-   "sell_date": "20260828",
-   "code": "001229.SZ",
-   "name": "魅视科技",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 40.48,
-   "sell_px": 40.32,
-   "ret_pct": -1.05,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260827",
-   "buy_date": "20260828",
-   "sell_date": "20260831",
-   "code": "603879.SH",
-   "name": "永悦科技",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 5.27,
-   "sell_px": 5.36,
-   "ret_pct": 2.2,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260826",
+   "sell_px": 4.5,
+   "sell_px_open": 4.51,
+   "sell_px_close": 4.5,
+   "sell_frac_open": 0.0,
+   "ret_pct": 2.67,
+   "note": "",
+   "score": 1.444,
+   "gap_pct": -0.68,
+   "pool_n": 36,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260828",
-   "buy_date": "20260831",
-   "sell_date": "20260901",
    "code": "002674.SZ",
    "name": "兴业科技",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260831",
    "buy_px": 23.74,
-   "sell_px": 24.82,
-   "ret_pct": 3.58,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260831",
-   "buy_date": "20260901",
-   "sell_date": "20260902",
-   "code": "002589.SZ",
-   "name": "瑞康医药",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 3.18,
-   "sell_px": 3.49,
-   "ret_pct": 6.6,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260901",
+   "sell_px": 24.56,
+   "sell_px_open": 24.82,
+   "sell_px_close": 24.56,
+   "sell_frac_open": 0.0,
+   "ret_pct": 3.14,
+   "note": "",
+   "score": 1.439,
+   "gap_pct": -4.62,
+   "pool_n": 33,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260901",
-   "buy_date": "20260902",
-   "sell_date": "20260903",
    "code": "603124.SH",
    "name": "江南新材",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260902",
    "buy_px": 117.5,
-   "sell_px": 119.07,
-   "ret_pct": 2.96,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260902",
-   "buy_date": "20260903",
-   "sell_date": "20260904",
-   "code": "600683.SH",
-   "name": "京投发展",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 9.88,
-   "sell_px": 9.79,
-   "ret_pct": -2.66,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260903",
+   "sell_px": 122.85,
+   "sell_px_open": 119.07,
+   "sell_px_close": 122.85,
+   "sell_frac_open": 0.0,
+   "ret_pct": 4.24,
+   "note": "",
+   "score": 1.595,
+   "gap_pct": -1.01,
+   "pool_n": 73,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260903",
-   "buy_date": "20260904",
-   "sell_date": "20260907",
    "code": "002589.SZ",
    "name": "瑞康医药",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260904",
    "buy_px": 3.2,
-   "sell_px": 3.22,
-   "ret_pct": 1.07,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260904",
-   "buy_date": "20260907",
-   "sell_date": "20260908",
-   "code": "003023.SZ",
-   "name": "彩虹集团",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 26.01,
-   "sell_px": 26.05,
-   "ret_pct": 3.14,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260907",
-   "buy_date": "20260908",
-   "sell_date": "20260909",
-   "code": "603113.SH",
-   "name": "金能科技",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 5.39,
-   "sell_px": 5.52,
-   "ret_pct": 2.99,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260907",
+   "sell_px": 3.26,
+   "sell_px_open": 3.22,
+   "sell_px_close": 3.26,
+   "sell_frac_open": 0.0,
+   "ret_pct": 1.57,
+   "note": "",
+   "score": 1.529,
+   "gap_pct": 0.31,
+   "pool_n": 29,
+   "pos_frac": 1.0
   },
   {
    "signal_date": "20260909",
-   "buy_date": "20260910",
-   "sell_date": "20260911",
    "code": "002655.SZ",
    "name": "共达电声",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20260910",
    "buy_px": 36.73,
-   "sell_px": 35.5,
-   "ret_pct": -5.67,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260917",
-   "buy_date": "20260918",
-   "sell_date": "20260921",
-   "code": "601212.SH",
-   "name": "白银有色",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 6.3,
-   "sell_px": 6.2,
-   "ret_pct": -2.17,
-   "note": "分批40%开盘/60%收盘"
-  },
-  {
-   "signal_date": "20260922",
-   "buy_date": "20260923",
-   "sell_date": "20260924",
-   "code": "603139.SH",
-   "name": "康惠股份",
-   "rank": 1,
-   "pool": "main",
-   "strategy": "dip",
-   "buy_px": 36.83,
-   "sell_px": 36.31,
-   "ret_pct": -1.72,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20260911",
+   "sell_px": 34.25,
+   "sell_px_open": 35.5,
+   "sell_px_close": 34.25,
+   "sell_frac_open": 0.0,
+   "ret_pct": -7.03,
+   "note": "",
+   "score": 1.454,
+   "gap_pct": -0.73,
+   "pool_n": 20,
+   "pos_frac": 0.5
   },
   {
    "signal_date": "20261012",
-   "buy_date": "20261013",
-   "sell_date": "20261014",
    "code": "603328.SH",
    "name": "依顿电子",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20261013",
    "buy_px": 11.8,
-   "sell_px": 13.4,
-   "ret_pct": 12.46,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20261014",
+   "sell_px": 13.25,
+   "sell_px_open": 13.4,
+   "sell_px_close": 13.25,
+   "sell_frac_open": 0.0,
+   "ret_pct": 11.95,
+   "note": "",
+   "score": 1.595,
+   "gap_pct": -2.72,
+   "pool_n": 43,
+   "pos_frac": 0.4
   },
   {
    "signal_date": "20261014",
-   "buy_date": "20261015",
-   "sell_date": "20261016",
    "code": "003001.SZ",
    "name": "中岩大地",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
+   "buy_date": "20261015",
    "buy_px": 16.9,
-   "sell_px": 16.91,
-   "ret_pct": -1.76,
-   "note": "分批40%开盘/60%收盘"
+   "fill": "open",
+   "sell_date": "20261016",
+   "sell_px": 16.48,
+   "sell_px_open": 16.91,
+   "sell_px_close": 16.48,
+   "sell_frac_open": 0.0,
+   "ret_pct": -2.78,
+   "note": "",
+   "score": 1.231,
+   "gap_pct": -3.98,
+   "pool_n": 25,
+   "pos_frac": 0.4
   },
   {
-   "signal_date": "20261023",
-   "buy_date": "20261026",
-   "sell_date": "20261027",
-   "code": "002576.SZ",
-   "name": "通达动力",
+   "signal_date": "20261029",
+   "code": "603200.SH",
+   "name": "上海洗霸",
    "rank": 1,
-   "pool": "fb1",
-   "strategy": "momentum",
-   "buy_px": 15.23,
-   "sell_px": 14.88,
-   "ret_pct": 1.02,
-   "note": "分批40%开盘/60%收盘"
+   "pool": "main",
+   "strategy": "dip",
+   "buy_date": "20261030",
+   "buy_px": 45.68,
+   "fill": "open",
+   "sell_date": "20261102",
+   "sell_px": 52.05,
+   "sell_px_open": 51.72,
+   "sell_px_close": 52.05,
+   "sell_frac_open": 0.0,
+   "ret_pct": 13.6,
+   "note": "",
+   "score": 1.562,
+   "gap_pct": -2.85,
+   "pool_n": 11,
+   "pos_frac": 0.4
   }
  ],
  "curve": [
   {
    "d": "2025-11-03",
-   "nav": 1025022.0
+   "nav": 973504.0
   },
   {
    "d": "2025-11-04",
-   "nav": 1023698.0
+   "nav": 973504.0
   },
   {
    "d": "2025-11-05",
-   "nav": 1051120.0
+   "nav": 1000345.0
   },
   {
    "d": "2025-11-06",
-   "nav": 1080623.0
+   "nav": 1049780.0
   },
   {
    "d": "2025-11-07",
-   "nav": 1077547.0
+   "nav": 1031092.0
   },
   {
    "d": "2025-11-10",
-   "nav": 1080631.0
+   "nav": 1022060.0
   },
   {
    "d": "2025-11-11",
-   "nav": 1075216.0
+   "nav": 1022060.0
   },
   {
    "d": "2025-11-12",
-   "nav": 1066605.0
+   "nav": 1022060.0
   },
   {
    "d": "2025-11-13",
-   "nav": 1072823.0
+   "nav": 1032490.0
   },
   {
    "d": "2025-11-14",
-   "nav": 1087974.0
+   "nav": 1097682.0
   },
   {
    "d": "2025-11-17",
-   "nav": 1089631.0
+   "nav": 1099354.0
   },
   {
    "d": "2025-11-18",
-   "nav": 1085113.0
+   "nav": 1102493.0
   },
   {
    "d": "2025-11-19",
-   "nav": 1076725.0
+   "nav": 1102493.0
   },
   {
    "d": "2025-11-20",
-   "nav": 1080967.0
+   "nav": 1102493.0
   },
   {
    "d": "2025-11-21",
-   "nav": 1049466.0
+   "nav": 1085099.0
   },
   {
    "d": "2025-11-24",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-11-25",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-11-26",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-11-27",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-11-28",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-01",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-02",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-03",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-04",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-05",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-08",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-09",
-   "nav": 1052032.0
+   "nav": 1086040.0
   },
   {
    "d": "2025-12-10",
-   "nav": 1052032.0
+   "nav": 1072649.0
   },
   {
    "d": "2025-12-11",
-   "nav": 1052032.0
+   "nav": 1043543.0
   },
   {
    "d": "2025-12-12",
-   "nav": 1052032.0
+   "nav": 1043543.0
   },
   {
    "d": "2025-12-15",
-   "nav": 1052032.0
+   "nav": 1043543.0
   },
   {
    "d": "2025-12-16",
-   "nav": 1052032.0
+   "nav": 1043543.0
   },
   {
    "d": "2025-12-17",
-   "nav": 1052032.0
+   "nav": 1043543.0
   },
   {
    "d": "2025-12-18",
-   "nav": 1052032.0
+   "nav": 1043543.0
   },
   {
    "d": "2025-12-19",
-   "nav": 1060669.0
+   "nav": 1060679.0
   },
   {
    "d": "2025-12-22",
-   "nav": 1058855.0
+   "nav": 1067542.0
   },
   {
    "d": "2025-12-23",
-   "nav": 1057847.0
+   "nav": 1067542.0
   },
   {
    "d": "2025-12-24",
-   "nav": 1068410.0
+   "nav": 1078291.0
   },
   {
    "d": "2025-12-25",
-   "nav": 1042766.0
+   "nav": 1043238.0
   },
   {
    "d": "2025-12-26",
-   "nav": 1046484.0
+   "nav": 1078608.0
   },
   {
    "d": "2025-12-29",
-   "nav": 1044011.0
+   "nav": 1032576.0
   },
   {
    "d": "2025-12-30",
-   "nav": 1050846.0
+   "nav": 1040542.0
   },
   {
    "d": "2025-12-31",
-   "nav": 1020304.0
+   "nav": 1003086.0
   },
   {
    "d": "2026-01-05",
-   "nav": 1023196.0
+   "nav": 1003086.0
   },
   {
    "d": "2026-01-06",
-   "nav": 1031795.0
+   "nav": 1003086.0
   },
   {
    "d": "2026-01-07",
-   "nav": 1035064.0
+   "nav": 1038396.0
   },
   {
    "d": "2026-01-08",
-   "nav": 1036950.0
+   "nav": 1028842.0
   },
   {
    "d": "2026-01-09",
-   "nav": 1050975.0
+   "nav": 1046521.0
   },
   {
    "d": "2026-01-12",
-   "nav": 1041762.0
+   "nav": 1030236.0
   },
   {
    "d": "2026-01-13",
-   "nav": 1038555.0
+   "nav": 1030236.0
   },
   {
    "d": "2026-01-14",
-   "nav": 1052971.0
+   "nav": 1044959.0
   },
   {
    "d": "2026-01-15",
-   "nav": 1062480.0
+   "nav": 1071098.0
   },
   {
    "d": "2026-01-16",
-   "nav": 1023164.0
+   "nav": 1071098.0
   },
   {
    "d": "2026-01-19",
-   "nav": 1096415.0
+   "nav": 1071098.0
   },
   {
    "d": "2026-01-20",
-   "nav": 1070379.0
+   "nav": 1050222.0
   },
   {
    "d": "2026-01-21",
-   "nav": 1045347.0
+   "nav": 1018640.0
   },
   {
    "d": "2026-01-22",
-   "nav": 1062807.0
+   "nav": 1035359.0
   },
   {
    "d": "2026-01-23",
-   "nav": 1075611.0
+   "nav": 1057732.0
   },
   {
    "d": "2026-01-26",
-   "nav": 1072420.0
+   "nav": 1057732.0
   },
   {
    "d": "2026-01-27",
-   "nav": 1059226.0
+   "nav": 1044718.0
   },
   {
    "d": "2026-01-28",
-   "nav": 1029578.0
+   "nav": 1012949.0
   },
   {
    "d": "2026-01-29",
-   "nav": 1047770.0
+   "nav": 1032319.0
   },
   {
    "d": "2026-01-30",
-   "nav": 1042893.0
+   "nav": 1029336.0
   },
   {
    "d": "2026-02-02",
-   "nav": 1042200.0
+   "nav": 1029336.0
   },
   {
    "d": "2026-02-03",
-   "nav": 1090696.0
+   "nav": 1072644.0
   },
   {
    "d": "2026-02-04",
-   "nav": 1088844.0
+   "nav": 1062947.0
   },
   {
    "d": "2026-02-05",
-   "nav": 1088844.0
+   "nav": 1062947.0
   },
   {
    "d": "2026-02-06",
-   "nav": 1094881.0
+   "nav": 1068841.0
   },
   {
    "d": "2026-02-09",
-   "nav": 1122203.0
+   "nav": 1098565.0
   },
   {
    "d": "2026-02-10",
-   "nav": 1122380.0
+   "nav": 1098565.0
   },
   {
    "d": "2026-02-11",
-   "nav": 1131719.0
+   "nav": 1107886.0
   },
   {
    "d": "2026-02-12",
-   "nav": 1117097.0
+   "nav": 1085992.0
   },
   {
    "d": "2026-02-13",
-   "nav": 1099778.0
+   "nav": 1085992.0
   },
   {
    "d": "2026-02-24",
-   "nav": 1134133.0
+   "nav": 1126553.0
   },
   {
    "d": "2026-02-25",
-   "nav": 1141151.0
+   "nav": 1143130.0
   },
   {
    "d": "2026-02-26",
-   "nav": 1139080.0
+   "nav": 1143130.0
   },
   {
    "d": "2026-02-27",
-   "nav": 1141681.0
+   "nav": 1147481.0
   },
   {
    "d": "2026-03-02",
-   "nav": 1137039.0
+   "nav": 1151122.0
   },
   {
    "d": "2026-03-03",
-   "nav": 1132456.0
+   "nav": 1121129.0
   },
   {
    "d": "2026-03-04",
-   "nav": 1132456.0
+   "nav": 1121129.0
   },
   {
    "d": "2026-03-05",
-   "nav": 1132456.0
+   "nav": 1121129.0
   },
   {
    "d": "2026-03-06",
-   "nav": 1137852.0
+   "nav": 1121129.0
   },
   {
    "d": "2026-03-09",
-   "nav": 1175354.0
+   "nav": 1138417.0
   },
   {
    "d": "2026-03-10",
-   "nav": 1194459.0
+   "nav": 1164266.0
   },
   {
    "d": "2026-03-11",
-   "nav": 1196213.0
+   "nav": 1163486.0
   },
   {
    "d": "2026-03-12",
-   "nav": 1191124.0
+   "nav": 1182784.0
   },
   {
    "d": "2026-03-13",
-   "nav": 1168629.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-16",
-   "nav": 1160366.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-17",
-   "nav": 1160366.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-18",
-   "nav": 1160366.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-19",
-   "nav": 1160366.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-20",
-   "nav": 1160366.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-23",
-   "nav": 1160366.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-24",
-   "nav": 1160366.0
+   "nav": 1137345.0
   },
   {
    "d": "2026-03-25",
-   "nav": 1163402.0
+   "nav": 1143297.0
   },
   {
    "d": "2026-03-26",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-03-27",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-03-30",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-03-31",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-01",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-02",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-03",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-07",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-08",
-   "nav": 1161995.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-09",
-   "nav": 1162840.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-10",
-   "nav": 1161169.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-13",
-   "nav": 1161169.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-14",
-   "nav": 1161169.0
+   "nav": 1136796.0
   },
   {
    "d": "2026-04-15",
-   "nav": 1161632.0
+   "nav": 1137930.0
   },
   {
    "d": "2026-04-16",
-   "nav": 1162278.0
+   "nav": 1135940.0
   },
   {
    "d": "2026-04-17",
-   "nav": 1155055.0
+   "nav": 1135940.0
   },
   {
    "d": "2026-04-20",
-   "nav": 1157170.0
+   "nav": 1135940.0
   },
   {
    "d": "2026-04-21",
-   "nav": 1153143.0
+   "nav": 1135940.0
   },
   {
    "d": "2026-04-22",
-   "nav": 1150779.0
+   "nav": 1134521.0
   },
   {
    "d": "2026-04-23",
-   "nav": 1137482.0
+   "nav": 1113463.0
   },
   {
    "d": "2026-04-24",
-   "nav": 1153272.0
+   "nav": 1138239.0
   },
   {
    "d": "2026-04-27",
-   "nav": 1122983.0
+   "nav": 1100332.0
   },
   {
    "d": "2026-04-28",
-   "nav": 1116920.0
+   "nav": 1100332.0
   },
   {
    "d": "2026-04-29",
-   "nav": 1130721.0
+   "nav": 1113520.0
   },
   {
    "d": "2026-04-30",
-   "nav": 1107663.0
+   "nav": 1081530.0
   },
   {
    "d": "2026-05-06",
-   "nav": 1110389.0
+   "nav": 1086853.0
   },
   {
    "d": "2026-05-07",
-   "nav": 1112520.0
+   "nav": 1095262.0
   },
   {
    "d": "2026-05-08",
-   "nav": 1114350.0
+   "nav": 1095262.0
   },
   {
    "d": "2026-05-11",
-   "nav": 1125197.0
+   "nav": 1097476.0
   },
   {
    "d": "2026-05-12",
-   "nav": 1112606.0
+   "nav": 1079956.0
   },
   {
    "d": "2026-05-13",
-   "nav": 1192349.0
+   "nav": 1161847.0
   },
   {
    "d": "2026-05-14",
-   "nav": 1279619.0
+   "nav": 1275701.0
   },
   {
    "d": "2026-05-15",
-   "nav": 1394569.0
+   "nav": 1410670.0
   },
   {
    "d": "2026-05-18",
-   "nav": 1327107.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-19",
-   "nav": 1305327.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-20",
-   "nav": 1345819.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-21",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-22",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-25",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-26",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-27",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-28",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-05-29",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-06-01",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-06-02",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-06-03",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-06-04",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-06-05",
-   "nav": 1323360.0
+   "nav": 1297177.0
   },
   {
    "d": "2026-06-08",
-   "nav": 1312418.0
+   "nav": 1286451.0
   },
   {
    "d": "2026-06-09",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-10",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-11",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-12",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-15",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-16",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-17",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-18",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-22",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-23",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-24",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-25",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-26",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-29",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-06-30",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-07-01",
-   "nav": 1336537.0
+   "nav": 1317677.0
   },
   {
    "d": "2026-07-02",
-   "nav": 1336537.0
+   "nav": 1309304.0
   },
   {
    "d": "2026-07-03",
-   "nav": 1336537.0
+   "nav": 1290729.0
   },
   {
    "d": "2026-07-06",
-   "nav": 1336537.0
+   "nav": 1290729.0
   },
   {
    "d": "2026-07-07",
-   "nav": 1336537.0
+   "nav": 1290729.0
   },
   {
    "d": "2026-07-08",
-   "nav": 1336537.0
+   "nav": 1290729.0
   },
   {
    "d": "2026-07-09",
-   "nav": 1336537.0
+   "nav": 1290729.0
   },
   {
    "d": "2026-07-10",
-   "nav": 1336537.0
+   "nav": 1290729.0
   },
   {
    "d": "2026-07-13",
-   "nav": 1328626.0
+   "nav": 1283090.0
   },
   {
    "d": "2026-07-14",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-15",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-16",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-17",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-20",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-21",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-22",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-23",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-24",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-27",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-28",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-29",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-30",
-   "nav": 1333903.0
+   "nav": 1292176.0
   },
   {
    "d": "2026-07-31",
-   "nav": 1333903.0
+   "nav": 1311847.0
   },
   {
    "d": "2026-08-03",
-   "nav": 1333903.0
+   "nav": 1317889.0
   },
   {
    "d": "2026-08-04",
-   "nav": 1333903.0
+   "nav": 1317889.0
   },
   {
    "d": "2026-08-05",
-   "nav": 1333903.0
+   "nav": 1317889.0
   },
   {
    "d": "2026-08-06",
-   "nav": 1322777.0
+   "nav": 1374168.0
   },
   {
    "d": "2026-08-07",
-   "nav": 1331275.0
+   "nav": 1317632.0
   },
   {
    "d": "2026-08-10",
-   "nav": 1338491.0
+   "nav": 1317632.0
   },
   {
    "d": "2026-08-11",
-   "nav": 1346459.0
+   "nav": 1317632.0
   },
   {
    "d": "2026-08-12",
-   "nav": 1347521.0
+   "nav": 1318671.0
   },
   {
    "d": "2026-08-13",
-   "nav": 1327637.0
+   "nav": 1287615.0
   },
   {
    "d": "2026-08-14",
-   "nav": 1309939.0
+   "nav": 1270451.0
   },
   {
    "d": "2026-08-17",
-   "nav": 1334271.0
+   "nav": 1325909.0
   },
   {
    "d": "2026-08-18",
-   "nav": 1383910.0
+   "nav": 1325909.0
   },
   {
    "d": "2026-08-19",
-   "nav": 1360752.0
+   "nav": 1304488.0
   },
   {
    "d": "2026-08-20",
-   "nav": 1377790.0
+   "nav": 1341668.0
   },
   {
    "d": "2026-08-21",
-   "nav": 1405724.0
+   "nav": 1375255.0
   },
   {
    "d": "2026-08-24",
-   "nav": 1564026.0
+   "nav": 1451298.0
   },
   {
    "d": "2026-08-25",
-   "nav": 1602795.0
+   "nav": 1492606.0
   },
   {
    "d": "2026-08-26",
-   "nav": 1602481.0
+   "nav": 1489995.0
   },
   {
    "d": "2026-08-27",
-   "nav": 1603662.0
+   "nav": 1489995.0
   },
   {
    "d": "2026-08-28",
-   "nav": 1600135.0
+   "nav": 1489995.0
   },
   {
    "d": "2026-08-31",
-   "nav": 1669331.0
+   "nav": 1554580.0
   },
   {
    "d": "2026-09-01",
-   "nav": 1662714.0
+   "nav": 1536843.0
   },
   {
    "d": "2026-09-02",
-   "nav": 1668643.0
+   "nav": 1544068.0
   },
   {
    "d": "2026-09-03",
-   "nav": 1701994.0
+   "nav": 1602005.0
   },
   {
    "d": "2026-09-04",
-   "nav": 1697211.0
+   "nav": 1610005.0
   },
   {
    "d": "2026-09-07",
-   "nav": 1709089.0
+   "nav": 1627154.0
   },
   {
    "d": "2026-09-08",
-   "nav": 1735677.0
+   "nav": 1627154.0
   },
   {
    "d": "2026-09-09",
-   "nav": 1734987.0
+   "nav": 1627154.0
   },
   {
    "d": "2026-09-10",
-   "nav": 1718807.0
+   "nav": 1611979.0
   },
   {
    "d": "2026-09-11",
-   "nav": 1685765.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-14",
-   "nav": 1685765.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-15",
-   "nav": 1685765.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-16",
-   "nav": 1685765.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-17",
-   "nav": 1685765.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-18",
-   "nav": 1684331.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-21",
-   "nav": 1674806.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-22",
-   "nav": 1674806.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-23",
-   "nav": 1673555.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-24",
-   "nav": 1672208.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-28",
-   "nav": 1672208.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-29",
-   "nav": 1672208.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-09-30",
-   "nav": 1672208.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-10-08",
-   "nav": 1672208.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-10-09",
-   "nav": 1672208.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-10-12",
-   "nav": 1672208.0
+   "nav": 1569949.0
   },
   {
    "d": "2026-10-13",
-   "nav": 1758559.0
+   "nav": 1651019.0
   },
   {
    "d": "2026-10-14",
-   "nav": 1755542.0
+   "nav": 1645003.0
   },
   {
    "d": "2026-10-15",
-   "nav": 1745535.0
+   "nav": 1635627.0
   },
   {
    "d": "2026-10-16",
-   "nav": 1743165.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-19",
-   "nav": 1743165.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-20",
-   "nav": 1743165.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-21",
-   "nav": 1743165.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-22",
-   "nav": 1743165.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-23",
-   "nav": 1743165.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-26",
-   "nav": 1736099.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-27",
-   "nav": 1746730.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-28",
-   "nav": 1746730.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-29",
-   "nav": 1746730.0
+   "nav": 1626728.0
   },
   {
    "d": "2026-10-30",
-   "nav": 1838127.0
+   "nav": 1711846.0
   }
  ],
- "base_nav": 1019321.0,
+ "base_nav": 958554.0,
  "daily": [
   {
    "date": "20251103",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "000630.SZ",
-     "name": "铜陵有色",
-     "ret_pct": -4.01
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20251104",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603878.SH",
-     "name": "武进不锈",
-     "ret_pct": 0.23
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -2525,7 +2159,7 @@
     {
      "code": "600711.SH",
      "name": "盛屯矿业",
-     "ret_pct": 5.73
+     "ret_pct": 7.84
     }
    ],
    "skipped": []
@@ -2533,14 +2167,8 @@
   {
    "date": "20251106",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600635.SH",
-     "name": "大众公用",
-     "ret_pct": -3.07
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -2551,7 +2179,7 @@
     {
      "code": "603903.SH",
      "name": "中持股份",
-     "ret_pct": -2.61
+     "ret_pct": -2.64
     }
    ],
    "skipped": []
@@ -2559,40 +2187,28 @@
   {
    "date": "20251110",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002040.SZ",
-     "name": "南京港",
-     "ret_pct": -0.34
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20251111",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
-     "code": "600333.SH",
-     "name": "长春燃气",
-     "note": "top1评分0.98低于门槛1.00"
+     "code": "600730.SH",
+     "name": "*ST高科",
+     "note": "top1评分0.89低于门槛1.00"
     }
    ]
   },
   {
    "date": "20251112",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603933.SH",
-     "name": "睿能科技",
-     "ret_pct": -2.13
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -2603,7 +2219,7 @@
     {
      "code": "002320.SZ",
      "name": "海峡股份",
-     "ret_pct": 4.47
+     "ret_pct": 7.4
     }
    ],
    "skipped": []
@@ -2611,7 +2227,7 @@
   {
    "date": "20251114",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2629,7 +2245,7 @@
     {
      "code": "600601.SH",
      "name": "方正科技",
-     "ret_pct": 0.11
+     "ret_pct": 0.44
     }
    ],
    "skipped": []
@@ -2637,51 +2253,45 @@
   {
    "date": "20251118",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "000777.SZ",
-     "name": "中核科技",
-     "ret_pct": -2.02
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20251119",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
-     "code": "000901.SZ",
-     "name": "航天科技",
-     "ret_pct": 0.83
+     "code": "603378.SH",
+     "name": "*ST亚士",
+     "note": "缺口0.5%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20251120",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "002733.SZ",
      "name": "雄韬股份",
-     "ret_pct": -6.06
+     "note": "缺口0.6%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20251121",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": 0.4,
    "fills": [
     {
      "code": "002160.SZ",
      "name": "常铝股份",
-     "ret_pct": -3.12
+     "ret_pct": -3.73
     }
    ],
    "skipped": []
@@ -2689,7 +2299,7 @@
   {
    "date": "20251124",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2702,7 +2312,7 @@
   {
    "date": "20251125",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2715,7 +2325,7 @@
   {
    "date": "20251126",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2728,7 +2338,7 @@
   {
    "date": "20251127",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2741,7 +2351,7 @@
   {
    "date": "20251128",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2753,21 +2363,21 @@
   },
   {
    "date": "20251201",
-   "trade_ok": true,
-   "alloc": 1.0,
+   "trade_ok": false,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "600152.SH",
      "name": "维科技术",
-     "note": "top1评分0.56低于门槛1.00"
+     "note": "缺口1.4%未达承接线-2.5%"
     }
    ]
   },
   {
    "date": "20251202",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2780,7 +2390,7 @@
   {
    "date": "20251203",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2793,7 +2403,7 @@
   {
    "date": "20251204",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2806,7 +2416,7 @@
   {
    "date": "20251205",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2819,20 +2429,20 @@
   {
    "date": "20251208",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "600246.SH",
      "name": "万通发展",
-     "note": "top1评分0.00低于门槛1.00"
+     "note": "top1评分0.68低于门槛1.00"
     }
    ]
   },
   {
    "date": "20251209",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2844,21 +2454,21 @@
   },
   {
    "date": "20251210",
-   "trade_ok": false,
-   "alloc": 0.0,
-   "fills": [],
-   "skipped": [
+   "trade_ok": true,
+   "alloc": 1.0,
+   "fills": [
     {
      "code": "000695.SZ",
      "name": "滨海能源",
-     "note": "缺口0.2%未达承接线-2.5%"
+     "ret_pct": -3.91
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20251211",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2871,7 +2481,7 @@
   {
    "date": "20251212",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2884,7 +2494,7 @@
   {
    "date": "20251215",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2897,7 +2507,7 @@
   {
    "date": "20251216",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2910,7 +2520,7 @@
   {
    "date": "20251217",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2923,7 +2533,7 @@
   {
    "date": "20251218",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2941,7 +2551,7 @@
     {
      "code": "603327.SH",
      "name": "福蓉科技",
-     "ret_pct": 1.3
+     "ret_pct": 2.3
     }
    ],
    "skipped": []
@@ -2949,7 +2559,7 @@
   {
    "date": "20251222",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -2962,14 +2572,8 @@
   {
    "date": "20251223",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603709.SH",
-     "name": "中源家居",
-     "ret_pct": -3.25
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -2980,7 +2584,7 @@
     {
      "code": "600868.SH",
      "name": "梅雁吉祥",
-     "ret_pct": -1.37
+     "ret_pct": -2.28
     }
    ],
    "skipped": []
@@ -2988,14 +2592,8 @@
   {
    "date": "20251225",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002769.SZ",
-     "name": "普路通",
-     "ret_pct": 3.33
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3006,7 +2604,7 @@
     {
      "code": "000735.SZ",
      "name": "罗牛山",
-     "ret_pct": 0.18
+     "ret_pct": -1.02
     }
    ],
    "skipped": []
@@ -3014,14 +2612,8 @@
   {
    "date": "20251229",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002105.SZ",
-     "name": "信隆健康",
-     "ret_pct": -2.45
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3032,7 +2624,7 @@
     {
      "code": "001330.SZ",
      "name": "博纳影业",
-     "ret_pct": -1.48
+     "ret_pct": -2.86
     }
    ],
    "skipped": []
@@ -3040,39 +2632,27 @@
   {
    "date": "20251231",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600280.SH",
-     "name": "中央商场",
-     "ret_pct": -2.7
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260105",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "601933.SH",
-     "name": "永辉超市",
-     "ret_pct": 3.52
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260106",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "603886.SH",
      "name": "元祖股份",
-     "note": "top1评分0.70低于门槛1.00"
+     "note": "top1评分0.85低于门槛1.00"
     }
    ]
   },
@@ -3084,7 +2664,7 @@
     {
      "code": "001359.SZ",
      "name": "平安电工",
-     "ret_pct": 2.82
+     "ret_pct": 2.57
     }
    ],
    "skipped": []
@@ -3092,14 +2672,8 @@
   {
    "date": "20260108",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "601279.SH",
-     "name": "英利汽车",
-     "ret_pct": 0.61
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3110,7 +2684,7 @@
     {
      "code": "601869.SH",
      "name": "长飞光纤",
-     "ret_pct": 0.65
+     "ret_pct": 0.14
     }
    ],
    "skipped": []
@@ -3118,27 +2692,21 @@
   {
    "date": "20260112",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "002478.SZ",
      "name": "常宝股份",
-     "note": "top1评分0.80低于门槛1.00"
+     "note": "top1评分0.88低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260113",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603757.SH",
-     "name": "大元泵业",
-     "ret_pct": -3.04
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3149,7 +2717,7 @@
     {
      "code": "002536.SZ",
      "name": "飞龙股份",
-     "ret_pct": 2.29
+     "ret_pct": 3.97
     }
    ],
    "skipped": []
@@ -3157,40 +2725,22 @@
   {
    "date": "20260115",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "605376.SH",
-     "name": "博迁新材",
-     "ret_pct": 2.72
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260116",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002163.SZ",
-     "name": "海南发展",
-     "ret_pct": 2.12
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260119",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002163.SZ",
-     "name": "海南发展",
-     "ret_pct": 3.21
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3201,7 +2751,7 @@
     {
      "code": "603696.SH",
      "name": "安记食品",
-     "ret_pct": -4.48
+     "ret_pct": -4.9
     }
    ],
    "skipped": []
@@ -3209,25 +2759,19 @@
   {
    "date": "20260121",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002383.SZ",
-     "name": "合众思壮",
-     "ret_pct": 1.52
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260122",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": 0.5,
    "fills": [
     {
      "code": "603698.SH",
      "name": "航天工程",
-     "ret_pct": 5.85
+     "ret_pct": 7.68
     }
    ],
    "skipped": []
@@ -3235,28 +2779,16 @@
   {
    "date": "20260123",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600629.SH",
-     "name": "华建集团",
-     "ret_pct": -2.35
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260126",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
-   "skipped": [
-    {
-     "code": "002050.SZ",
-     "name": "三花智控",
-     "note": "top1评分0.85低于门槛1.00"
-    }
-   ]
+   "skipped": []
   },
   {
    "date": "20260127",
@@ -3266,7 +2798,7 @@
     {
      "code": "600629.SH",
      "name": "华建集团",
-     "ret_pct": -3.75
+     "ret_pct": -4.23
     }
    ],
    "skipped": []
@@ -3274,14 +2806,8 @@
   {
    "date": "20260128",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603896.SH",
-     "name": "寿仙谷",
-     "ret_pct": -0.82
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3292,7 +2818,7 @@
     {
      "code": "002465.SZ",
      "name": "海格通信",
-     "ret_pct": 1.32
+     "ret_pct": 1.62
     }
    ],
    "skipped": []
@@ -3300,28 +2826,22 @@
   {
    "date": "20260130",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "000559.SZ",
-     "name": "万向钱潮",
-     "ret_pct": -0.43
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260202",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "002519.SZ",
      "name": "银河电子",
-     "ret_pct": 3.4
+     "note": "缺口-0.1%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260203",
@@ -3331,7 +2851,7 @@
     {
      "code": "002428.SZ",
      "name": "云南锗业",
-     "ret_pct": 3.9
+     "ret_pct": 3.27
     }
    ],
    "skipped": []
@@ -3339,7 +2859,7 @@
   {
    "date": "20260204",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3352,7 +2872,7 @@
   {
    "date": "20260205",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3370,7 +2890,7 @@
     {
      "code": "603090.SH",
      "name": "宏盛股份",
-     "ret_pct": 2.96
+     "ret_pct": 3.35
     }
    ],
    "skipped": []
@@ -3378,27 +2898,15 @@
   {
    "date": "20260209",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603929.SH",
-     "name": "亚翔集成",
-     "ret_pct": 5.21
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260210",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600800.SH",
-     "name": "渤海化学",
-     "ret_pct": 0.7
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3409,7 +2917,7 @@
     {
      "code": "000603.SZ",
      "name": "盛达资源",
-     "ret_pct": -0.6
+     "ret_pct": -1.14
     }
    ],
    "skipped": []
@@ -3417,28 +2925,22 @@
   {
    "date": "20260212",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002851.SZ",
-     "name": "麦格米特",
-     "ret_pct": 1.32
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260213",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "600785.SH",
      "name": "新华百货",
-     "ret_pct": 0.09
+     "note": "缺口1.7%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260224",
@@ -3448,7 +2950,7 @@
     {
      "code": "000603.SZ",
      "name": "盛达资源",
-     "ret_pct": 4.81
+     "ret_pct": 5.26
     }
    ],
    "skipped": []
@@ -3456,38 +2958,32 @@
   {
    "date": "20260225",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002931.SZ",
-     "name": "锋龙股份",
-     "ret_pct": 0.13
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260226",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "603220.SH",
      "name": "中贝通信",
-     "note": "top1评分0.64低于门槛1.00"
+     "note": "top1评分0.70低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260227",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": 0.5,
    "fills": [
     {
      "code": "000995.SZ",
      "name": "皇台酒业",
-     "ret_pct": -2.66
+     "ret_pct": -3.65
     }
    ],
    "skipped": []
@@ -3500,7 +2996,7 @@
     {
      "code": "605287.SH",
      "name": "德才股份",
-     "ret_pct": 1.77
+     "ret_pct": -0.2
     }
    ],
    "skipped": []
@@ -3508,7 +3004,7 @@
   {
    "date": "20260303",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3521,7 +3017,7 @@
   {
    "date": "20260304",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3534,7 +3030,7 @@
   {
    "date": "20260305",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3547,25 +3043,19 @@
   {
    "date": "20260306",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002099.SZ",
-     "name": "海翔药业",
-     "ret_pct": 3.41
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260309",
-   "trade_ok": true,
-   "alloc": 1.0,
+   "trade_ok": false,
+   "alloc": 0.4,
    "fills": [
     {
      "code": "002009.SZ",
      "name": "天奇股份",
-     "ret_pct": 5.84
+     "ret_pct": 6.93
     }
    ],
    "skipped": []
@@ -3573,27 +3063,21 @@
   {
    "date": "20260310",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [],
-   "skipped": [
+   "alloc": 0.5,
+   "fills": [
     {
      "code": "605033.SH",
      "name": "美邦股份",
-     "note": "top1评分0.79低于门槛1.00"
+     "ret_pct": 1.95
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260311",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002162.SZ",
-     "name": "悦心健康",
-     "ret_pct": -4.38
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3604,28 +3088,28 @@
     {
      "code": "600331.SH",
      "name": "宏达股份",
-     "ret_pct": -0.93
+     "ret_pct": -2.25
     }
    ],
    "skipped": []
   },
   {
    "date": "20260313",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "603980.SH",
      "name": "吉华集团",
-     "ret_pct": -4.63
+     "note": "缺口0.3%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260316",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3638,7 +3122,7 @@
   {
    "date": "20260317",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3651,7 +3135,7 @@
   {
    "date": "20260318",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3664,7 +3148,7 @@
   {
    "date": "20260319",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3677,7 +3161,7 @@
   {
    "date": "20260320",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3690,7 +3174,7 @@
   {
    "date": "20260323",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3703,7 +3187,7 @@
   {
    "date": "20260324",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3716,26 +3200,26 @@
   {
    "date": "20260325",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": 0.4,
    "fills": [
     {
      "code": "002918.SZ",
      "name": "蒙娜丽莎",
-     "ret_pct": 0.7
+     "ret_pct": -0.12
     }
    ],
    "skipped": [
     {
-     "code": "000049.SZ",
-     "name": "德赛电池",
-     "note": "top1评分0.83低于门槛1.00"
+     "code": "601908.SH",
+     "name": "京运通",
+     "note": "top1评分0.91低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260326",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3748,7 +3232,7 @@
   {
    "date": "20260327",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3761,20 +3245,20 @@
   {
    "date": "20260330",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "000020.SZ",
      "name": "深华发Ａ",
-     "note": "top1评分0.99低于门槛1.00"
+     "note": "top1评分0.77低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260331",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3787,7 +3271,7 @@
   {
    "date": "20260401",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3800,7 +3284,7 @@
   {
    "date": "20260402",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3813,7 +3297,7 @@
   {
    "date": "20260403",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3826,7 +3310,7 @@
   {
    "date": "20260407",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -3838,155 +3322,108 @@
   },
   {
    "date": "20260408",
-   "trade_ok": false,
-   "alloc": 0.0,
+   "trade_ok": true,
+   "alloc": null,
    "fills": [],
-   "skipped": [
-    {
-     "code": "600683.SH",
-     "name": "京投发展",
-     "note": "缺口1.2%未达承接线-2.5%"
-    }
-   ]
+   "skipped": []
   },
   {
    "date": "20260409",
    "trade_ok": false,
-   "alloc": 0.0,
-   "fills": [
-    {
-     "code": "603202.SH",
-     "name": "天有为",
-     "ret_pct": -0.36
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": [
     {
-     "code": "603387.SH",
-     "name": "基蛋生物",
-     "note": "top1评分0.51低于门槛1.00"
+     "code": "000078.SZ",
+     "name": "ST海王",
+     "note": "缺口-0.9%未达承接线-2.5%"
     }
    ]
   },
   {
    "date": "20260410",
-   "trade_ok": false,
-   "alloc": 0.0,
+   "trade_ok": true,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "603026.SH",
      "name": "石大胜华",
-     "note": "缺口0.9%未达承接线-2.5%"
+     "note": "top1评分0.90低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260413",
-   "trade_ok": false,
-   "alloc": 0.0,
+   "trade_ok": true,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "003010.SZ",
      "name": "若羽臣",
-     "note": "缺口-0.6%未达承接线-2.5%"
+     "note": "top1评分0.67低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260414",
-   "trade_ok": false,
-   "alloc": 0.0,
+   "trade_ok": true,
+   "alloc": null,
    "fills": [],
-   "skipped": [
-    {
-     "code": "601872.SH",
-     "name": "招商轮船",
-     "note": "缺口-0.1%未达承接线-2.5%"
-    }
-   ]
+   "skipped": []
   },
   {
    "date": "20260415",
-   "trade_ok": false,
-   "alloc": 0.0,
+   "trade_ok": true,
+   "alloc": 1.0,
    "fills": [
     {
      "code": "000876.SZ",
      "name": "新希望",
-     "ret_pct": 0.24
+     "ret_pct": -0.08
     }
    ],
    "skipped": [
     {
-     "code": "600186.SH",
-     "name": "莲花控股",
-     "note": "top1评分0.47低于门槛1.00"
+     "code": "002840.SZ",
+     "name": "华统股份",
+     "note": "top1评分0.97低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260416",
-   "trade_ok": false,
-   "alloc": 0.0,
+   "trade_ok": true,
+   "alloc": null,
    "fills": [],
-   "skipped": [
-    {
-     "code": "603727.SH",
-     "name": "博迈科",
-     "note": "缺口-0.3%未达承接线-2.5%"
-    }
-   ]
+   "skipped": []
   },
   {
    "date": "20260417",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600676.SH",
-     "name": "久事动娱",
-     "ret_pct": -1.42
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": [
     {
-     "code": "600108.SH",
-     "name": "亚盛集团",
-     "note": "top1评分0.78低于门槛1.00"
-    },
-    {
-     "code": "600815.SH",
-     "name": "厦工股份",
-     "note": "top1评分0.17低于门槛1.00"
+     "code": "603158.SH",
+     "name": "腾龙股份",
+     "note": "top1评分0.00低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260420",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "000720.SZ",
-     "name": "新能泰山",
-     "ret_pct": 1.97
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260421",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603937.SH",
-     "name": "丽岛新材",
-     "ret_pct": -4.63
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -3997,7 +3434,7 @@
     {
      "code": "002729.SZ",
      "name": "好利科技",
-     "ret_pct": -1.31
+     "ret_pct": -1.98
     }
    ],
    "skipped": []
@@ -4005,14 +3442,8 @@
   {
    "date": "20260423",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002788.SZ",
-     "name": "鹭燕医药",
-     "ret_pct": -2.65
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -4023,7 +3454,7 @@
     {
      "code": "002370.SZ",
      "name": "亚太药业",
-     "ret_pct": -0.53
+     "ret_pct": -1.18
     }
    ],
    "skipped": []
@@ -4031,27 +3462,15 @@
   {
    "date": "20260427",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002038.SZ",
-     "name": "双鹭药业",
-     "ret_pct": -1.2
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260428",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002051.SZ",
-     "name": "中工国际",
-     "ret_pct": -1.14
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -4062,7 +3481,7 @@
     {
      "code": "605162.SH",
      "name": "新中港",
-     "ret_pct": -1.0
+     "ret_pct": -1.71
     }
    ],
    "skipped": []
@@ -4070,25 +3489,25 @@
   {
    "date": "20260430",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "002940.SZ",
      "name": "昂利康",
-     "note": "top1评分0.55低于门槛1.00"
+     "note": "top1评分0.75低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260506",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": 0.3,
    "fills": [
     {
      "code": "600654.SH",
      "name": "中安科",
-     "ret_pct": 2.92
+     "ret_pct": 4.23
     }
    ],
    "skipped": []
@@ -4096,7 +3515,7 @@
   {
    "date": "20260507",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4109,14 +3528,8 @@
   {
    "date": "20260508",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600596.SH",
-     "name": "新安股份",
-     "ret_pct": 3.24
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -4127,7 +3540,7 @@
     {
      "code": "603659.SH",
      "name": "璞泰来",
-     "ret_pct": -0.79
+     "ret_pct": -1.4
     }
    ],
    "skipped": []
@@ -4135,14 +3548,8 @@
   {
    "date": "20260512",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603101.SH",
-     "name": "汇嘉时代",
-     "ret_pct": -5.04
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -4153,7 +3560,7 @@
     {
      "code": "002940.SZ",
      "name": "昂利康",
-     "ret_pct": 16.29
+     "ret_pct": 18.13
     }
    ],
    "skipped": []
@@ -4161,14 +3568,8 @@
   {
    "date": "20260514",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "001203.SZ",
-     "name": "大中矿业",
-     "ret_pct": -3.4
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -4179,54 +3580,54 @@
     {
      "code": "600510.SH",
      "name": "黑牡丹",
-     "ret_pct": 4.28
+     "ret_pct": 1.68
     }
    ],
    "skipped": []
   },
   {
    "date": "20260518",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "002201.SZ",
      "name": "九鼎新材",
-     "ret_pct": -3.18
+     "note": "缺口-0.7%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260519",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "601778.SH",
      "name": "晶科科技",
-     "ret_pct": -1.85
+     "note": "top1评分0.99低于门槛1.00"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260520",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "002176.SZ",
      "name": "江特电机",
-     "ret_pct": 1.84
+     "note": "缺口-1.5%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260521",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4239,7 +3640,7 @@
   {
    "date": "20260522",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4252,7 +3653,7 @@
   {
    "date": "20260525",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4265,7 +3666,7 @@
   {
    "date": "20260526",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4278,7 +3679,7 @@
   {
    "date": "20260527",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4291,7 +3692,7 @@
   {
    "date": "20260528",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4304,7 +3705,7 @@
   {
    "date": "20260529",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4317,7 +3718,7 @@
   {
    "date": "20260601",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4330,7 +3731,7 @@
   {
    "date": "20260602",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4343,7 +3744,7 @@
   {
    "date": "20260603",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4356,7 +3757,7 @@
   {
    "date": "20260604",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4369,25 +3770,25 @@
   {
    "date": "20260605",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
-     "code": "000026.SZ",
-     "name": "飞亚达",
-     "note": "缺口-0.9%未达承接线-2.5%"
+     "code": "600530.SH",
+     "name": "ST交昂",
+     "note": "缺口0.0%未达承接线-2.5%"
     }
    ]
   },
   {
    "date": "20260608",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": 0.4,
    "fills": [
     {
      "code": "002885.SZ",
      "name": "京泉华",
-     "ret_pct": 2.49
+     "ret_pct": 3.95
     }
    ],
    "skipped": []
@@ -4395,7 +3796,7 @@
   {
    "date": "20260609",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4408,7 +3809,7 @@
   {
    "date": "20260610",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4421,7 +3822,7 @@
   {
    "date": "20260611",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4434,7 +3835,7 @@
   {
    "date": "20260612",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4447,7 +3848,7 @@
   {
    "date": "20260615",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4460,7 +3861,7 @@
   {
    "date": "20260616",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4473,7 +3874,7 @@
   {
    "date": "20260617",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4486,7 +3887,7 @@
   {
    "date": "20260618",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4499,7 +3900,7 @@
   {
    "date": "20260622",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4512,7 +3913,7 @@
   {
    "date": "20260623",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4525,7 +3926,7 @@
   {
    "date": "20260624",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4538,7 +3939,7 @@
   {
    "date": "20260625",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4551,7 +3952,7 @@
   {
    "date": "20260626",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4564,7 +3965,7 @@
   {
    "date": "20260629",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4577,7 +3978,7 @@
   {
    "date": "20260630",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4590,7 +3991,7 @@
   {
    "date": "20260701",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4603,20 +4004,20 @@
   {
    "date": "20260702",
    "trade_ok": false,
-   "alloc": 0.0,
-   "fills": [],
-   "skipped": [
+   "alloc": 0.4,
+   "fills": [
     {
      "code": "002585.SZ",
      "name": "双星新材",
-     "note": "top1评分0.97低于门槛1.00"
+     "ret_pct": -5.11
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260703",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4629,7 +4030,7 @@
   {
    "date": "20260706",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4642,7 +4043,7 @@
   {
    "date": "20260707",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4655,7 +4056,7 @@
   {
    "date": "20260708",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4668,7 +4069,7 @@
   {
    "date": "20260709",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4681,7 +4082,7 @@
   {
    "date": "20260710",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4694,12 +4095,12 @@
   {
    "date": "20260713",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": 0.4,
    "fills": [
     {
      "code": "600961.SH",
      "name": "株冶集团",
-     "ret_pct": -0.49
+     "ret_pct": 0.28
     }
    ],
    "skipped": []
@@ -4707,7 +4108,7 @@
   {
    "date": "20260714",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4720,7 +4121,7 @@
   {
    "date": "20260715",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4733,7 +4134,7 @@
   {
    "date": "20260716",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4746,7 +4147,7 @@
   {
    "date": "20260717",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4759,7 +4160,7 @@
   {
    "date": "20260720",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4772,7 +4173,7 @@
   {
    "date": "20260721",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4785,7 +4186,7 @@
   {
    "date": "20260722",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4798,20 +4199,20 @@
   {
    "date": "20260723",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
-     "code": "000100.SZ",
-     "name": "TCL科技",
-     "note": "缺口0.0%未达承接线-2.5%"
+     "code": "002292.SZ",
+     "name": "奥飞娱乐",
+     "note": "缺口0.3%未达承接线-2.5%"
     }
    ]
   },
   {
    "date": "20260724",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4824,7 +4225,7 @@
   {
    "date": "20260727",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4837,7 +4238,7 @@
   {
    "date": "20260728",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4850,7 +4251,7 @@
   {
    "date": "20260729",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4863,7 +4264,7 @@
   {
    "date": "20260730",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4875,21 +4276,21 @@
   },
   {
    "date": "20260731",
-   "trade_ok": false,
-   "alloc": 0.0,
-   "fills": [],
-   "skipped": [
+   "trade_ok": true,
+   "alloc": 0.5,
+   "fills": [
     {
      "code": "002841.SZ",
      "name": "视源股份",
-     "note": "缺口3.7%未达承接线-2.5%"
+     "ret_pct": 3.98
     }
-   ]
+   ],
+   "skipped": []
   },
   {
    "date": "20260803",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4902,26 +4303,20 @@
   {
    "date": "20260804",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
-   "skipped": [
-    {
-     "code": "000807.SZ",
-     "name": "云铝股份",
-     "note": "top1评分0.74低于门槛1.00"
-    }
-   ]
+   "skipped": []
   },
   {
    "date": "20260805",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "002100.SZ",
      "name": "天康生物",
-     "note": "top1评分0.65低于门槛1.00"
+     "note": "top1评分0.79低于门槛1.00"
     }
    ]
   },
@@ -4931,9 +4326,9 @@
    "alloc": 1.0,
    "fills": [
     {
-     "code": "000060.SZ",
-     "name": "中金岭南",
-     "ret_pct": -0.77
+     "code": "600650.SH",
+     "name": "锦江在线",
+     "ret_pct": -0.02
     }
    ],
    "skipped": [
@@ -4947,33 +4342,33 @@
   {
    "date": "20260807",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "002546.SZ",
      "name": "新联电子",
-     "ret_pct": 0.66
+     "note": "top1评分0.87低于门槛1.00"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260810",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "689009.SH",
      "name": "九号公司",
-     "ret_pct": 13.08
+     "note": "top1评分0.98低于门槛1.00"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260811",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -4991,7 +4386,7 @@
     {
      "code": "600486.SH",
      "name": "扬农化工",
-     "ret_pct": -1.4
+     "ret_pct": -2.28
     }
    ],
    "skipped": []
@@ -4999,13 +4394,13 @@
   {
    "date": "20260813",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "001233.SZ",
      "name": "海安集团",
-     "note": "top1评分0.48低于门槛1.00"
+     "note": "top1评分0.58低于门槛1.00"
     }
    ]
   },
@@ -5017,7 +4412,7 @@
     {
      "code": "002545.SZ",
      "name": "东方铁塔",
-     "ret_pct": 1.41
+     "ret_pct": 2.97
     }
    ],
    "skipped": []
@@ -5025,27 +4420,15 @@
   {
    "date": "20260817",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "000526.SZ",
-     "name": "学大教育",
-     "ret_pct": 7.28
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260818",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600418.SH",
-     "name": "江淮汽车",
-     "ret_pct": -6.46
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -5056,7 +4439,7 @@
     {
      "code": "000820.SZ",
      "name": "神雾节能",
-     "ret_pct": 0.71
+     "ret_pct": 1.19
     }
    ],
    "skipped": []
@@ -5064,14 +4447,8 @@
   {
    "date": "20260820",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002498.SZ",
-     "name": "汉缆股份",
-     "ret_pct": -2.33
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -5082,7 +4459,7 @@
     {
      "code": "002703.SZ",
      "name": "浙江世宝",
-     "ret_pct": 9.85
+     "ret_pct": 8.17
     }
    ],
    "skipped": []
@@ -5090,14 +4467,8 @@
   {
    "date": "20260824",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002580.SZ",
-     "name": "圣阳股份",
-     "ret_pct": 11.27
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -5108,7 +4479,7 @@
     {
      "code": "002131.SZ",
      "name": "利欧股份",
-     "ret_pct": 2.76
+     "ret_pct": 2.67
     }
    ],
    "skipped": []
@@ -5116,40 +4487,28 @@
   {
    "date": "20260826",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603988.SH",
-     "name": "中电电机",
-     "ret_pct": 0.5
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260827",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "001229.SZ",
      "name": "魅视科技",
-     "ret_pct": -1.05
+     "note": "top1评分1.00低于门槛1.00"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260828",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603879.SH",
-     "name": "永悦科技",
-     "ret_pct": 2.2
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -5160,7 +4519,7 @@
     {
      "code": "002674.SZ",
      "name": "兴业科技",
-     "ret_pct": 3.58
+     "ret_pct": 3.14
     }
    ],
    "skipped": []
@@ -5168,14 +4527,8 @@
   {
    "date": "20260901",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "002589.SZ",
-     "name": "瑞康医药",
-     "ret_pct": 6.6
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -5186,7 +4539,7 @@
     {
      "code": "603124.SH",
      "name": "江南新材",
-     "ret_pct": 2.96
+     "ret_pct": 4.24
     }
    ],
    "skipped": []
@@ -5194,14 +4547,8 @@
   {
    "date": "20260903",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "600683.SH",
-     "name": "京投发展",
-     "ret_pct": -2.66
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
@@ -5212,7 +4559,7 @@
     {
      "code": "002589.SZ",
      "name": "瑞康医药",
-     "ret_pct": 1.07
+     "ret_pct": 1.57
     }
    ],
    "skipped": []
@@ -5220,51 +4567,39 @@
   {
    "date": "20260907",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "003023.SZ",
-     "name": "彩虹集团",
-     "ret_pct": 3.14
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260908",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603113.SH",
-     "name": "金能科技",
-     "ret_pct": 2.99
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260909",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
      "code": "600353.SH",
      "name": "旭光电子",
-     "note": "top1评分0.54低于门槛1.00"
+     "note": "top1评分0.57低于门槛1.00"
     }
    ]
   },
   {
    "date": "20260910",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": 0.5,
    "fills": [
     {
      "code": "002655.SZ",
      "name": "共达电声",
-     "ret_pct": -5.67
+     "ret_pct": -7.03
     }
    ],
    "skipped": []
@@ -5272,7 +4607,7 @@
   {
    "date": "20260911",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5285,7 +4620,7 @@
   {
    "date": "20260914",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5298,7 +4633,7 @@
   {
    "date": "20260915",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5311,7 +4646,7 @@
   {
    "date": "20260916",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5324,7 +4659,7 @@
   {
    "date": "20260917",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5336,21 +4671,21 @@
   },
   {
    "date": "20260918",
-   "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
+   "trade_ok": false,
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
      "code": "601212.SH",
      "name": "白银有色",
-     "ret_pct": -2.17
+     "note": "缺口4.0%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20260921",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5363,33 +4698,21 @@
   {
    "date": "20260922",
    "trade_ok": true,
-   "alloc": 1.0,
+   "alloc": null,
    "fills": [],
-   "skipped": [
-    {
-     "code": "002026.SZ",
-     "name": "山东威达",
-     "note": "top1评分0.99低于门槛1.00"
-    }
-   ]
+   "skipped": []
   },
   {
    "date": "20260923",
    "trade_ok": true,
-   "alloc": 1.0,
-   "fills": [
-    {
-     "code": "603139.SH",
-     "name": "康惠股份",
-     "ret_pct": -1.72
-    }
-   ],
+   "alloc": null,
+   "fills": [],
    "skipped": []
   },
   {
    "date": "20260924",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5402,7 +4725,7 @@
   {
    "date": "20260928",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5415,7 +4738,7 @@
   {
    "date": "20260929",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5428,7 +4751,7 @@
   {
    "date": "20260930",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5441,7 +4764,7 @@
   {
    "date": "20261008",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5454,7 +4777,7 @@
   {
    "date": "20261009",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5467,7 +4790,7 @@
   {
    "date": "20261012",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5480,12 +4803,12 @@
   {
    "date": "20261013",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": 0.4,
    "fills": [
     {
      "code": "603328.SH",
      "name": "依顿电子",
-     "ret_pct": 12.46
+     "ret_pct": 11.95
     }
    ],
    "skipped": []
@@ -5493,7 +4816,7 @@
   {
    "date": "20261014",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5506,12 +4829,12 @@
   {
    "date": "20261015",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": 0.4,
    "fills": [
     {
      "code": "003001.SZ",
      "name": "中岩大地",
-     "ret_pct": -1.76
+     "ret_pct": -2.78
     }
    ],
    "skipped": []
@@ -5519,7 +4842,7 @@
   {
    "date": "20261016",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5532,7 +4855,7 @@
   {
    "date": "20261019",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5545,7 +4868,7 @@
   {
    "date": "20261020",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5558,7 +4881,7 @@
   {
    "date": "20261021",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5571,7 +4894,7 @@
   {
    "date": "20261022",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5584,7 +4907,7 @@
   {
    "date": "20261023",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5597,20 +4920,20 @@
   {
    "date": "20261026",
    "trade_ok": false,
-   "alloc": 0.0,
-   "fills": [
+   "alloc": null,
+   "fills": [],
+   "skipped": [
     {
-     "code": "002576.SZ",
-     "name": "通达动力",
-     "ret_pct": 1.02
+     "code": "603755.SH",
+     "name": "日辰股份",
+     "note": "缺口-0.8%未达承接线-2.5%"
     }
-   ],
-   "skipped": []
+   ]
   },
   {
    "date": "20261027",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5623,7 +4946,7 @@
   {
    "date": "20261028",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5636,7 +4959,7 @@
   {
    "date": "20261029",
    "trade_ok": false,
-   "alloc": 0.0,
+   "alloc": null,
    "fills": [],
    "skipped": [
     {
@@ -5649,74 +4972,68 @@
   {
    "date": "20261030",
    "trade_ok": false,
-   "alloc": 0.0,
-   "fills": [],
+   "alloc": 0.4,
+   "fills": [
+    {
+     "code": "603200.SH",
+     "name": "上海洗霸",
+     "ret_pct": 13.6
+    }
+   ],
    "skipped": []
   }
  ],
  "monthly": [
   {
    "month": "202511",
-   "ret_pct": 3.21
+   "ret_pct": 13.3
   },
   {
    "month": "202512",
-   "ret_pct": -3.02
+   "ret_pct": -7.64
   },
   {
    "month": "202601",
-   "ret_pct": 2.21
+   "ret_pct": 2.62
   },
   {
    "month": "202602",
-   "ret_pct": 9.47
+   "ret_pct": 11.48
   },
   {
    "month": "202603",
-   "ret_pct": 1.78
+   "ret_pct": -0.93
   },
   {
    "month": "202604",
-   "ret_pct": -4.68
+   "ret_pct": -4.86
   },
   {
    "month": "202605",
-   "ret_pct": 19.47
+   "ret_pct": 19.94
   },
   {
    "month": "202606",
-   "ret_pct": 1.0
+   "ret_pct": 1.58
   },
   {
    "month": "202607",
-   "ret_pct": -0.2
+   "ret_pct": -0.44
   },
   {
    "month": "202608",
-   "ret_pct": 25.15
+   "ret_pct": 18.5
   },
   {
    "month": "202609",
-   "ret_pct": 0.17
+   "ret_pct": 0.99
   },
   {
    "month": "202610",
-   "ret_pct": 9.92
+   "ret_pct": 9.04
   }
  ],
  "perf": {
-  "总收益率%": 83.81,
-  "年化收益率%": 86.56,
-  "最大回撤%": -7.4,
-  "卡玛比率": 11.69,
-  "夏普比率": 2.48,
-  "交易次数": 110,
-  "胜率%": 54.55,
-  "平均单笔收益%": 0.722,
-  "盈亏比": 1.67,
-  "空仓天数": 0,
-  "跳过买入次数": 140,
-  "总费用(元)": 57834.0,
-  "同期市场等权基准%": -13.55
+  "同期市场等权基准%": -14.37
  }
 }
