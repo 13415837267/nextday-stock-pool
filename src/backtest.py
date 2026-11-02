@@ -819,13 +819,22 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 收益率分母只计"本次真正卖出的份额"(跨日分批时尾腿未卖, 不能算进本笔)
             denom = (h["units"] - _defer_units) * h["buy_eff"] * (1 + comm)
             r = proceeds / denom - 1 if denom and denom > 0 else 0.0
+            # 第一百二十三轮修正: sell_px 曾经是"开盘腿的价格"(sold_at_close 为假时取 row["open"]),
+            # 而 ret_pct 是"开盘腿+收盘腿"加权后的收益 —— 分批出场时两列不同源, 页面会出现
+            # "卖价低于买价却是正收益"(开盘腿亏、收盘腿赚)。这里改成**成交加权均价**,
+            # 并把两条腿的价格一并落盘, 让收益可由两列价格复现。
+            _px_o, _px_c = float(row["open"]), float(row["close"])
+            _u_tot = u_o + u_c
+            _px_avg = ((u_o * _px_o + u_c * _px_c) / _u_tot) if _u_tot > 0 else _px_c
             trades.append({
                 "signal_date": h["signal_date"], "code": h["code"], "name": h.get("name", ""),
                 "rank": h.get("_rank"), "pool": h.get("pool", "main"),
                 "strategy": h.get("strategy", "dip"),
                 "buy_date": h["buy_date"], "buy_px": h["buy_px_raw"],
                 "fill": h.get("fill", "open"),
-                "sell_date": sell_d, "sell_px": float(row["close" if sold_at_close else "open"]),
+                "sell_date": sell_d, "sell_px": round(_px_avg, 4),
+                "sell_px_open": _px_o, "sell_px_close": _px_c,
+                "sell_frac_open": (round(u_o / _u_tot, 4) if _u_tot > 0 else 0.0),
                 "ret_pct": round(r * 100, 2), "note": note,
                 # 第九十七轮: 成交明细记录"下注依据"(评分/竞价缺口/当日候选池深度),
                 # 便于事后审计"为什么这笔下多重" —— 此前 trades 只有结果没有依据。
