@@ -1,0 +1,73 @@
+# =====================================================================
+# 历史裁决回填 (history seed)
+#
+# 引擎第一次运行时用 `python tools/evolve.py seed` 把它们写进 ledger.jsonl。
+# 作用：让账本从第一天起就带着 121 轮的记忆，避免自进化循环去重跑
+# 早已被否掉的假设 —— 这是"多重比较"成本控制的另一半（另一半是 cooldown）。
+#
+# 只收录**结果有明确数字**的历史裁决，来源逐条标注；拿不准的不写，
+# 宁可让引擎重测一次，也不要在账本里留下编造的数字。
+# =====================================================================
+entries:
+  - id: r119_disp2
+    round: 119
+    kind: parameter
+    patch: {selection.exec_top_n: 2, execution.max_buy_per_day: 2, execution.alloc_frac_pct: 50.0}
+    decision: REJECT_PERF
+    reason: "分散 2 票各 50%：1500 日 +1213.60%（基线 8086.78%），回撤仅从 -18.59% 改善到 -16.91%。回撤来自市场系统性而非集中度，单吊是特性。"
+
+  - id: r119_turnover3
+    round: 119
+    kind: parameter
+    patch: {universe.turnover_min: 3.0}
+    decision: REJECT_RISK
+    reason: "1500 日 +10120%（+2772pp）但全史 +146793%、最大回撤 -49.54%、卡玛 1.46。换手曲线 1.2~5.0 是锯齿，3.0 是孤立尖峰。"
+
+  - id: r120_ma18
+    round: 120
+    kind: parameter
+    patch: {regime.market_ma: 18}
+    decision: REJECT_PERF
+    reason: "完整窗口 +4706.74% / -19.89%（基线 8478.08% / -17.61%）。Walk-Forward 有 3/5 折选它，但训练段最优不等于可用。"
+
+  - id: r118_minscore106
+    round: 118
+    kind: parameter
+    patch: {execution.min_top1_score: 1.06}
+    decision: REJECT_PERF
+    reason: "1500 日 +1454pp，但全史 -46513pp。典型的窗口内改善、窗口外崩塌。"
+
+  - id: r118_blocked050
+    round: 118
+    kind: parameter
+    patch: {execution.blocked_frac: 0.5}
+    decision: REJECT_RISK
+    reason: "最大回撤恶化到 -31.59%（基线 -28.85%）。"
+
+  - id: r118_volmax24
+    round: 118
+    kind: parameter
+    patch: {regime.vol_max: 2.4}
+    decision: REJECT_PERF
+    reason: "全史 -13926pp。"
+
+  - id: r119_wb065
+    round: 119
+    kind: parameter
+    patch: {selection.dip_weights.neg_bias20: 0.65}
+    decision: REJECT_PERF
+    reason: "1500 日卡玛 6.16 但全史 -90063pp。权重维度同属参数层，15 段分年排序不稳定。"
+
+  - id: r104_sfg5
+    round: 104
+    kind: parameter
+    patch: {execution.sell_full_if_open_gain: 5.0}
+    decision: REJECT_PERF
+    reason: "5% 档覆盖 8.5% 的交易，把大量右尾在开盘截断；第一百一十九轮 2%~6% 全档重测仍全部劣于基线（2505~6279）。"
+
+  - id: r121_bias115
+    round: 121
+    kind: parameter
+    patch: {selection.bias20_max: 11.5}
+    decision: REJECT_NOISE
+    reason: "1500 日 +128.13pp / +1.5%、卡玛 6.32→6.35、笔数不变，落在 ab_test 噪声带（±3%、±0.15）内。"
