@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run_time": "2026-11-02 23:34:19",
+  "run_time": "2026-11-02 23:38:02",
   "days": 1500,
   "years": 5.95,
   "start": "20200821",
@@ -16,7 +16,7 @@
   "max_p": 0.05,
   "max_p_note": "单笔最多成交当日成交额的 5%, 超出按部分成交(平方根模型在 p>10% 无实证支撑)",
   "open_share": 0.15,
-  "run_sec": 88.2
+  "run_sec": 90.2
  },
  "liquidity": {
   "n": 379,
@@ -27,7 +27,267 @@
   "amount_max_yi": 103.88,
   "miss": 0
  },
- "rows": [
+ "cap_line_yi": 0.125,
+ "cap_line_p10_yi": 0.045,
+ "flat_rows": [
+  {
+   "M": 1000000.0,
+   "M_wan": 100.0,
+   "k": 15.0,
+   "total_pct": 5116.7,
+   "cagr_pct": 94.32,
+   "total_pct_hardbuy": 5116.7,
+   "p_mean_pct": 0.3833,
+   "p_med_pct": 0.2761,
+   "p95_pct": 1.165,
+   "imp_mean_bp": 16.71,
+   "imp_max_bp": 42.7,
+   "eff_pos_pct": 76.8,
+   "capped_share_pct": 0.0,
+   "retention_pct": 58.7
+  },
+  {
+   "M": 1000000.0,
+   "M_wan": 100.0,
+   "k": 30.0,
+   "total_pct": 2982.5,
+   "cagr_pct": 77.88,
+   "total_pct_hardbuy": 2982.5,
+   "p_mean_pct": 0.3833,
+   "p_med_pct": 0.2761,
+   "p95_pct": 1.165,
+   "imp_mean_bp": 33.43,
+   "imp_max_bp": 85.5,
+   "eff_pos_pct": 76.8,
+   "capped_share_pct": 0.0,
+   "retention_pct": 34.2
+  },
+  {
+   "M": 3000000.0,
+   "M_wan": 300.0,
+   "k": 15.0,
+   "total_pct": 3401.6,
+   "cagr_pct": 81.73,
+   "total_pct_hardbuy": 3449.5,
+   "p_mean_pct": 1.1439,
+   "p_med_pct": 0.8282,
+   "p95_pct": 3.4949,
+   "imp_mean_bp": 28.91,
+   "imp_max_bp": 67.1,
+   "eff_pos_pct": 76.7,
+   "capped_share_pct": 1.1,
+   "retention_pct": 39.0
+  },
+  {
+   "M": 3000000.0,
+   "M_wan": 300.0,
+   "k": 30.0,
+   "total_pct": 1310.2,
+   "cagr_pct": 55.98,
+   "total_pct_hardbuy": 1324.0,
+   "p_mean_pct": 1.1439,
+   "p_med_pct": 0.8282,
+   "p95_pct": 3.4949,
+   "imp_mean_bp": 57.82,
+   "imp_max_bp": 134.2,
+   "eff_pos_pct": 76.7,
+   "capped_share_pct": 1.1,
+   "retention_pct": 15.0
+  },
+  {
+   "M": 5000000.0,
+   "M_wan": 500.0,
+   "k": 15.0,
+   "total_pct": 2517.2,
+   "cagr_pct": 73.06,
+   "total_pct_hardbuy": 2622.0,
+   "p_mean_pct": 1.7987,
+   "p_med_pct": 1.3804,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 36.66,
+   "imp_max_bp": 67.1,
+   "eff_pos_pct": 75.2,
+   "capped_share_pct": 7.7,
+   "retention_pct": 28.9
+  },
+  {
+   "M": 5000000.0,
+   "M_wan": 500.0,
+   "k": 30.0,
+   "total_pct": 758.6,
+   "cagr_pct": 43.51,
+   "total_pct_hardbuy": 735.6,
+   "p_mean_pct": 1.7987,
+   "p_med_pct": 1.3804,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 73.33,
+   "imp_max_bp": 134.2,
+   "eff_pos_pct": 75.2,
+   "capped_share_pct": 7.7,
+   "retention_pct": 8.7
+  },
+  {
+   "M": 10000000.0,
+   "M_wan": 1000.0,
+   "k": 15.0,
+   "total_pct": 1791.4,
+   "cagr_pct": 63.87,
+   "total_pct_hardbuy": 1570.1,
+   "p_mean_pct": 2.8466,
+   "p_med_pct": 2.7608,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 47.53,
+   "imp_max_bp": 67.1,
+   "eff_pos_pct": 67.7,
+   "capped_share_pct": 26.9,
+   "retention_pct": 20.5
+  },
+  {
+   "M": 10000000.0,
+   "M_wan": 1000.0,
+   "k": 30.0,
+   "total_pct": 445.3,
+   "cagr_pct": 32.97,
+   "total_pct_hardbuy": 212.8,
+   "p_mean_pct": 2.8466,
+   "p_med_pct": 2.7608,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 95.06,
+   "imp_max_bp": 134.2,
+   "eff_pos_pct": 67.7,
+   "capped_share_pct": 26.9,
+   "retention_pct": 5.1
+  },
+  {
+   "M": 20000000.0,
+   "M_wan": 2000.0,
+   "k": 15.0,
+   "total_pct": 1049.9,
+   "cagr_pct": 50.73,
+   "total_pct_hardbuy": 735.6,
+   "p_mean_pct": 3.7682,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 56.31,
+   "imp_max_bp": 67.1,
+   "eff_pos_pct": 53.3,
+   "capped_share_pct": 53.8,
+   "retention_pct": 12.0
+  },
+  {
+   "M": 20000000.0,
+   "M_wan": 2000.0,
+   "k": 30.0,
+   "total_pct": 278.4,
+   "cagr_pct": 25.05,
+   "total_pct_hardbuy": -22.6,
+   "p_mean_pct": 3.7682,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 112.61,
+   "imp_max_bp": 134.2,
+   "eff_pos_pct": 53.3,
+   "capped_share_pct": 53.8,
+   "retention_pct": 3.2
+  },
+  {
+   "M": 30000000.0,
+   "M_wan": 3000.0,
+   "k": 15.0,
+   "total_pct": 722.8,
+   "cagr_pct": 42.48,
+   "total_pct_hardbuy": 390.5,
+   "p_mean_pct": 4.1797,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 60.05,
+   "imp_max_bp": 67.1,
+   "eff_pos_pct": 43.8,
+   "capped_share_pct": 66.5,
+   "retention_pct": 8.3
+  },
+  {
+   "M": 30000000.0,
+   "M_wan": 3000.0,
+   "k": 30.0,
+   "total_pct": 213.7,
+   "cagr_pct": 21.18,
+   "total_pct_hardbuy": -73.6,
+   "p_mean_pct": 4.1797,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 120.1,
+   "imp_max_bp": 134.2,
+   "eff_pos_pct": 43.8,
+   "capped_share_pct": 66.5,
+   "retention_pct": 2.5
+  },
+  {
+   "M": 50000000.0,
+   "M_wan": 5000.0,
+   "k": 15.0,
+   "total_pct": 462.2,
+   "cagr_pct": 33.65,
+   "total_pct_hardbuy": 110.3,
+   "p_mean_pct": 4.5417,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 63.27,
+   "imp_max_bp": 67.1,
+   "eff_pos_pct": 32.2,
+   "capped_share_pct": 78.9,
+   "retention_pct": 5.3
+  },
+  {
+   "M": 50000000.0,
+   "M_wan": 5000.0,
+   "k": 30.0,
+   "total_pct": 168.1,
+   "cagr_pct": 18.02,
+   "total_pct_hardbuy": -95.3,
+   "p_mean_pct": 4.5417,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 126.53,
+   "imp_max_bp": 134.2,
+   "eff_pos_pct": 32.2,
+   "capped_share_pct": 78.9,
+   "retention_pct": 1.9
+  },
+  {
+   "M": 100000000.0,
+   "M_wan": 10000.0,
+   "k": 15.0,
+   "total_pct": 225.8,
+   "cagr_pct": 21.95,
+   "total_pct_hardbuy": -56.0,
+   "p_mean_pct": 4.8507,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 65.84,
+   "imp_max_bp": 67.1,
+   "eff_pos_pct": 19.6,
+   "capped_share_pct": 91.6,
+   "retention_pct": 2.6
+  },
+  {
+   "M": 100000000.0,
+   "M_wan": 10000.0,
+   "k": 30.0,
+   "total_pct": 102.7,
+   "cagr_pct": 12.6,
+   "total_pct_hardbuy": -99.8,
+   "p_mean_pct": 4.8507,
+   "p_med_pct": 5.0,
+   "p95_pct": 5.0,
+   "imp_mean_bp": 131.68,
+   "imp_max_bp": 134.2,
+   "eff_pos_pct": 19.6,
+   "capped_share_pct": 91.6,
+   "retention_pct": 1.2
+  }
+ ],
+ "rows_compound": [
   {
    "cap": 50000.0,
    "cap_wan": 5.0,
@@ -660,44 +920,45 @@
  "by_year_1e7": {
   "2020": {
    "n": 15,
-   "p_mean_pct": 2.737,
+   "p_mean_pct": 2.846,
    "p_max_pct": 5.0
   },
   "2021": {
    "n": 66,
-   "p_mean_pct": 3.53,
+   "p_mean_pct": 3.137,
    "p_max_pct": 5.0
   },
   "2022": {
    "n": 64,
-   "p_mean_pct": 4.492,
+   "p_mean_pct": 3.224,
    "p_max_pct": 5.0
   },
   "2023": {
    "n": 54,
-   "p_mean_pct": 4.045,
+   "p_mean_pct": 2.591,
    "p_max_pct": 5.0
   },
   "2024": {
    "n": 60,
-   "p_mean_pct": 4.575,
+   "p_mean_pct": 3.167,
    "p_max_pct": 5.0
   },
   "2025": {
    "n": 78,
-   "p_mean_pct": 4.617,
+   "p_mean_pct": 2.577,
    "p_max_pct": 5.0
   },
   "2026": {
    "n": 42,
-   "p_mean_pct": 4.518,
+   "p_mean_pct": 2.186,
    "p_max_pct": 5.0
   }
  },
  "notes": [
+  "flat_rows 是主表: 固定单笔金额(不复利), 直接读'规模 M 下的成本与留存'",
+  "rows_compound 是复利推演: 初始资金 6 年后变 85 倍, 撞的是同一堵墙, 用于看'自我毁灭'路径",
   "amount 为 T+1 全天成交额, 建仓仅占开盘数分钟 -> 本表为乐观上界, 真实容量约 1/5~1/10",
-  "k=0 行是重建校验: recon_total_pct 应等于 baseline_total_pct, 偏差来自逐笔串行复利对并行持仓的近似",
-  "capped_share_pct = 仓位被 5% 成交额上限压缩的笔数占比; eff_pos_pct = 平均实际仓位",
-  "zero_at 非空表示该规模下净值在某笔归零, 后续交易不再计入"
+  "recon 校验: 逐笔串行复利对'同日卖出旧仓+买入新仓'的并行持仓只是近似, 偏差约 2~3%",
+  "capped_share_pct = 仓位被 5% 成交额上限压缩的笔数占比; eff_pos_pct = 平均实际仓位"
  ]
 }
