@@ -4,3 +4,9 @@ data/cache/
 .venv/
 .ipynb_checkpoints/
 .DS_Store
+
+# 自进化: last_run 是"指针"（每次运行覆盖），历史在 evolution/reports/
+evolution/last_run.json
+evolution/last_run.md
+evolution/last_run.*.json
+evolution/last_run.*.md
