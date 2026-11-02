@@ -890,7 +890,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 注: 大盘风控触发仅限制次一交易日不买入; 持仓(含当日买入票)
             #     均按既定 T+2(或之后)开盘卖出, 遵守T+1制度, 无任何当日卖出。
         else:
-            picks, _sel_stats = select_stocks(d, by_date[d], cfg, names)
+            # 第一百一十七轮 PIT 修正: 回测不传"当前名称"。
+            # stock_names() 返回的是**今天**的名称, 用它过滤历史行等于提前知道"这票后来会被 ST/退市"
+            # (实测: 当前 198 只 ST 中平均 148 只在 1500 日窗口的历史某日还是非 ST, 约占当时全市场 3.3%)。
+            # 当日的 ST 状态由 is_st 字段给足(逐日快照真实值), 回测只用它; 实盘 daily_run 仍传 names,
+            # 因为实盘当天用当天名称不构成前视。
+            picks, _sel_stats = select_stocks(d, by_date[d], cfg, names, name_filter=False)
             # 第九十七轮: 当日候选池深度(通过 dip 筛选并完成评分的只数)随计划下发,
             # 用于诊断"机会丰度"; 纯观测字段, 不改变任何买入判定。
             _pn = int((_sel_stats or {}).get("scored") or 0)
