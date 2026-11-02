@@ -27,8 +27,6 @@ sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("BT_FULL_TRADES", "1")   # 需要 trades_all
 
-import pandas as pd
-
 from src.backtest import prepare_context, run_backtest
 from src.config import load_config
 from src.rule_text import rules_line, sell_rule_text
