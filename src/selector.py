@@ -86,20 +86,32 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     panel["above_ma20"] = panel["close_adj"] > panel["ma20"]
     # T日微观结构因子(均仅用截至T日数据):
     put("prev_close_adj", g["close_adj"].transform(lambda s: s.shift(1)))
-    panel["amp_pct"] = (panel["high"] - panel["low"]) / panel["prev_close_adj"] * 100   # 当日振幅%
+    # 第一百一十七轮修正: 分母由 prev_close_adj(复权) 改为 pre_close(未复权当日口径)。
+    # 原写法分子(high/low/open/close)是未复权、分母是相对 flast 的前复权价 —— 口径混用。
+    # prev_close_adj = close_adj.shift(1) 会被"未来除权"整体缩放, 导致同一历史日期在
+    # 不同复权基准下面板下算出不同的 amp_pct/low_tail(回测用窗口末日 factor, 实盘用当日 factor,
+    # 两边不等价)。pre_close 是交易所除权调整后的昨收, 除权日亦正确, 且与分子同口径 —— 免疫 flast。
+    _pc = panel["pre_close"].replace(0, np.nan)
+    panel["amp_pct"] = (panel["high"] - panel["low"]) / _pc * 100                        # 当日振幅%
     hl_rng = (panel["high"] - panel["low"]).replace(0, np.nan)
     panel["close_pos"] = ((panel["close"] - panel["low"]) / hl_rng).fillna(0.5)          # 收盘在当日区间位置(0=最低1=最高)
     del hl_rng
     body_low = panel[["open", "close"]].min(axis=1)
-    panel["low_tail"] = (body_low - panel["low"]) / panel["prev_close_adj"] * 100        # 下影线长度%
-    del body_low
+    panel["low_tail"] = (body_low - panel["low"]) / _pc * 100                            # 下影线长度%
+    del body_low, _pc
     # 扩展微观结构特征(均仅用截至T日数据, 供可选条件/因子使用):
     put("prev_pct", g["pct"].transform(lambda s: s.shift(1)))                             # T-1日涨幅%
     panel["down2"] = ((panel["pct"] < 0) & (panel["prev_pct"] < 0)).astype("int8")        # 连续两日阴线
     panel["dist_ma5"] = (panel["close_adj"] / panel["ma5"] - 1) * 100                     # 收盘相对5日线距离%
-    dl = g["low"].transform(lambda s: s.rolling(20).min())
-    panel["dist_low20"] = (panel["low"] / dl - 1) * 100   # 距20日最低%
-    del dl
+    # 第一百一十七轮修正: 距20日最低改用复权 low 计算。原写法用未复权 low 的20日滚动最低,
+    # 20日窗口内若发生除权, min 取到除权前的高价, 除权后的现价被算成"低于20日最低"(负值),
+    # 会被 dip_dist_low20_min=6.0 错误剔除。改后同票同 k 约掉, 对 flast 完全免疫。
+    _low_adj = panel["low"] * k
+    if f32:
+        _low_adj = _low_adj.astype("float32", copy=False)
+    dl = _low_adj.groupby(panel["ts_code"], sort=False).transform(lambda s: s.rolling(20).min())
+    panel["dist_low20"] = (_low_adj / dl - 1) * 100   # 距20日最低%
+    del dl, _low_adj
     put("prev_low", g["low"].transform(lambda s: s.shift(1)))                             # T-1日最低价
     panel["below_prev_low"] = (panel["low"] < panel["prev_low"]).astype("int8")           # T日盘中破前日低
     panel["hold_prev_low"] = (panel["close"] > panel["prev_low"]).astype("int8")          # T日收盘守住前日低
@@ -205,8 +217,13 @@ def _select_one(
     cfg: dict,
     names: dict[str, str] | None = None,
     top_n: int | None = None,
+    name_filter: bool = True,
 ) -> tuple[list[dict], dict]:
-    """单一信号模式的过滤+评分(多策略补位的原子实现)。"""
+    """单一信号模式的过滤+评分(多策略补位的原子实现)。
+
+    name_filter=False 时只把 names 当展示用名称, 不参与过滤 —— 回测专用:
+    stock_names() 是"今天"的名单, 用它过滤历史行等于提前知道谁会 ST/退市。
+    """
     uni_cfg, sel_cfg = cfg["universe"], cfg["selection"]
     top_n = top_n or sel_cfg["top_n"]
     mode = sel_cfg.get("mode", "momentum")
@@ -229,7 +246,7 @@ def _select_one(
     # 风险股名称双保险(2026-10-24): 名称含"ST"(涵盖*ST/S*ST)或含"退"(退市整理期标识)一律排除。
     # 实测20261023: is_st字段已覆盖全部198只ST与1只退市整理期票, 无漏网; 此兜底防数据源
     # is_st字段将来口径变化(如退市整理期摘牌ST标记)。字段过滤为主, 名称为兜底
-    if names:
+    if names and name_filter:
         _nm = df["ts_code"].map(lambda c: str(names.get(c, "")))
         df = df[~(_nm.str.contains("ST", case=False, na=False) | _nm.str.contains("退", na=False))]
 
@@ -570,6 +587,7 @@ def select_stocks(
     cfg: dict,
     names: dict[str, str] | None = None,
     top_n: int | None = None,
+    name_filter: bool = True,
 ) -> tuple[list[dict], dict]:
     """多策略出池: 主力池 + 依序排列的备用池(第七十八轮)。
 
@@ -577,7 +595,7 @@ def select_stocks(
     引擎按 pool 顺序顺延买入 —— 主力池当日全部缺达标票时, 自动落到备用池,
     实现"没有票就切换另一个策略"。备用池按 selection.fallbacks 配置, 缺省为空(单策略)。
     """
-    picks, stats = _select_one(date, day_df, cfg, names, top_n)
+    picks, stats = _select_one(date, day_df, cfg, names, top_n, name_filter)
     for p in picks:
         p["pool"] = "main"
     if stats.get("weekday_skip"):        # 非出池日: 备用池同样不出票
@@ -597,7 +615,8 @@ def select_stocks(
         if not fb.get("enabled", True) or not fb.get("mode"):
             continue
         sub = {**cfg, "selection": {**sel_cfg, "mode": fb["mode"], "fallbacks": []}}
-        fb_picks, _ = _select_one(date, day_df, sub, names, top_n=int(fb.get("top_n") or 0))
+        fb_picks, _ = _select_one(date, day_df, sub, names, top_n=int(fb.get("top_n") or 0),
+                                  name_filter=name_filter)
         for p in fb_picks:
             if p["code"] in have:          # 已在主力池/前序备用池中的票不重复计入
                 continue
