@@ -292,7 +292,8 @@ def main() -> None:
         rr = rr[(rr["gap_ok"]) & (rr["gate_ok"]) & (~rr["knife"])]
         for d_, row in rr.iterrows():
             cand.setdefault(d_, []).append((int(r), float(row["gap_pct"]),
-                                            float(row["ret_pct"]), float(row["score"])))
+                                            float(row["ret_pct"]), float(row["score"]),
+                                            int(row["pool_n"])))
     for d_ in cand:
         cand[d_].sort(key=lambda x: x[0])
     rules = {"base_rank1": lambda v: v[0],
@@ -374,6 +375,24 @@ def main() -> None:
         print(f"\n  严格隔天模拟(资金约束): n={len(sim)} (被资金挡掉 {len(base_days)-len(sim)} 天) "
               f"均值 {q5['alternate_sim']['avg']:+.3f}% 胜率 {q5['alternate_sim']['wr']:.1f}%")
         print("  ↑ 若此值显著高于全样本均值, 说明现行资金约束在无意中过滤掉了\"连跌第2天+\"的低质量信号")
+
+        # 池深分层: 排除"连续日 = 浅池日"的混淆(浅池只给 0.3 仓, 剩余现金才允许次日再买)
+        print("\n  池深分层(排除混淆):")
+        print(f"  {'池深档':10s} {'连续日 n':>8s} {'连续均值':>9s} {'间隔日 n':>8s} {'间隔均值':>9s} {'差(间-连)':>10s}")
+        strat = {}
+        for lo, hi, plab in [(0, 10, "pool<=10"), (11, 20, "pool11-20"), (21, 10 ** 9, "pool>=21")]:
+            va = [cand[d_][0][2] for d_, x in zip(base_days, flag)
+                  if x == 1 and lo <= cand[d_][0][4] <= hi]
+            vb = [cand[d_][0][2] for d_, x in zip(base_days, flag)
+                  if x == 0 and lo <= cand[d_][0][4] <= hi]
+            sa, sb = _stats(va), _stats(vb)
+            strat[plab] = {"cont": sa, "spaced": sb}
+            if sa["n"] and sb["n"]:
+                print(f"  {plab:10s} {sa['n']:>8d} {sa['avg']:>+9.3f} {sb['n']:>8d} "
+                      f"{sb['avg']:>+9.3f} {sb['avg']-sa['avg']:>+10.3f}")
+            else:
+                print(f"  {plab:10s} {sa.get('n',0):>8d} {'-':>9s} {sb.get('n',0):>8d} {'-':>9s} {'-':>10s}")
+        q5["by_pool_depth"] = strat
     out["q5_cash_filter"] = q5
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
