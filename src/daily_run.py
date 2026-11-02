@@ -23,6 +23,7 @@ import pandas as pd
 from .config import ROOT, load_config
 from .data_api import ZZClient
 from .monitor import compute_monitor
+from .rule_text import sell_rule_text
 from .selector import STRATEGY_CN, build_indicators, regime_series, select_stocks, split_by_date
 from .backtest import fetch_panel
 
@@ -247,29 +248,8 @@ def _position_note(ex: dict) -> str:
     if float(ex.get("blocked_frac", 0) or 0) > 0 and ex.get("block_gap_below"):
         pos += (f"; 风控日: 只在竞价缺口 ≤{float(ex['block_gap_below']):g}% 时按"
                 f"{float(ex['blocked_frac']):.0%}仓接恐慌深跌, 否则空仓")
-    pos += "; 出场: " + _sell_rule_text(ex) + "(遵守A股T+1制度, 无当日卖出)"
+    pos += "; 出场: " + sell_rule_text(ex) + "(遵守A股T+1制度, 无当日卖出)"
     return pos
-
-
-def _sell_rule_text(ex: dict) -> str:
-    """出场规则一句话(第九十八轮, 计划/决策卡/规则区共用同一口径):
-    T+2 开盘卖; 开盘相对买入价浮亏超阈值、或开盘跌停 -> 当日收盘卖。
-    """
-    f = min(1.0, max(0.0, float(ex.get("sell_open_frac", 1.0) or 0.0)))
-    spb = ex.get("sell_close_if_profit_below")
-    scd = float(ex.get("sell_close_if_open_drop") or 0)
-    if spb is not None:
-        tail = f"相对买入价浮亏超 {abs(float(spb)):g}%（或开盘跌停）"
-    elif scd > 0:
-        tail = f"开盘跌幅≥{scd:g}%（或跌停）"
-    else:
-        tail = "开盘跌停"
-    if 0 < f < 1:
-        return (f"T+2 开盘卖 {f:.0%}（9:25 集合竞价）、当日收盘卖 {1 - f:.0%}（14:55）；"
-                f"若{tail}，剩余部分也留到收盘")
-    if f <= 0:
-        return "T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）"
-    return f"T+2 开盘集合竞价卖出；若{tail}，改为当日收盘卖出"
 
 
 def _month_gain_state(led_exec: list, history: list, ym: str, close_of: dict | None,
@@ -360,38 +340,6 @@ def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict, buy_adj: float
         sold_close = True
         note = (note + " 开盘浮亏按收盘").strip()
     return row, dd, sold_close, note, (0.0 if sold_close else frac_open)
-
-
-def _refresh_auction_positions(out_dir: Path, day_df: pd.DataFrame, now_str: str) -> None:
-    """盘后将 auction.json 的持仓浮盈刷新为收盘价口径。
-
-    9:26竞价确认写入的positions为实时现价(9:26时=开盘价, 即买入价, 浮盈恒0);
-    收盘后应以T日收盘价刷新, 避免网页盘后一直显示买入开盘价。
-    auction.json 不存在时跳过(不伪造竞价确认数据)。
-    """
-    ap = out_dir / "auction.json"
-    if not ap.exists():
-        return
-    try:
-        a = json.loads(ap.read_text(encoding="utf-8"))
-        hist = json.loads((out_dir / "history.json").read_text(encoding="utf-8"))
-        holds = [(r.get("executed") or {}) for r in hist.get("records", [])
-                 if (r.get("executed") or {}).get("holding") and (r.get("executed") or {}).get("code")]
-        close_of = day_df.set_index("ts_code")["close"].to_dict() if day_df is not None and len(day_df) else {}
-        positions = []
-        for e in holds:
-            close = close_of.get(e["code"])
-            ok = close is not None and pd.notna(close) and close > 0 and e.get("buy_px")
-            positions.append({"code": e["code"], "name": e.get("name", ""),
-                              "buy_px": e.get("buy_px"), "buy_date": e.get("buy_date"),
-                              "cur_px": round(float(close), 2) if ok else None,
-                              "float_pct": round((close / e["buy_px"] - 1) * 100, 2) if ok else None})
-        a["positions"] = positions
-        a["positions_time"] = now_str
-        ap.write_text(json.dumps(a, ensure_ascii=False, indent=1), encoding="utf-8")
-        print(f"持仓浮盈已刷新为收盘价口径({len(positions)}只, 截至 {now_str})")
-    except Exception as e:  # noqa: BLE001 刷新失败不影响主流程
-        print(f"auction.json持仓浮盈刷新失败(不影响主流程): {e}")
 
 
 def main():
@@ -1178,49 +1126,11 @@ def main():
         "mkt_floor_note": (_mkt_floor_txt or None),
         "gap_tier_note": (_gat_txt or None),
         "steps": steps,
-        "sell_plan": _sell_rule_text(ex),
+        "sell_plan": sell_rule_text(ex),
         "empty_funnel": ({"全市场": stats.get("universe"), "流动性/次新": stats.get("liquidity"),
                           "回调形态": stats.get("price_action"), "趋势条件": stats.get("trend_ok"),
                           "评分入池": stats.get("scored")} if not verified else None),
     }
-
-    def _audit_vs_auction(out_dir, today_fmt, history):
-        """两道判定一致性对账: 9:26竞价确认(auction.json, 腾讯实时) vs 晚间panel结算(权威)。
-        两道判定应一致; 不一致说明数据源异常, 返回match=False供告警。"""
-        ap = out_dir / "auction.json"
-        if not ap.exists():
-            return {"checked": False, "note": "无竞价确认记录"}
-        try:
-            a = json.loads(ap.read_text(encoding="utf-8"))
-        except Exception:
-            return {"checked": False, "note": "auction.json 解析失败"}
-        if a.get("buy_date", "").replace("-", "") != today_fmt.replace("-", ""):
-            return {"checked": False, "note": f"auction非今日数据({a.get('buy_date')})"}
-        # 今日实际结算结果(executed: 已结算或持仓中)
-        actual = None
-        for rec in history:
-            e = rec.get("executed") or {}
-            if str(e.get("buy_date", "")).replace("-", "") == today_fmt.replace("-", "") and not e.get("holding"):
-                actual = e  # 已结算(卖出也完成了)
-                break
-            if str(e.get("buy_date", "")).replace("-", "") == today_fmt.replace("-", ""):
-                actual = e
-                break
-        a_rank, a_code = a.get("rank"), a.get("code")
-        if a.get("action") == "buy":
-            if actual and str(actual.get("code")) == str(a_code):
-                return {"checked": True, "match": True,
-                        "note": f"两道判定一致: 买入{a.get('name')} 第{a_rank}名 (竞价缺口{a.get('gap_pct')}%)"}
-            if actual:
-                return {"checked": True, "match": False,
-                        "note": f"不一致! 竞价确认买{a.get('name')}, panel结算为{actual.get('name')} —— 请检查数据源"}
-            return {"checked": True, "match": False,
-                    "note": "不一致! 竞价确认有买入但panel未结算到成交 —— 请检查数据源"}
-        # auction 认为空仓
-        if actual:
-            return {"checked": True, "match": False,
-                    "note": f"不一致! 竞价确认空仓但panel结算有成交({actual.get('name')}) —— 请检查数据源"}
-        return {"checked": True, "match": True, "note": "两道判定一致: 今日空仓"}
 
     latest = {
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1230,10 +1140,14 @@ def main():
             "buy_date": _fmt(buy_d) if buy_d else "",
             "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
             "sell_date": _fmt(sell_d) if sell_d else "",
-            "sell_point": _sell_rule_text(ex),
+            "sell_point": sell_rule_text(ex),
             "position": _position_note(ex),
         },
-        "strategy": "次日开盘买入-再次日开盘卖出({}{})".format(
+        # 第一百二十五轮: 出场口径禁止硬编码。原文"再次日开盘卖出"写死于第一百一十五轮
+        # 之前的开盘腿, 而现行 config 为 sell_open_frac=0(全额 T+2 收盘卖), 与同一屏的
+        # plan.sell_point / position 直接矛盾。改为与回测/回放共用 rule_text 的短文案。
+        "strategy": "次日开盘买入 · {}（{}{}）".format(
+            sell_rule_text(ex, short=True),
             "趋势内缩量回调+次日开盘价成交" if cfg["selection"].get("mode", "momentum") == "dip" else "隔夜动量(备用)",
             ("＋备选补位:" + "/".join(STRATEGY_CN.get(fb.get("mode"), str(fb.get("mode")))
                                    for fb in (cfg["selection"].get("fallbacks") or [])))
@@ -1245,7 +1159,10 @@ def main():
         "t1_decision": t1_decision,
         "monitor": monitor_info,
         "observe": observe_info,
-        "audit": _audit_vs_auction(out_dir, _fmt(signal_date), history),
+        # 第一百二十五轮: 移除 "audit"(9:26 竞价确认 vs 晚间 panel 对账)。
+        # auction.json 自 2026-11-01 起已停止更新(生成器不在仓库内), 该对账永远返回
+        # checked=False, 属"永不执行却天天写一条 note"的僵尸路径; 前端 au.checked
+        # 判空后不渲染, 删除字段对页面无影响。
         "data_quality": {"anomalies": anomalies, "rows": int(len(day_df))},
         "disclaimer": DISCLAIMER,
     }
@@ -1278,9 +1195,6 @@ def main():
     }
     hist_path.write_text(json.dumps({"summary": summary, "records": history[:keep]},
                                     ensure_ascii=False, indent=1), encoding="utf-8")
-
-    # ---- 6.5 盘后刷新 auction.json 持仓浮盈为收盘价口径 ----
-    _refresh_auction_positions(out_dir, day_df, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     # ---- 7. CHANGELOG 追加运行记录 ----
     cl = ROOT / "CHANGELOG.md"
