@@ -777,7 +777,9 @@ python -m src.backtest --days 250 # 自定义窗口
   任一槽跑成即生效；即使跨日，次日 06:00 补漏槽也会把前一交易日补回来；
 - 竞价确认任务已于 2026-10-31 停用：独立 workflow 删除，买入判定统一由前一交易日收盘后的
   `T+1 执行判定卡`（`output/latest.json` 的 `t1_decision`）承担，`tools/auction_confirm.py`
-  仅保留作手工排查用，不再定时运行；
+  仅保留作手工排查用，不再定时运行；第一百二十五轮起，`daily_run` 侧的「竞价确认 vs panel
+  结算」对账与 `auction.json` 收盘刷新也一并移除（停更后该对账永远返回"非今日数据"，
+  属每日执行却永不生效的僵尸路径），`output/auction.json` 已从仓库删除；
 - 流程：增量更新行情数据 → 选股 → 结算 T-2 发布池实盘战绩 → 写入 `output/` → 数据与运行记录中文提交留痕 → 部署 Pages；
 - 所有数据与运行记录均以中文提交信息保存在本仓库，修改全程可追溯（另见 [CHANGELOG.md](CHANGELOG.md)）。
 
