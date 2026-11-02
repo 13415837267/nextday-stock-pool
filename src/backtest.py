@@ -42,7 +42,7 @@ import pandas as pd
 from .config import ROOT, load_config
 from .data_api import ZZClient
 from .rule_text import rules_line
-from .selector import apply_regime, build_indicators, regime_base, regime_series, select_stocks, split_by_date
+from .selector import apply_regime, build_indicators, regime_base, select_stocks, split_by_date
 
 
 # ----------------------------------------------------------------------
