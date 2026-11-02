@@ -54,6 +54,7 @@ from src.config import load_config            # noqa: E402
 from src.backtest import prepare_context, run_backtest   # noqa: E402
 
 CAPS = [5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6, 1e7, 2e7, 5e7, 1e8, 2e8, 5e8, 1e9]
+FLAT = [1e6, 3e6, 5e6, 1e7, 2e7, 3e7, 5e7, 1e8]      # 固定单笔金额(不复利)扫描档
 KS = [15.0, 30.0]
 OPEN_SHARE = 0.15          # 开盘集合竞价段成交额占比(经验值, 用于折算真实容量)
 TRADING_DAYS = 252.0
@@ -125,6 +126,44 @@ def _walk(trades: list[dict], amounts: np.ndarray, cap: float, k: float,
         "effs": np.asarray(effs, dtype=float),
         "navs": np.asarray(navs, dtype=float),
         "zero_at": zero_at,
+        "capped": capped,
+        "n": len(parts),
+    }
+
+
+def _walk_flat(trades: list[dict], amounts: np.ndarray, M: float, k: float,
+               max_p: float = 0.05) -> dict:
+    """**固定单笔金额、不复利**的容量口径: 每笔按仓位比例投入 M 元。
+
+    M 视为"满仓时的组合规模"(单吊即总资产)。这是容量的标准表达 ——
+    复利口径里 5 万起步 6 年后也会变成 400 万, 撞的是同一堵墙, 反而看不清墙在哪。
+    """
+    s = 0.0
+    parts, imps, effs = [], [], []
+    capped = 0
+    for t, amt in zip(trades, amounts):
+        pos = float(t.get("pos_frac") or 0.0)
+        r = float(t["ret_pct"]) / 100.0
+        if pos <= 0:
+            continue
+        want = M * pos
+        amt_ok = bool(amt and math.isfinite(amt) and amt > 0)
+        limit = max_p * amt if amt_ok else want
+        invested = min(want, limit)
+        if invested < want - 1e-6:
+            capped += 1
+        p = (invested / amt) if amt_ok else 0.0
+        eff = (invested / M) if M > 0 else 0.0
+        imp_bp = 2.0 * k * math.sqrt(max(p, 0.0) * 100.0) if k else 0.0
+        parts.append(p * 100.0)
+        imps.append(imp_bp)
+        effs.append(eff)
+        s += math.log1p(eff * (r - imp_bp / 10000.0))
+    return {
+        "total": (math.exp(s) - 1.0) * 100.0,
+        "parts": np.asarray(parts, dtype=float),
+        "imps": np.asarray(imps, dtype=float),
+        "effs": np.asarray(effs, dtype=float),
         "capped": capped,
         "n": len(parts),
     }
@@ -228,27 +267,44 @@ def main() -> None:
         gone = next((c for c, v in ser if v <= 0), None)
         tipping[f"k{k:g}"] = {"half": half, "tenth": tenth, "zero": gone}
 
-    # ---- 参与率随年份演化(1000 万档, 温和冲击, 同主口径) ----
+    # ---- 主表: 固定单笔金额(不复利) —— 容量曲线的标准表达 ----
+    flat_rows = []
+    for M in FLAT:
+        for k in KS:
+            f = _walk_flat(trades, amounts, M, k)
+            total = f["total"]
+            fh = _walk_flat(trades, amounts, M, k, max_p=1e9)
+            cagr = ((1.0 + total / 100.0) ** (1.0 / years) - 1.0) * 100.0 if total > -100 else -100.0
+            flat_rows.append({
+                "M": M, "M_wan": round(M / 1e4, 1), "k": k,
+                "total_pct": round(total, 1),
+                "cagr_pct": round(cagr, 2),
+                "total_pct_hardbuy": round(fh["total"], 1),
+                "p_mean_pct": round(float(f["parts"].mean()), 4) if len(f["parts"]) else 0.0,
+                "p_med_pct": round(float(np.median(f["parts"])), 4) if len(f["parts"]) else 0.0,
+                "p95_pct": round(float(np.percentile(f["parts"], 95)), 4) if len(f["parts"]) else 0.0,
+                "imp_mean_bp": round(float(f["imps"].mean()), 2) if len(f["imps"]) else 0.0,
+                "imp_max_bp": round(float(f["imps"].max()), 1) if len(f["imps"]) else 0.0,
+                "eff_pos_pct": round(float(f["effs"].mean() * 100.0), 1) if len(f["effs"]) else 0.0,
+                "capped_share_pct": round(f["capped"] / max(len(f["parts"]), 1) * 100.0, 1),
+                "retention_pct": round(total / recon_total * 100.0, 1) if recon_total else 0.0,
+            })
+
+    # 容量线: 单笔 = max_p × 中位成交额 (满仓能吃下的最大规模, 乐观口径)
+    cap_line_yi = 0.05 * lig["amount_median_yi"]
+    cap_line_p10_yi = 0.05 * lig["amount_p10_yi"]
+
+    # ---- 参与率随年份演化(固定 1000 万单笔, 温和冲击) ----
     by_year = {}
-    sel = [t for t in trades]
-    nav = 1.0
     per_year: dict[str, list[float]] = {}
-    cap_ref, k_ref, max_p_ref = 1e7, 15.0, 0.05
-    for t, amt in zip(sel, amounts):
+    for t, amt in zip(trades, amounts):
         pos = float(t.get("pos_frac") or 0.0)
-        r = float(t["ret_pct"]) / 100.0
-        if pos <= 0 or nav <= 0:
+        if pos <= 0 or amt <= 0:
             continue
-        wealth = nav * cap_ref
-        want = wealth * pos
-        limit = max_p_ref * amt if amt > 0 else want
-        invested = min(want, limit)
-        p = (invested / amt * 100.0) if amt > 0 else 0.0
-        eff = (invested / wealth) if wealth > 0 else 0.0
+        want = 1e7 * pos
+        invested = min(want, 0.05 * amt)
         y = str(t.get("signal_date") or "")[:4]
-        per_year.setdefault(y, []).append(p)
-        imp = 2.0 * k_ref * math.sqrt(max(p, 0.0))
-        nav *= (1.0 + eff * (r - imp / 10000.0))
+        per_year.setdefault(y, []).append(invested / amt * 100.0)
     for y, v in sorted(per_year.items()):
         by_year[y] = {"n": len(v), "p_mean_pct": round(float(np.mean(v)), 3),
                       "p_max_pct": round(float(np.max(v)), 2)}
@@ -272,14 +328,18 @@ def main() -> None:
             "run_sec": round(time.time() - t0, 1),
         },
         "liquidity": lig,
-        "rows": rows,
+        "cap_line_yi": round(cap_line_yi, 3),
+        "cap_line_p10_yi": round(cap_line_p10_yi, 3),
+        "flat_rows": flat_rows,
+        "rows_compound": rows,
         "tipping": tipping,
         "by_year_1e7": by_year,
         "notes": [
+            "flat_rows 是主表: 固定单笔金额(不复利), 直接读'规模 M 下的成本与留存'",
+            "rows_compound 是复利推演: 初始资金 6 年后变 85 倍, 撞的是同一堵墙, 用于看'自我毁灭'路径",
             "amount 为 T+1 全天成交额, 建仓仅占开盘数分钟 -> 本表为乐观上界, 真实容量约 1/5~1/10",
-            "k=0 行是重建校验: recon_total_pct 应等于 baseline_total_pct, 偏差来自逐笔串行复利对并行持仓的近似",
+            "recon 校验: 逐笔串行复利对'同日卖出旧仓+买入新仓'的并行持仓只是近似, 偏差约 2~3%",
             "capped_share_pct = 仓位被 5% 成交额上限压缩的笔数占比; eff_pos_pct = 平均实际仓位",
-            "zero_at 非空表示该规模下净值在某笔归零, 后续交易不再计入",
         ],
     }
 
@@ -288,14 +348,22 @@ def main() -> None:
     dst.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"\n→ {dst}")
     print(f"流动性: 中位成交额 {lig['amount_median_yi']} 亿 / P10 {lig['amount_p10_yi']} 亿")
+    print(f"容量线(5%×中位成交额): 满仓 {cap_line_yi:.2f} 亿 / 差票(P10) {cap_line_p10_yi:.2f} 亿")
     print(f"重建校验: {recon_total:.1f}% vs 基线 {base_total:.1f}% (偏差 {recon_err:+.1f}pp)")
-    print(f"{'资金':>10} {'k':>3} {'净值x':>9} {'总收益%':>11} {'硬买%':>11} {'年化%':>7} {'回撤%':>7} "
-          f"{'均参与%':>8} {'P95%':>7} {'冲击bp':>7} {'实仓%':>6} {'压缩%':>6}")
+    print("\n[主表] 固定单笔金额(不复利):")
+    print(f"{'单笔':>9} {'k':>3} {'总收益%':>11} {'年化%':>8} {'留存%':>7} {'均参与%':>8} "
+          f"{'P95%':>7} {'冲击bp':>7} {'实仓%':>6} {'压缩%':>6} {'硬买%':>10}")
+    for r in flat_rows:
+        print(f"{r['M_wan']:>8.0f}万 {r['k']:>3.0f} {r['total_pct']:>11.1f} {r['cagr_pct']:>8.1f} "
+              f"{r['retention_pct']:>7.1f} {r['p_mean_pct']:>8.4f} {r['p95_pct']:>7.3f} "
+              f"{r['imp_mean_bp']:>7.1f} {r['eff_pos_pct']:>6.1f} {r['capped_share_pct']:>6.1f} "
+              f"{r['total_pct_hardbuy']:>10.1f}")
+    print("\n[副表] 复利推演(初始资金 -> 6 年后):")
+    print(f"{'资金':>9} {'k':>3} {'净值x':>9} {'总收益%':>11} {'年化%':>8} {'回撤%':>8} {'实仓%':>6} {'压缩%':>6}")
     for r in rows:
-        print(f"{r['cap_wan']:>9.0f}万 {r['k']:>3.0f} {r['nav_x']:>9.3f} {r['total_pct']:>11.1f} "
-              f"{r['total_pct_hardbuy']:>11.1f} {r['cagr_pct']:>7.2f} {r['mdd_pct']:>7.2f} "
-              f"{r['p_mean_pct']:>8.4f} {r['p95_pct']:>7.3f} {r['imp_mean_bp']:>7.1f} "
-              f"{r['eff_pos_pct']:>6.1f} {r['capped_share_pct']:>6.1f}")
+        print(f"{r['cap_wan']:>8.0f}万 {r['k']:>3.0f} {r['nav_x']:>9.2f} {r['total_pct']:>11.1f} "
+              f"{r['cagr_pct']:>8.2f} {r['mdd_pct']:>8.2f} {r['eff_pos_pct']:>6.1f} "
+              f"{r['capped_share_pct']:>6.1f}")
     print("拐点:", tipping)
 
 
