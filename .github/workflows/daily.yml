@@ -18,6 +18,15 @@ on:
     branches: [main]          # main 一有更新(策略优化/数据提交)即重新部署网页, 保证站点与 main 始终一致
     paths-ignore:             # auction.json 已停更(竞价确认 workflow 已删除), 保留忽略以防历史文件变动触发全量
       - "output/auction.json"
+      # 第一百三十一轮: 研究类变更不该触发全量回测。
+      # 起因: research.yml 的产物提交带 [skip ci] 无碍, 但**人工上传**文档/脚本的 commit 会触发一次
+      # 完整 daily(回测 3~5 分钟 + Pages 部署), 数次连传就叠出多条并发, 互相取消或撞 git push,
+      # 进而用"每日更新失败"污染告警通道(实测 2026-11-03 一次连传就产生 2 条假告警)。
+      # 以下路径只影响研究/文档, 不影响策略数值与页面数据:
+      - "output/exp_*.json"    # 只读诊断产物(exp_dow/exp_cost/exp_capacity/exp_rerank...)
+      - "tools/**"             # 诊断脚本, 仅 research 通道调用
+      - "evolution/**"         # 候选池与自进化策略, 不参与回测数值
+      - "**/*.md"              # CHANGELOG/README 等文档
   workflow_dispatch: {}      # 支持手动触发
 
 permissions:
