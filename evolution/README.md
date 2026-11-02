@@ -79,7 +79,9 @@ G2′ 的存在理由：一个"不起作用"的开关和一个"起作用但更�
 
 - 同一 `patch` 的指纹（规范化 JSON 的 SHA1 前 12 位）在 `cooldown_days=365` 内被拒过 → 直接 `SKIP_KNOWN`，不重复跑。
 - `history_seed.yaml` 把 121 轮里**结果有明确数字**的历史裁决回填进账本（9 条），引擎从第一天起就带着记忆。
-- `reports/` 是不可变归档：每次真实运行一份 `<run_id>.md`。`last_run.md/json` 只是指针，已被 gitignore。
+- `reports/` 是不可变归档：**每次真实运行一份 `<run_id>.md`**，`last_run.md/json` 只是指针（已 gitignore）。
+  全部命中去重的"空跑"也会留一份 —— 它不是废话，是运行心跳：证明这一周的 cron 真的跑了、
+  且三个候选都在冷却期内。一周一个 ~1KB 的小文件，比"猜它有没有在跑"便宜。
 
 这条设计针对的是多重比较：**登记 → 试验 → 记账**，一步都不能省。没有登记就没有试验，没有试验就没有 p-hacking。
 
@@ -127,6 +129,16 @@ G2′ 的存在理由：一个"不起作用"的开关和一个"起作用但更�
 这正是 G1 存在的意义：把 3053 日的昂贵回测留给有可能通过的假设。
 
 完整报告见 `evolution/reports/20261102T164334.md`。
+
+### 7.1 GitHub Actions 实跑（同日 17:17）
+
+代码上线后手动 `workflow_dispatch` 触发了一次真实运行（run `41419353282`，1 分钟，全绿）：
+三个候选全部 `SKIP_KNOWN`（账本里都有裁决），`本次无 PASS 候选, 不需要改动 config`，
+账本与 `config.yaml` 均未改动，只按规矩留了一份报告 `reports/20261102T171736.md`。
+
+这一步验证的是**管道而不是策略**：依赖安装（`requirements.txt` 含 `git+https://.../zzshare`）、
+Python 3.12、`TZ=Asia/Shanghai`、账本读取、报告落盘、`git add evolution` 的忽略规则、
+以及"没有 PASS 就不碰 config"的短路，全部按预期工作。
 
 ## 8. 它能做什么、不能做什么
 
