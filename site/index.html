@@ -543,46 +543,89 @@ async function loadReplay() {
     rpCard("胜率", `${s.win_rate ?? "-"}%`),
     rpCard("平均单笔", pctStr(s.avg_ret_pct), pctCls(s.avg_ret_pct)),
     rpCard("区间收益", pctStr(s.range_ret_pct), pctCls(s.range_ret_pct),
-      `${(base / 1e4).toFixed(1)}万 → ${((s.end_nav || 0) / 1e4).toFixed(1)}万`),
+      `自 ${rpDate(s.base_date)}：${(base / 1e4).toFixed(1)}万 → ${((s.end_nav || 0) / 1e4).toFixed(1)}万`),
     rpCard("区间最大回撤", `${Number(s.range_mdd_pct ?? 0).toFixed(2)}%`, "down"),
     rpCard("最好一笔", pctStr(s.best), "up"),
     rpCard("最差一笔", pctStr(s.worst), "down"),
   ].join("");
 
-  moEl.innerHTML = (d.monthly || []).map(x =>
-    `<div class="card"><div class="k">${x.month.slice(0, 4)}年${Number(x.month.slice(4))}月</div>
-     <div class="v ${pctCls(x.ret_pct)}">${pctStr(x.ret_pct)}</div></div>`).join("");
+  // 月度卡片: 一律写成 YYYY-MM。原先写"2025年11月", 在"最近12个月"的语境里
+  // 极易被读成"本月"(尤其当浏览当天也是 11 月), 误以为当月已经产生整月收益。
+  const mo = d.monthly || [];
+  moEl.innerHTML = mo.map(x =>
+    `<div class="card"><div class="k" style="font-variant-numeric:tabular-nums">${x.month.slice(0, 4)}-${x.month.slice(4)}</div>
+     <div class="v ${pctCls(x.ret_pct)}">${pctStr(x.ret_pct)}</div></div>`).join("") +
+    (mo.length ? `<div class="legend" style="grid-column:1/-1;margin-top:2px">
+      ${mo[0].month.slice(0,4)}-${mo[0].month.slice(4)} ~ ${mo[mo.length-1].month.slice(0,4)}-${mo[mo.length-1].month.slice(4)}，
+      共 ${mo.length} 个月；每月收益 = 当月最后交易日净值 / 上月末净值 − 1。
+      <b>首张是回放区间的起点月，不是本月。</b></div>` : "");
 
   drawReplayChart(d.curve || [], base, s.base_date);
 
-  // 成交明细: T日信号 -> T+1开盘买入 -> T+2开盘卖出
+  // 成交明细: T日信号 -> T+1开盘买入 -> T+2(分批)卖出
+  // 排序: 最新在上(用户视角"先看最近做了什么"), 序号用 trades.length - i 保持与原始升序一致
   let th = `<div class="tscroll"><table class="rtable"><tr class="h"><th>信号日</th><th>买入日</th><th>卖出日</th>
     <th>代码</th><th>名称</th><th>买入价</th><th>卖出价</th><th>收益</th><th>名次</th><th>备注</th></tr>`;
-  trades.forEach(t => {
+  const trDesc = trades.slice().reverse();
+  trDesc.forEach((t, i) => {
+    // 分批出场: sell_px 是(开盘腿×比例 + 收盘腿×比例)的加权均价。
+    // 单腿出场时直接标"开盘价/收盘价", 让收益能由表内两列价格复现 ——
+    // 旧版无论几条腿都只印开盘价(且与收益不同源), 于是出现"卖价低于买价却是正收益"。
+    const pxO = (t.sell_px_open != null) ? Number(t.sell_px_open) : null;
+    const pxC = (t.sell_px_close != null) ? Number(t.sell_px_close) : null;
+    const f = (t.sell_frac_open != null) ? Number(t.sell_frac_open) : null;
+    let sellCell;
+    const small = 'class="muted" style="font-size:11px"';
+    if (pxO != null && pxC != null && f != null && f > 0.001 && f < 0.999) {
+      sellCell = `<b>${Number(t.sell_px).toFixed(2)}</b><br><span ${small}>
+        ${Math.round(f * 100)}% 开 ${pxO.toFixed(2)} / ${Math.round((1 - f) * 100)}% 收 ${pxC.toFixed(2)}</span>`;
+    } else if (f != null && f <= 0.001 && pxC != null) {
+      sellCell = `<b>${pxC.toFixed(2)}</b><br><span ${small}>收盘价</span>`;
+    } else if (f != null && f >= 0.999 && pxO != null) {
+      sellCell = `<b>${pxO.toFixed(2)}</b><br><span ${small}>开盘价</span>`;
+    } else {
+      sellCell = Number(t.sell_px).toFixed(2);
+    }
     th += `<tr><td class="muted" data-label="信号日">${rpDate(t.signal_date)}</td>
       <td data-label="买入日">${rpDate(t.buy_date)}</td><td data-label="卖出日">${rpDate(t.sell_date)}</td>
       <td data-label="代码">${esc(t.code)}</td><td class="full" data-label="名称"><b>${esc(t.name)}</b></td>
-      <td data-label="买入价">${Number(t.buy_px).toFixed(2)}</td><td data-label="卖出价">${Number(t.sell_px).toFixed(2)}</td>
+      <td data-label="买入价">${Number(t.buy_px).toFixed(2)}</td><td data-label="卖出价">${sellCell}</td>
       <td class="${pctCls(t.ret_pct)}" data-label="收益"><b>${pctStr(t.ret_pct)}</b></td>
       <td class="muted" data-label="名次">${t.rank ?? "-"}</td>
       <td class="muted full" data-label="备注" style="white-space:normal">${esc(t.note || "")}</td></tr>`;
   });
+  // 是否真的存在"分批出场"（比例严格在 0~1 之间）—— 决定 legend 怎么写
+  const hasSplit = trades.some(t => {
+    const f = (t.sell_frac_open != null) ? Number(t.sell_frac_open) : null;
+    return f != null && f > 0.001 && f < 0.999;
+  });
   trEl.innerHTML = th + `</table></div>
-    <div class="legend" style="margin-top:8px">买入取 T+1 真实开盘价；卖出取 T+2 <b>收盘价</b>（14:55 一次性清仓，开盘跌停日同样按收盘；开盘浮盈≥15% 则改按开盘价兑现），
-    收益含佣金万2.5+印花税万5+滑点千1。共 ${trades.length} 笔，按买入日升序。</div>`;
+    <div class="legend" style="margin-top:8px">买入取 T+1 真实开盘价。<b>「卖出价」是实际成交价</b>：
+    ${hasSplit
+      ? `分批出场时为 T+2 开盘腿与收盘腿的<b>加权均价</b>（比例见副行），所以<b>卖价低于买价仍可能为正收益</b>——收盘腿把开盘腿的亏损赚了回来；`
+      : `当前口径为 T+2 <b>收盘一次性卖出</b>（14:55），副行标注「收盘价」；`}
+    收益含佣金万2.5+印花税万5+滑点千1。共 ${trades.length} 笔，<b>按买入日降序（最新在上）</b>。</div>`;
 
-  // 逐日决策: 解释"这天为什么没买"
-  let dh = `<details><summary>展开 ${daily.length} 个交易日的选股/买入判定（解释"这天为什么没买"）</summary>
+  // 逐日决策: 解释"这天为什么没买"（同样最新在上）
+  let dh = `<details><summary>展开 ${daily.length} 个交易日的选股/买入判定（解释"这天为什么没买"，最新在上）</summary>
     <div class="tscroll" style="margin-top:12px"><table class="rtable"><tr class="h"><th>买入日</th><th>风控</th><th>成交</th><th>候选与跳过原因</th></tr>`;
-  daily.forEach(x => {
+  daily.slice().reverse().forEach(x => {
     const fills = (x.fills || []).map(f =>
       `<span class="up">${esc(f.code)} ${esc(f.name)} ${pctStr(f.ret_pct)}</span>`).join("；");
     const skips = (x.skipped || []).map(k => `${esc(k.code)} ${esc(k.name)}：${esc(k.note)}`).join("；");
     const cand = fills || skips || `<span class="muted">无候选</span>`;
     const reason = (x.skipped || []).some(k => String(k.note || "").includes("评分"));
-    const gate = (x.alloc ?? 1) <= 0 ? `<span class="down">空仓</span>`
-      : (!x.trade_ok ? `<span class="down">空仓</span>`
-        : (reason ? `<span style="color:var(--gold)">评分不足</span>` : `<span class="up">正常</span>`));
+    // 四态: 风控空仓 / 风控内接恐慌深跌 / 无候选 / 评分不足 / 正常
+    // 注意: 风控日不等于"一定没成交"——缺口 ≤-2.5% 时按 40% 仓接恐慌深跌, 那天 trade_ok=false 但有成交
+    const hasFill = (x.fills || []).length > 0;
+    const noAction = !hasFill && !(x.skipped || []).length;
+    const gate = (x.alloc != null && x.alloc <= 0)
+      ? `<span class="down">空仓</span>`
+      : (x.trade_ok === false
+        ? (hasFill ? `<span style="color:var(--gold)">风控·跌深接</span>` : `<span class="down">空仓</span>`)
+        : (x.trade_ok == null ? `<span class="muted">-</span>`
+          : (noAction ? `<span class="muted">无候选</span>`
+            : (reason ? `<span style="color:var(--gold)">评分不足</span>` : `<span class="up">正常</span>`))));
     dh += `<tr><td data-label="买入日">${rpDate(x.date)}</td><td data-label="风控">${gate}</td>
       <td data-label="成交">${(x.fills || []).length || `<span class="muted">0</span>`}</td>
       <td class="muted full" data-label="候选与跳过原因" style="white-space:normal">${cand}</td></tr>`;
@@ -594,13 +637,16 @@ async function loadReplay() {
   const nDay = daily.length, nTr = s.n_trades || 0;
   const nSep = trades.filter(t => String(t.buy_date).startsWith("202609")).length;
   const nOct = trades.filter(t => String(t.buy_date).startsWith("202610")).length;
-  const nFlat = daily.filter(x => (x.alloc ?? 1) <= 0).length;
+  // 风控空仓天数: 必须是"风控日且当天没成交"(风控日允许 40% 仓接恐慌深跌, 那种算成交不算空仓)
+  const nFlat = daily.filter(x => !(x.fills || []).length
+    && ((x.alloc != null && x.alloc <= 0) || x.trade_ok === false)).length;
   const nSkip = daily.reduce((a, x) => a + (x.skipped || []).length, 0);
   // 第九十五轮: 把"为什么没成交"四分类(互斥, 合计 = 空仓天数)
   const noFill = daily.filter(x => !(x.fills || []).length);
-  const nGate = noFill.filter(x => (x.alloc ?? 1) > 0
+  const nGate = noFill.filter(x => !((x.alloc != null && x.alloc <= 0) || x.trade_ok === false)
     && (x.skipped || []).some(k => String(k.note || "").includes("评分"))).length;
-  const nNone = noFill.filter(x => (x.alloc ?? 1) > 0 && !(x.skipped || []).length).length;
+  const nNone = noFill.filter(x => !(x.skipped || []).length
+    && !((x.alloc != null && x.alloc <= 0) || x.trade_ok === false)).length;
   const nOther = noFill.length - nFlat - nGate - nNone;
   const bench = (d.perf || {})["同期市场等权基准%"];
   // 9-10 月子区间(用户最初要看的区间): 从净值曲线取区间首尾, 不做近似
