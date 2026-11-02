@@ -1,26 +1,26 @@
 {
  "meta": {
-  "run_time": "2026-11-02 14:07:43",
+  "run_time": "2026-11-02 16:28:10",
   "start": "20200821",
-  "end": "20261030",
-  "days": 1499,
+  "end": "20261102",
+  "days": 1500,
   "initial_capital": 1000000.0,
   "rules": "T+1开盘买入/T+2开盘卖出/复利/佣金万2.5+印花税万5+滑点千1"
  },
  "metrics": {
-  "总收益率%": 8478.08,
-  "年化收益率%": 111.36,
+  "总收益率%": 8495.12,
+  "年化收益率%": 111.33,
   "最大回撤%": -17.61,
   "卡玛比率": 6.32,
   "夏普比率": 2.55,
-  "交易次数": 378,
-  "胜率%": 56.35,
-  "平均单笔收益%": 1.475,
-  "盈亏比": 2.35,
+  "交易次数": 379,
+  "胜率%": 56.46,
+  "平均单笔收益%": 1.507,
+  "盈亏比": 2.38,
   "空仓天数": 0,
-  "跳过买入次数": 939,
-  "总费用(元)": 6049908.0,
-  "同期市场等权基准%": 36.3
+  "跳过买入次数": 940,
+  "总费用(元)": 6077710.0,
+  "同期市场等权基准%": 39.17
  },
  "equity": [
   {
@@ -6018,6 +6018,10 @@
   {
    "d": "2026-10-30",
    "nav": 85780835.0
+  },
+  {
+   "d": "2026-11-02",
+   "nav": 85951188.0
   }
  ],
  "benchmark": [
@@ -12016,35 +12020,13 @@
   {
    "d": "2026-10-30",
    "nav": 1363029.0
+  },
+  {
+   "d": "2026-11-02",
+   "nav": 1391702.0
   }
  ],
  "trades_recent": [
-  {
-   "signal_date": "20260713",
-   "code": "603283.SH",
-   "name": "赛腾股份",
-   "rank": 1,
-   "pool": "main",
-   "buy_date": "20260714",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口0.2%未达承接线-2.5%"
-  },
-  {
-   "signal_date": "20260714",
-   "code": "002558.SZ",
-   "name": "巨人网络",
-   "rank": 1,
-   "pool": "main",
-   "buy_date": "20260715",
-   "buy_px": null,
-   "sell_date": null,
-   "sell_px": null,
-   "ret_pct": null,
-   "note": "缺口-1.4%未达承接线-2.5%"
-  },
   {
    "signal_date": "20260715",
    "code": "600397.SH",
@@ -12876,28 +12858,41 @@
    "sell_px": null,
    "ret_pct": null,
    "note": "top1评分0.00低于门槛1.00"
-  }
- ],
- "trades_executed_recent": [
+  },
   {
-   "signal_date": "20230726",
-   "code": "002976.SZ",
-   "name": "瑞玛精密",
+   "signal_date": "20261029",
+   "code": "603200.SH",
+   "name": "上海洗霸",
    "rank": 1,
    "pool": "main",
    "strategy": "dip",
-   "buy_date": "20230727",
-   "buy_px": 32.66999816894531,
+   "buy_date": "20261030",
+   "buy_px": 45.68000030517578,
    "fill": "open",
-   "sell_date": "20230728",
-   "sell_px": 32.060001373291016,
-   "ret_pct": -1.67,
+   "sell_date": "20261102",
+   "sell_px": 51.720001220703125,
+   "ret_pct": 13.6,
    "note": "",
-   "score": 1.349,
-   "gap_pct": 3.29,
-   "pool_n": 24,
-   "pos_frac": 0.3
+   "score": 1.562,
+   "gap_pct": -2.85,
+   "pool_n": 11,
+   "pos_frac": 0.4
   },
+  {
+   "signal_date": "20261030",
+   "code": "603992.SH",
+   "name": "松霖科技",
+   "rank": 1,
+   "pool": "main",
+   "buy_date": "20261102",
+   "buy_px": null,
+   "sell_date": null,
+   "sell_px": null,
+   "ret_pct": null,
+   "note": "缺口-0.7%未达承接线-2.5%"
+  }
+ ],
+ "trades_executed_recent": [
   {
    "signal_date": "20230727",
    "code": "002463.SZ",
@@ -16678,18 +16673,25 @@
    "gap_pct": -3.98,
    "pool_n": 25,
    "pos_frac": 0.4
-  }
- ],
- "open_positions": [
+  },
   {
    "signal_date": "20261029",
    "code": "603200.SH",
    "name": "上海洗霸",
+   "rank": 1,
+   "pool": "main",
+   "strategy": "dip",
    "buy_date": "20261030",
    "buy_px": 45.68000030517578,
-   "cost_pct": 38.0,
-   "last_px": 51.720001220703125,
-   "unrealized_pct": 13.11
+   "fill": "open",
+   "sell_date": "20261102",
+   "sell_px": 51.720001220703125,
+   "ret_pct": 13.6,
+   "note": "",
+   "score": 1.562,
+   "gap_pct": -2.85,
+   "pool_n": 11,
+   "pos_frac": 0.4
   }
  ],
  "monthly": [
@@ -16992,6 +16994,10 @@
   {
    "month": "202610",
    "ret_pct": 9.04
+  },
+  {
+   "month": "202611",
+   "ret_pct": 0.2
   }
  ]
 }
