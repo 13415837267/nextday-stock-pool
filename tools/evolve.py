@@ -596,7 +596,7 @@ def render_md(payload: dict, state: dict) -> str:
                                   f"卡玛 {e['kama_base']:.2f} / {e['trades_base']} 笔")
                 break
     if base_lines:
-        lines += [""] + base_lines
+        lines += base_lines   # 表格尾部已有一个空行，这里不再补
     lines.append("")
     for r in payload["verdicts"]:
         lines.append(f"**`{r['candidate_id']}`** — {r['reason']}")
