@@ -83,7 +83,7 @@ ok = True
 ok &= check("标量 float", "selection.bias20_max", 12.0)
 ok &= check("标量 int", "regime.market_ma", 22)
 ok &= check("嵌套 float", "regime.vol_max", 2.0)
-ok &= check("布尔 翻转", "universe.exclude_bj", False)
+ok &= check("布尔 翻转", "regime.enabled", False)
 ok &= check("布尔 回写", "execution.sell_limit_down_fallback", True)
 ok &= check("列表 改值(单元素)", "execution.gap_above_tiers",
             [{"above": 0.5, "score_below": 1.8, "mult": 0.20}])
