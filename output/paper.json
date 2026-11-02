@@ -1,0 +1,55 @@
+{
+ "meta": {
+  "created": "2026-11-02",
+  "version": 1,
+  "updated": "2026-11-02 23:48:54",
+  "n": 1
+ },
+ "records": [
+  {
+   "signal_date": "20261102",
+   "buy_date": "20261103",
+   "sell_date": "20261104",
+   "code": "600285.SH",
+   "name": "羚锐制药",
+   "rank": 1,
+   "score": 1.951,
+   "strategy": "momentum",
+   "regime_ok": false,
+   "allow_buy": true,
+   "plan_pos_pct": 40.0,
+   "floor_pct": -2.5,
+   "condition": "风控中(连续第10日): 只接恐慌深跌 —— 开盘缺口≤-2.5%才买, 仓位按40%执行; 缺口不够深则当日空仓; 若竞价缺口 ≥0.5%→30% 则按该比例减仓(照常成交, 不弃单)",
+   "fallbacks": [
+    {
+     "code": "605162.SH",
+     "name": "新中港",
+     "score": 1.0
+    },
+    {
+     "code": "600558.SH",
+     "name": "大西洋",
+     "score": 0.549
+    }
+   ],
+   "state": "planned",
+   "recorded_at": "2026-11-02 23:48:53",
+   "buy_px": null,
+   "sell_px": null,
+   "gap_pct": null,
+   "ret_gross_pct": null,
+   "ret_net_pct": null,
+   "weighted_pct": null,
+   "exec": null,
+   "note": ""
+  }
+ ],
+ "stats": {
+  "n_signal": 1,
+  "n_closed": 0,
+  "n_holding": 0,
+  "n_planned": 1,
+  "n_void": 0,
+  "void_reasons": {}
+ }
+}
