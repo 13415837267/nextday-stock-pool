@@ -342,6 +342,40 @@ def main() -> None:
     else:
         out["fill_days"] = {"days": 0}
 
+    # ---- Q5: "连续信号日 vs 间隔信号日" —— 资金约束是不是一个意外过滤器 ----
+    print("\n" + "=" * 84)
+    print("Q5  资金约束的副作用: 连续交易日都有可买信号时, 只有第一天能买(满仓单吊+T+2收盘卖)")
+    print("=" * 84)
+    q5: dict = {}
+    if len(base_days) >= 20:
+        bset = set(base_days)
+        flag = [1 if (bidx_ := didx[d_]) > 0 and dates[bidx_ - 1] in bset else 0 for d_ in base_days]
+        grp = {}
+        for f, lab in [(1, "前一日也可买(连跌第2天+)"), (0, "前一日不可买(间隔日)")]:
+            v = [cand[d_][0][2] for d_, x in zip(base_days, flag) if x == f]
+            grp[lab] = _stats(v)
+            print(f"  {lab:24s} n={grp[lab]['n']:4d} 均值 {grp[lab]['avg']:+7.3f}% "
+                  f"中位 {grp[lab]['med']:+7.3f}% 胜率 {grp[lab]['wr']:5.1f}%")
+        gap_vals_a = [cand[d_][0][1] for d_, x in zip(base_days, flag) if x == 1]
+        gap_vals_b = [cand[d_][0][1] for d_, x in zip(base_days, flag) if x == 0]
+        if gap_vals_a and gap_vals_b:
+            print(f"  均缺口: 连续日 {np.mean(gap_vals_a):+.2f}% vs 间隔日 {np.mean(gap_vals_b):+.2f}%")
+        # 严格隔天模拟: 满仓单吊, T+1 买 / T+2 收盘卖 / T+3 资金可用 => 下一个 signal_date >= i+2
+        allowed, sim = -10 ** 9, []
+        for d_ in base_days:
+            i = didx[d_]
+            if i < allowed:
+                continue
+            sim.append(cand[d_][0][2])
+            allowed = i + 2
+        q5 = {"cont_days": grp.get("前一日也可买(连跌第2天+)", {}),
+              "spaced_days": grp.get("前一日不可买(间隔日)", {}),
+              "alternate_sim": {**_stats(sim), "skipped": len(base_days) - len(sim)}}
+        print(f"\n  严格隔天模拟(资金约束): n={len(sim)} (被资金挡掉 {len(base_days)-len(sim)} 天) "
+              f"均值 {q5['alternate_sim']['avg']:+.3f}% 胜率 {q5['alternate_sim']['wr']:.1f}%")
+        print("  ↑ 若此值显著高于全样本均值, 说明现行资金约束在无意中过滤掉了\"连跌第2天+\"的低质量信号")
+    out["q5_cash_filter"] = q5
+
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
