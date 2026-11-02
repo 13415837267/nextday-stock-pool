@@ -585,14 +585,18 @@ def render_md(payload: dict, state: dict) -> str:
                      f"{fmt(g('fast','d_ret_rel_pct'))} | {fmt(g('extended','d_ret_rel_pct'))} | "
                      f"{fmt(g('extended','d_kama'))} | {fmt(g('holdout','d_ret_rel_pct'))} |")
     lines.append("")
-    # 绝对基线：只有 Δ 没有 base，读者无法判断"−62%"是从多高掉下来的
+    # 绝对基线：只有 Δ 没有 base，读者无法判断"−62%"是从多高掉下来的。
+    # 全 SKIP 的空跑没有证据，这一段整体不出现（否则表格下面挂两个空行）。
+    base_lines = []
     for key, label in (("fast", "快筛"), ("extended", "主口径"), ("holdout", "封存区")):
         for r in payload["verdicts"]:
             e = (r.get("evidence") or {}).get(key)
             if e:
-                lines.append(f"基线（{label}窗口）：{e['ret_base']:+.2f}% / 回撤 {e['mdd_base']:.2f}% / "
-                             f"卡玛 {e['kama_base']:.2f} / {e['trades_base']} 笔")
+                base_lines.append(f"基线（{label}窗口）：{e['ret_base']:+.2f}% / 回撤 {e['mdd_base']:.2f}% / "
+                                  f"卡玛 {e['kama_base']:.2f} / {e['trades_base']} 笔")
                 break
+    if base_lines:
+        lines += [""] + base_lines
     lines.append("")
     for r in payload["verdicts"]:
         lines.append(f"**`{r['candidate_id']}`** — {r['reason']}")
