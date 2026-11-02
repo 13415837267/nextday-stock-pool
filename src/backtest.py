@@ -10,9 +10,10 @@
       若配负值则退化为"仅买开盘缺口 <= 阈值% 的深低开票"(历史挑单口径)。
     * T+1 停牌/无成交/开盘一字涨停/开盘涨幅 >= skip_open_gain% -> 放弃该票
     * 可选: 开盘跌幅 <= -skip_open_loss%(低开过深, 反转失败概率高) -> 放弃该票
-  - T+2 开盘竞价卖出
+  - T+2 卖出(腿比例由 execution.sell_open_frac 决定: 1=开盘竞价全额卖, 0=当日收盘
+    14:55 全额卖, 0<f<1=开盘卖 f、收盘卖 1-f; 现行 config 为 0, 即全额收盘卖)
     * T+2 停牌 -> 顺延至后续交易日开盘卖出(最多5日, 否则按最后收盘价)
-    * T+2 开盘跌停且开启保守模式 -> 按当日收盘价卖出
+    * T+2 开盘跌停且开启保守模式 -> 按当日收盘价卖出(仅对开盘腿生效)
   - 成本: 佣金万2.5(双边) + 印花税万5(卖出) + 滑点千1(双边)
   - 资金全部复利滚动, 卖出资金当日开盘即可再投入
   - 大盘风控触发时次一交易日空仓(不买入)
@@ -40,6 +41,7 @@ import pandas as pd
 
 from .config import ROOT, load_config
 from .data_api import ZZClient
+from .rule_text import rules_line
 from .selector import apply_regime, build_indicators, regime_base, regime_series, select_stocks, split_by_date
 
 
@@ -355,7 +357,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     trades: list[dict] = []
     pending_buy: tuple[str, list[dict]] | None = None   # (buy_date, picks)
     holding: list[dict] = []                            # 未平仓持仓
-    empty_days = 0
+    # 第一百二十五轮: 把原来的单一 empty_days 拆成两个指标 ——
+    #   risk_empty_days: 风控/连亏熔断导致"当日不出计划、不买入"的天数;
+    #   flat_days:       收盘时账户无任何持仓的交易日数(读者直觉里的"空仓天数")。
+    # 原 empty_days 在 blocked_frac=0.40 下恒为 0(风控日仍可四成仓接深跌, 不判 blocked),
+    # 且 loss_streak_pause 未配置 -> paused 恒 False; 指标名为"空仓天数"却永远显示 0,
+    # 是"指标恒为常量"的典型陷阱。两个新指标各有真实信息量。
+    risk_empty_days = 0
+    flat_days = 0
     fee_total = 0.0
     pending_cash = 0.0   # T+2收盘卖模式: 当日收盘卖出回笼、次日开盘方可投入的资金
     # 连亏熔断(可选): 连续亏损达 streak 笔后暂停买入 pause_days 个交易日(0=禁用)
@@ -876,6 +885,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         total = cash + pending_cash + sum(h["units"] * float(per_code[h["code"]].loc[d]["close_adj"])
                                           for h in holding if d in per_code[h["code"]].index)
         curve[d] = total
+        if not holding:
+            flat_days += 1   # 收盘账户无持仓(当日买入失败/全部到期卖出且无新票)
         # 收盘后: 决定明日计划
         reg_row = reg.loc[d] if d in reg.index else None
         # 分档参与(第一百一十三轮): 软参与日也照常出计划(买入端按 soft_trend_frac 打折)
@@ -894,7 +905,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 pause_until = idx + ps_days
             paused = idx <= pause_until
         if blocked or paused:
-            empty_days += 1
+            risk_empty_days += 1
             pending_buy = (d, [])
             # 注: 大盘风控触发仅限制次一交易日不买入; 持仓(含当日买入票)
             #     均按既定 T+2(或之后)开盘卖出, 遵守T+1制度, 无任何当日卖出。
@@ -950,7 +961,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             "run_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "start": main_dates[0], "end": main_dates[-1], "days": n,
             "initial_capital": bt_cfg["initial_capital"],
-            "rules": "T+1开盘买入/T+2开盘卖出/复利/佣金万2.5+印花税万5+滑点千1",
+            # 第一百二十五轮: 口径与成本均按 config 生成, 不再写死"T+2开盘卖出"。
+            "rules": rules_line(
+                ex, f"复利/佣金万{comm * 10000:g}+印花税万{stamp * 10000:g}+滑点千{slip * 1000:g}"),
         },
         "metrics": {
             "总收益率%": round(total_ret * 100, 2),
@@ -962,7 +975,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             "胜率%": round(len(wins) / len(real) * 100, 2) if real else 0,
             "平均单笔收益%": round(np.mean([t["ret_pct"] for t in real]), 3) if real else 0,
             "盈亏比": round(gross_win / gross_loss, 2) if gross_loss else None,
-            "空仓天数": empty_days,
+            "空仓天数": flat_days,
+            "风控空仓天数": risk_empty_days,
             "跳过买入次数": sum(1 for t in trades if t["ret_pct"] is None),
             "总费用(元)": round(fee_total, 0),
             "同期市场等权基准%": round(float(bench_norm.iloc[-1] / bt_cfg["initial_capital"] - 1) * 100, 2) if len(bench_norm) else None,
