@@ -12,7 +12,7 @@
   "fee_roundtrip": 0.1,
   "gap_floor": 0.0,
   "min_score": 1.0,
-  "run_sec": 109.2
+  "run_sec": 109.9
  },
  "pool_sizes": {
   "median": 14,
@@ -215,5 +215,29 @@
   "sd": 5.08,
   "days": 162,
   "avg_gap": -0.855
+ },
+ "q5_cash_filter": {
+  "cont_days": {
+   "n": 213,
+   "avg": -0.3878,
+   "med": -1.0167,
+   "wr": 41.3,
+   "sd": 4.334
+  },
+  "spaced_days": {
+   "n": 356,
+   "avg": 0.5266,
+   "med": 0.167,
+   "wr": 51.1,
+   "sd": 4.797
+  },
+  "alternate_sim": {
+   "n": 419,
+   "avg": 0.4418,
+   "med": 0.0459,
+   "wr": 50.4,
+   "sd": 4.752,
+   "skipped": 150
+  }
  }
 }
