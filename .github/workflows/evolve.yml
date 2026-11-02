@@ -1,0 +1,143 @@
+# 策略自进化: 周频裁决预注册候选 —— 全部门通过才改 config, 且默认只开 PR
+#
+# 为什么不是"每天自动调参":
+#   第一百二十一轮已用 Kendall W 证明参数层不可辨识 (bias20_max W=0.058,
+#   dip_vol_ratio_max W=0.008, 与抛硬币无异)。自动扫参数只会批量生产过拟合,
+#   所以本工作流只做一件事: 对人工预注册的结构性假设做证伪, 并把裁决永久记账。
+#   规则见 evolution/policy.yaml, 候选池见 evolution/candidates.yaml, 引擎见 tools/evolve.py。
+name: 策略自进化
+
+on:
+  schedule:
+    - cron: "0 2 * * 6"        # 每周六 10:00 北京时间（周五收盘数据已入库，且不与每日槽抢并发）
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "run=裁决并记账 / dry=完整裁决不落账 / apply-only=重放未应用的 PASS"
+        type: choice
+        default: run
+        options: [run, dry, apply-only]
+      candidate:
+        description: "只处理指定候选 id（留空=按 policy 的每轮上限）"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: evolution
+  cancel-in-progress: false
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 裁决候选池
+        if: inputs.mode != 'apply-only'
+        env:
+          TZ: Asia/Shanghai
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.candidate }}" ]; then ARGS="--only ${{ inputs.candidate }}"; fi
+          if [ "${{ inputs.mode }}" = "dry" ]; then ARGS="$ARGS --dry-run"; fi
+          python tools/evolve.py run $ARGS
+
+      - name: 汇总到运行页
+        if: always()
+        run: |
+          if [ -f evolution/last_run.md ]; then cat evolution/last_run.md >> "$GITHUB_STEP_SUMMARY"; fi
+
+      # ── 账本先落地: 即使后面 PR 失败, 拒绝/通过的结论也不会丢。
+      #    这是"自进化"能自我约束的前提 —— 被否掉的假设必须留下痕迹, 否则冷却期无从执行。
+      - name: 提交账本与状态
+        if: inputs.mode != 'dry'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python tools/evolve.py state > /dev/null
+          git add evolution
+          if git diff --cached --quiet; then
+            echo "账本无变化, 跳过提交"
+          else
+            git commit -m "自进化账本: $(TZ=Asia/Shanghai date +%F) 周度裁决 [skip ci]"
+            git push
+          fi
+
+      - name: 应用通过闸门的候选
+        if: inputs.mode != 'dry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TZ: Asia/Shanghai
+        run: |
+          set -e
+          if [ ! -f evolution/last_run.json ]; then
+            echo "本次没有裁决结果（可能全部被账本去重）"; exit 0
+          fi
+
+          # kind=risk 且 policy.autonomy.risk=auto 的候选直接进 main；其余一律走 PR。
+          AUTO_IDS=$(python3 tools/evolve.py passes --kind risk)
+          REVIEW_IDS=$(python3 tools/evolve.py passes --exclude-kind risk)
+
+          if [ -z "$AUTO_IDS" ] && [ -z "$REVIEW_IDS" ]; then
+            echo "本次无 PASS 候选, 不需要改动 config"; exit 0
+          fi
+
+          if [ -n "$AUTO_IDS" ]; then
+            for id in $AUTO_IDS; do
+              python tools/evolve.py apply --id "$id"
+            done
+            git add config.yaml evolution
+            if git diff --cached --quiet; then
+              echo "自动类无实际变更"
+            else
+              git commit -m "自进化(自动类): $AUTO_IDS 通过全部闸门 [skip ci]"
+              git push
+            fi
+          fi
+
+          if [ -n "$REVIEW_IDS" ]; then
+            BR="evolution/$(date +%Y%m%d-%H%M)"
+            git checkout -b "$BR"
+            for id in $REVIEW_IDS; do
+              python tools/evolve.py apply --id "$id"
+            done
+            git add config.yaml evolution
+            git commit -m "自进化(待评审): $REVIEW_IDS 通过全部闸门"
+            git push -u origin "$BR"
+            gh pr create --base main --head "$BR" \
+              --title "自进化: $REVIEW_IDS 通过全部闸门" \
+              --body-file evolution/last_run.md \
+            || gh issue create \
+                 --title "自进化待评审: $REVIEW_IDS（PR 创建失败，改用 Issue 通知）" \
+                 --body-file evolution/last_run.md
+          fi
+
+      - name: 失败告警
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "⚠ 自进化工作流失败: $(TZ=Asia/Shanghai date +%F)" \
+            --body "请查看日志: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            || echo "Issue 创建失败（可能已有同名）, 跳过"
