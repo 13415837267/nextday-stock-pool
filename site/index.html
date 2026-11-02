@@ -116,7 +116,12 @@
   <div class="panel" style="margin-top:12px" id="bt-chart"></div>
   <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2 id="replay">五、历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
+  <h2 id="paper">五、向前台账 <span class="sub" id="paper-sub">自 2026-11-02 起冻结每日信号，T+1 回填真实成交、T+2 回填结果（只增不改）</span></h2>
+  <div class="cards" id="paper-cards"><div class="card"><div class="k">向前台账</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+  <div style="margin-top:12px" id="paper-table"></div>
+  <div class="panel note" style="margin-top:12px" id="paper-note"></div>
+
+  <h2 id="replay">六、历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
   <div class="cards" id="rp-cards"><div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
   <div class="cards" id="rp-months" style="margin-top:12px"></div>
   <div class="panel" style="margin-top:12px" id="rp-chart"></div>
@@ -124,10 +129,10 @@
   <div style="margin-top:12px" id="rp-daily"></div>
   <div class="panel note" style="margin-top:12px" id="rp-note"></div>
 
-  <h2>六、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
+  <h2>七、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
   <div id="health"><div class="loading">加载中...</div></div>
 
-  <h2>七、策略规则与披露</h2>
+  <h2>八、策略规则与披露</h2>
   <div class="panel">
     <b>执行时点</b>
     <ul class="rules">
@@ -517,6 +522,81 @@ async function loadHealth() {
 const rpDate = s => (s && String(s).length === 8)
   ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (s || "-");
 
+/* ---------- 五: 向前台账(第130轮) ---------- */
+const PAPER_STATE = {
+  planned: ["待买", "var(--muted)"],
+  holding: ["持仓", "var(--gold)"],
+  closed: ["已结算", "var(--up)"],
+  void: ["未成交", "var(--muted)"],
+};
+
+async function loadPaper() {
+  const box = document.getElementById("paper-cards");
+  const tbl = document.getElementById("paper-table");
+  const note = document.getElementById("paper-note");
+  let d;
+  try { d = await jget("./data/paper.json"); }
+  catch (e) {
+    box.innerHTML = `<div class="card"><div class="k">向前台账</div>
+      <div class="v" style="font-size:13px;color:var(--muted)">尚未生成（自下一交易日开始记录）</div></div>`;
+    tbl.innerHTML = ""; note.innerHTML = ""; return;
+  }
+  const st = d.stats || {};
+  const c = (k, v, sub, cls) => `<div class="card"><div class="k">${k}</div>
+    <div class="v ${cls || ""}">${v}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45">${sub || ""}</div></div>`;
+  const winSub = st.n_closed
+    ? `胜率 ${st.win_pct}% · 最好 ${st.best_pct}% / 最差 ${st.worst_pct}%`
+    : "等待 T+2 回填";
+  box.innerHTML = [
+    c("已结算", st.n_closed ?? 0, winSub),
+    c("平均单笔", st.avg_ret_pct != null ? pctStr(st.avg_ret_pct) : "-",
+      st.sum_weighted_pct != null ? `累计 ${pctStr(st.sum_weighted_pct)}（仓位加权）` : "",
+      st.avg_ret_pct > 0 ? "up" : (st.avg_ret_pct < 0 ? "down" : "")),
+    c("净值", st.nav_x != null ? st.nav_x.toFixed(4) : "-",
+      st.mdd_pct != null ? `最大回撤 ${st.mdd_pct}%（逐笔重建）` : ""),
+    c("在途", `${st.n_holding ?? 0} / ${st.n_planned ?? 0}`,
+      `持仓 / 待买 · 未成交 ${st.n_void ?? 0} 笔`),
+  ].join("");
+
+  const rows = (d.records || []).slice().reverse().slice(0, 12);
+  if (!rows.length) { tbl.innerHTML = ""; note.innerHTML = ""; return; }
+  const tr = rows.map(r => {
+    const [lbl, clr] = PAPER_STATE[r.state] || ["?", "var(--muted)"];
+    const gap = r.gap_pct != null
+      ? `<span class="${r.gap_pct > 0 ? "up" : "down"}">${pctStr(r.gap_pct)}</span>` : "-";
+    const ret = r.ret_net_pct != null
+      ? `<span class="${pctCls(r.ret_net_pct)}">${pctStr(r.ret_net_pct)}</span>` : "-";
+    const rank = (r.exec && r.exec.open_rank != null) ? r.exec.open_rank.toFixed(3) : "-";
+    const amt = (r.exec && r.exec.amount_yi != null) ? r.exec.amount_yi.toFixed(2) + " 亿" : "-";
+    return `<tr title="${esc(r.note || "")}">
+      <td>${fmtDate(r.signal_date)}</td>
+      <td>${esc(r.name || "")} <span class="muted">${esc(r.code || "")}</span></td>
+      <td><span style="color:${clr}">${lbl}</span></td>
+      <td>${gap}</td><td>${r.buy_px ?? "-"}</td><td>${r.sell_px ?? "-"}</td>
+      <td>${ret}</td><td>${rank}</td><td>${amt}</td></tr>`;
+  }).join("");
+  tbl.innerHTML = `<table><thead><tr>
+    <th>信号日</th><th>标的</th><th>状态</th><th>T+1 缺口</th><th>买价</th><th>卖价</th>
+    <th>净收益</th><th>开盘分位</th><th>成交额</th></tr></thead><tbody>${tr}</tbody></table>`;
+
+  const ex = st.exec;
+  let n = `<b>这张表在做什么：</b>从 2026-11-02 起，每个信号日把"当日选出的票 + 次日执行条件"原样冻结，
+    之后只用真实行情回填，<b>不允许事后修改</b> —— 这是唯一无法被过拟合污染的样本。`;
+  if (ex && ex.open_rank_mean != null) {
+    n += `<br><b>顺带校准容量假设：</b>已结算 ${st.n_closed} 笔的开盘价平均落在当日区间的
+      <b>${(ex.open_rank_mean * 100).toFixed(1)}%</b> 位置（0=最低、100%=最高），
+      中位 ${(ex.open_rank_median * 100).toFixed(1)}%；全天 VWAP 平均
+      ${ex.vwap_prem_mean_pct > 0 ? "高于" : "低于"}开盘价 <b>${Math.abs(ex.vwap_prem_mean_pct).toFixed(2)}%</b>。
+      这两列积累到 30~60 笔，就能替换掉容量表里 k=15/30 两个经验系数。`;
+  }
+  if (st.void_reasons && Object.keys(st.void_reasons).length) {
+    n += `<br><b>未成交原因：</b>` + Object.entries(st.void_reasons)
+      .map(([k, v]) => `${esc(k)} ${v} 笔`).join(" · ");
+  }
+  note.innerHTML = n;
+}
+
 async function loadReplay() {
   const cEl = document.getElementById("rp-cards"), moEl = document.getElementById("rp-months");
   const chEl = document.getElementById("rp-chart"), trEl = document.getElementById("rp-trades");
@@ -736,6 +816,7 @@ function drawReplayChart(curve, base, baseDate) {
 loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class="loading">候选池加载失败: ${esc(e.message)}</div>`);
 loadExecHistory();
 loadBacktest();
+loadPaper();
 loadHealth();
 loadReplay();
 </script>
