@@ -105,7 +105,12 @@ Q2 的分层是决定性的：
 - `config.yaml` **数值零变更**，只在 `exec_top_n` 与 `alloc_frac_pct` 各加一条结论注释
   （"不要改成 >1 做开盘重排" / "不要为提资金利用率而分仓"）；
 - `evolution/candidates.yaml` 留痕（`gap_rerank` 与 `cash_efficiency` 两条，勿重复登记）；
-- README 补"重排证伪 + 资金约束过滤器"小节。
+- README 补"重排证伪 + 资金约束过滤器"小节；
+- `daily.yml` 的 push 触发加 `paths-ignore`（`tools/**`、`output/exp_*.json`、`evolution/**`、`**/*.md`）。
+  起因是发现一个运维坑：`research.yml` 自己提交产物时带 `[skip ci]` 无碍，但**人工上传**文档/脚本的
+  commit 会触发一次完整 daily（回测 3~5 分钟 + Pages 部署），连传几个文件就叠出多条并发，
+  互相取消或撞 `git push`，最后用"每日更新失败"污染告警通道 —— 本轮一次连传产生了 2 条假告警
+  （`部署 GitHub Pages` 与 `提交更新记录` 各一条），已清理。
 
 **证伪清单再添一项**：参数（121）、特征（126）、开关（127）、日历（128）、横截面排序键（131）。
 至此，选股端、执行端、时间端、排序端全部扫完，没有一项能改进现有的 379 笔。
