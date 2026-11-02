@@ -948,6 +948,24 @@ python -m src.backtest    # 运行回测
 - **不会给自己放权**：`policy.yaml` 引擎只读，改闸门必须人工 PR；封存区超过 500 日时由人工把 `holdout_start` 前推，引擎不能自己挪这条线；
 - **不替代真样本外**。五道门只保证"在已实现的历史上，这个改动不是噪声、不是单年现象、不是对封存区的过拟合"。真正的 OOS 只有一个：从今天起冻结每日信号，用未来 6~12 个月检验。
 
+### 远程研究通道（自第一百二十八轮）
+
+回测面板 `data/panel` 是 3378 个逐日 `csv.gz`（仓库 548MB），从开发机直连拉取实测只有
+**20~25KB/s**（`git clone --depth 1` 三分钟只到 1.1MB）。所以"改一版、本地跑一次"在本项目里
+不可行，研究必须放到 Actions 里跑 —— 那里 checkout 就带着面板。
+
+```bash
+# 手动触发(Actions 页面或 API), 脚本名必须是 tools/<name>.py 且不含路径分隔符
+gh workflow run research.yml -f script=exp_dow  -f 'args=--days 3378'
+gh workflow run research.yml -f script=exp_cost -f 'args=--days 1500'
+```
+
+- 通道**只读**：不碰 `config.yaml`、不碰 `latest.json`，只把 `output/exp_*.json` 提交回来；
+- 与自进化的分工：`research.yml` 找方向（诊断），`evolve.yml` 立候选（裁决）—— 顺序不能反，
+  反了就是"先改再找理由"；
+- 两个已入库的探针：`tools/exp_dow.py`（周内日历，已证伪：五个星期全为正、排序跨时代翻转）、
+  `tools/exp_cost.py`（滑点敏感性：单边 0.3% 就把 8495% 打到 2666%，平衡点 0.8~0.85%）。
+
 ### 自检
 
 ```bash
