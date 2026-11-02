@@ -61,7 +61,8 @@ jobs:
             echo "回测结果无变化, 跳过提交"
           else
             git commit -m "回测更新: $(TZ=Asia/Shanghai date +%F) 实盘口径复利回测报告 [skip ci]"
-            git push
+            # 推送竞争重试(第一百二十五轮): 与 daily.yml 同因, 不再因一次 push 被拒就建 Issue。
+            git push || (git pull --rebase --autostash && git push)
           fi
 
       - name: 组装 Pages 站点

@@ -89,6 +89,10 @@
 2. **实盘结算端 `max_buy_per_day` 只支持 1**：`_settle_holding` 命中第一只可成交票就 `return`，
    配 >1 不会生效（与回测的多只口径不同）。当前 config 为 1、行为正确，但代码里有一个从未
    使用的 `maxn = int(ex.get("max_buy_per_day", 0))`，长得像"改配置就能多买" —— 已删并写明原因。
+3. **推送竞争重试**：`daily.yml` / `backtest.yml` 的 `git push` 原无重试，同一分钟内有其它
+   提交时会被拒 → 策略三步全 success 却整体失败、还自动建 Issue。本轮批量上传时实测踩了 3 次
+   （Issue #28~#32 均为此因）。改为 `git push || (git pull --rebase --autostash && git push)`，
+   rebase 冲突时仍正常失败，不吞错。
 
 ### 六、本轮未做（需单独决策）
 

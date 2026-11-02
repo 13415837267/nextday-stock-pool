@@ -103,7 +103,10 @@ jobs:
             echo "无数据变更, 跳过提交"
           else
             git commit -m "数据更新: $sig 收盘选股与次日候选池 [skip ci]"
-            git push
+            # 推送竞争重试(第一百二十五轮): 同一分钟内有其它提交(例如手工经 API 批量上传)时,
+            # push 会被拒, 原实现直接失败并自动建 Issue —— 本轮实测 3 次失败全是这一原因,
+            # 策略/回测/体检三步都是 success。rebase 冲突时仍会正常失败(不吞错)。
+            git push || (git pull --rebase --autostash && git push)
           fi
 
       - name: 组装 Pages 站点
