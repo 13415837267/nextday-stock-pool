@@ -83,6 +83,13 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python -m src.backtest
 
+      - name: 更新向前台账(冻结当日信号 + 回填真实成交)
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
+        run: python tools/paper_tape.py
+
       - name: 刷新策略体检数据(探针/季度剖面随每日回测日更, 第48轮)
         if: steps.guard.outputs.skip != 'true'
         env:
@@ -118,7 +125,7 @@ jobs:
           # 回测/审计中间产物一起推到 Pages —— mkt_gap_events.json 35MB、overnight_offset.json
           # 5.4MB、stock_state_pool.json 4.6MB, 部署体积 48.7MB, 而站点只需约 0.5MB。
           # 新增前端数据源时必须同步改这里, 否则页面会显示"数据未部署"。
-          for f in latest history backtest health replay; do
+          for f in latest history backtest health replay paper; do
             cp "output/$f.json" deploy/data/ 2>/dev/null || true
           done
 
