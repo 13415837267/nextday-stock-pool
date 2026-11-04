@@ -436,7 +436,13 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     continue
                 if sum(1 for q in _kept if q.get("pool") == p.get("pool")) >= int(fb.get("top_n") or 0):
                     continue
-                p = {**p, "_gap_below": fb.get("gap_below")}
+                p = {**p, "_gap_below": fb.get("gap_below"),
+                     "_gap_above": fb.get("gap_above"),
+                     # gap_own=true: 本池**不继承**当日风控承接线(block_gap_below), 用自己的
+                     # gap_above/gap_below 判定(第一百三十二轮)。用于 trend 这类"低开即破坏"的
+                     # 策略: 风控日的 -2.5% 是 dip 的专属承接线, 套到趋势票上会把它全部挡掉。
+                     # 注意风控日的**仓位**仍按 blocked_frac 执行 —— 风控管仓位, 不管缺口口径。
+                     "_gap_own": bool(fb.get("gap_own", False))}
                 _kept.append(p)
             _fbp = _kept
         picks = _main + _fbp
@@ -481,7 +487,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             #   实测 1500 日 27 笔全部是备用池、全部缺口 >= -2.5%(即实盘都会空仓),
             #   虚增 +1263.82pp(8612.67% vs 7348.85%)、年化 +5.50pp —— 是回测虚高, 不是策略收益。
             _fl = p.get("_gap_below")
-            if _fl is None:
+            _fa = p.get("_gap_above")      # 缺口下限(第一百三十二轮): 深低开=趋势破坏
+            if p.get("_gap_own"):
+                # 显式声明"用自己的缺口口径": 不受当日 floor 约束(见 _gap_own 注释)
+                pass
+            elif _fl is None:
                 _fl = floor
             elif floor is not None:
                 _fl = min(float(_fl), float(floor))
@@ -492,6 +502,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 if int(p.get("_rank") or 0) >= int(_t.get("rank_above", 1)):
                     _tg = float(_t.get("gap_below", _fl))
                     _fl = min(_tg, float(floor)) if floor else _tg
+            # 缺口下限(第一百三十二轮, 供 trend 等"低开即破坏"的策略): 低于该值直接放弃。
+            # 不走限价承接 —— 趋势票要的是"当天就强", 等它跌到某个价再成交, 形态已经不是原来那只。
+            if _fa is not None and gap * 100 < float(_fa):
+                trades.append(_trade(p, "skip", d,
+                                     note=f"缺口{gap*100:.1f}%低于下限{float(_fa)}%(趋势破坏)"))
+                continue
             _lim_px = None   # 第八十轮: 盘中止损限价承接价(adj口径), None=按开盘价成交
             if _fl and gap * 100 > _fl:
                 _lmt = float(ex.get("buy_limit_fill") or 0)
