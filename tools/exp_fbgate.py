@@ -75,7 +75,7 @@ def main():
 
     print("[3/3] fixed(备用池回落当日 floor) ...", flush=True)
     cfg1 = copy.deepcopy(cfg0)
-    for fb in cfg1["select"]["fallbacks"]:
+    for fb in cfg1["selection"]["fallbacks"]:
         fb["gap_below"] = None
     fixed = _run(cfg1, args.days, ctx)
 
