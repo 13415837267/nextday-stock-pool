@@ -473,8 +473,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 trades.append(_trade(p, "skip", d, note=f"开盘低开{gap*100:.1f}%"))
                 continue
             # dip 承接过滤: 仅买缺口 <= floor% 的深低开票(0=不过滤); 备用池可配专属承接线
+            # ★第一百三十二轮修复(口径一致性): 备用池 gap_below 与当日 floor 必须取**更严**者,
+            #   不能互相覆盖。原写法 `_fl = floor if _fl is None else _fl` 让备用池的
+            #   gap_below=0 直接盖掉风控日的 block_gap_below=-2.5; 而 0 在下一行 `if _fl:`
+            #   里是假值 -> 整条缺口判定被跳过。后果: 同一只票、同一个缺口, 回测按开盘价成交,
+            #   实盘(daily_run 用 floor_now=block_gap_below, 对任何池都生效)却空仓。
+            #   实测 1500 日 27 笔全部是备用池、全部缺口 >= -2.5%(即实盘都会空仓),
+            #   虚增 +1263.82pp(8612.67% vs 7348.85%)、年化 +5.50pp —— 是回测虚高, 不是策略收益。
             _fl = p.get("_gap_below")
-            _fl = floor if _fl is None else _fl
+            if _fl is None:
+                _fl = floor
+            elif floor is not None:
+                _fl = min(float(_fl), float(floor))
             # 第八十轮: 名次梯度承接线(可选) —— 池内名次越靠后要求缺口越深,
             # 用"更激进的折价"换深名次的质量, 让扩池新增的成交只发生在最极端的恐慌日。
             # 配置形如 [{rank_above: 5, gap_below: -3.0}, ...], 取第一个满足条件的档。
