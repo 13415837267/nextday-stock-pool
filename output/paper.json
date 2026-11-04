@@ -2,8 +2,8 @@
  "meta": {
   "created": "2026-11-02",
   "version": 1,
-  "updated": "2026-11-04 10:15:39",
-  "n": 2
+  "updated": "2026-11-05 00:13:29",
+  "n": 3
  },
  "records": [
   {
@@ -58,8 +58,34 @@
    "floor_pct": -2.5,
    "condition": "风控中(连续第10日): 只接恐慌深跌 —— 开盘缺口≤-2.5%才买, 仓位按40%执行; 缺口不够深则当日空仓; 若竞价缺口 ≥0.5%→30% 则按该比例减仓(照常成交, 不弃单); 达标12只→50%仓(仅买评分第1名)(当日候选池偏窄=孤立回调、缺共振); 若竞价缺口 ≤-1% 且达标≥5只 → 撤销池深折价",
    "fallbacks": [],
-   "state": "planned",
+   "state": "void",
    "recorded_at": "2026-11-03 20:35:16",
+   "buy_px": null,
+   "sell_px": null,
+   "gap_pct": -0.729,
+   "ret_gross_pct": null,
+   "ret_net_pct": null,
+   "weighted_pct": null,
+   "exec": null,
+   "note": "风控未触发(缺口 -0.73% 未达 -2.5%), 按规则空仓"
+  },
+  {
+   "signal_date": "20261104",
+   "buy_date": "20261105",
+   "sell_date": "20261106",
+   "code": "600573.SH",
+   "name": "惠泉啤酒",
+   "rank": 1,
+   "score": 1.549,
+   "strategy": "dip",
+   "regime_ok": false,
+   "allow_buy": false,
+   "plan_pos_pct": 0.0,
+   "floor_pct": null,
+   "condition": "大盘中位数+1.9%而个股超额-5.6pp→不参与(个股独跌): 个股独立下跌(非系统性错杀), 当日不参与(与回测 knife_tiers mult=0 同口径)",
+   "fallbacks": [],
+   "state": "planned",
+   "recorded_at": "2026-11-05 00:13:28",
    "buy_px": null,
    "sell_px": null,
    "gap_pct": null,
@@ -71,13 +97,13 @@
   }
  ],
  "stats": {
-  "n_signal": 2,
+  "n_signal": 3,
   "n_closed": 0,
   "n_holding": 0,
   "n_planned": 1,
-  "n_void": 1,
+  "n_void": 2,
   "void_reasons": {
-   "风控未触发": 1
+   "风控未触发": 2
   }
  }
 }
