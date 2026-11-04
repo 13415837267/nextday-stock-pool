@@ -29,6 +29,7 @@ STRATEGY_CN = {
     "limitup": "涨停深低开承接",
     "spike": "放量突破承接",
     "oversold": "深跌阳线反转",
+    "trend": "上升趋势突破",
 }
 
 
@@ -112,6 +113,17 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     dl = _low_adj.groupby(panel["ts_code"], sort=False).transform(lambda s: s.rolling(20).min())
     panel["dist_low20"] = (_low_adj / dl - 1) * 100   # 距20日最低%
     del dl, _low_adj
+    # 距20日最高%(第一百三十二轮, 供 trend 模式判断突破): 与 dist_low20 对称, 但取**前20日**
+    # 最高价(先 shift(1) 再 rolling), 即"不含当日"的历史高点 —— 否则当日 high 必然等于区间最高,
+    # dist_high20 永远 <= 0 且无法区分"创新高"与"在前高下方盘整"。复权口径, 对 flast 免疫。
+    # 语义: >0 = 收盘创20日新高; -1 = 距前高 1%; 越负 = 离突破越远。
+    _high_adj = panel["high"] * k
+    if f32:
+        _high_adj = _high_adj.astype("float32", copy=False)
+    dh = _high_adj.groupby(panel["ts_code"], sort=False).transform(
+        lambda s: s.shift(1).rolling(20).max())
+    panel["dist_high20"] = (panel["close_adj"] / dh - 1) * 100
+    del dh, _high_adj
     put("prev_low", g["low"].transform(lambda s: s.shift(1)))                             # T-1日最低价
     panel["below_prev_low"] = (panel["low"] < panel["prev_low"]).astype("int8")           # T日盘中破前日低
     panel["hold_prev_low"] = (panel["close"] > panel["prev_low"]).astype("int8")          # T日收盘守住前日低
@@ -514,6 +526,41 @@ def _select_one(
             + 0.20 * _zs(df["vol_ratio"])
         )
 
+    elif mode == "trend":
+        # 上升趋势突破(第一百三十二轮): 均线多头 + 当日阳线逼近/创20日新高 + 温和放量,
+        # 博趋势延续。**与 dip 在机制上正交** —— dip 要"趋势内的阴线缩量回调, 次日深低开承接",
+        # 吃的是恐慌错杀后的修复; 本模式要"阳线突破 + 次日不低开", 吃的是趋势的延续性。
+        # 为什么不能复用 pullback: pullback 要求"缩量回踩 5 日线(pct -3~1%)", 仍是"回调买";
+        # 本模式要求 pct>=1.5 的阳线与新高, 是"突破买", 两者选出的票几乎不重叠。
+        # 执行侧(见 execution.fallbacks 的 gap_own): 趋势票**不继承** dip 的风控承接线,
+        # 改用 gap_above 下限 —— 深低开对趋势票是"破坏"而非"折价"。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg.get("tr_pct_min", 1.5),
+                                  sel_cfg.get("tr_pct_max", 7.0))]
+        df = df[df["close"] < df["high_limit"] - 1e-9]        # 收盘未封板(次日才有票可买)
+        df = df[df["low"] < df["high"]]                       # 非一字板
+        df = df[df["close"] > df["open"]]                     # 阳线
+        df = df[df["close_pos"] >= sel_cfg.get("tr_close_pos_min", 0.55)]  # 收在当日区间上沿
+        ma_ok = ((df["close_adj"] > df["ma5"]) & (df["ma5"] > df["ma10"])
+                 & (df["ma10"] > df["ma20"]) & (df["ma20"] > df["ma20_prev"]))
+        df = df[ma_ok]                                        # 多头排列且20日线向上
+        df = df[df["mom20"].between(sel_cfg.get("tr_mom20_min", 3.0),
+                                    sel_cfg.get("tr_mom20_max", 35.0))]
+        df = df[df["dist_high20"] >= sel_cfg.get("tr_dist_high20_min", -1.0)]  # 逼近20日新高
+        df = df[df["vol_ratio"].between(sel_cfg.get("tr_vol_ratio_min", 1.0),
+                                        sel_cfg.get("tr_vol_ratio_max", 3.0))]  # 温和放量
+        df = df[df["bias20"] <= sel_cfg.get("tr_bias20_max", 15.0)]
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.30 * _zs(df["dist_high20"])      # 突破幅度: 越接近/超越前高, 趋势越确定
+            + 0.25 * _zs(df["mom20"])          # 中期动量
+            + 0.20 * _zs(df["close_pos"])      # 收盘强度(尾盘没被砸)
+            + 0.15 * _zs(-df["bias20"])        # 乖离低(不在加速末端)
+            + 0.10 * _zs(-np.log1p(df["amount"]))   # 体量适中
+        )
+
     else:
         raise ValueError(f"未知选股模式: {mode}")
 
@@ -554,6 +601,14 @@ def _select_one(
                 f"量比{r['vol_ratio']:.2f}(缩量)",
                 f"20日动量{r['mom20']:.0f}%",
                 "20日线向上",
+            ]
+        elif mode == "trend":
+            reasons = [
+                f"涨{r['pct']:.1f}%",
+                f"距20日前高{r['dist_high20']:.1f}%",
+                f"量比{r['vol_ratio']:.2f}(温和)",
+                f"20日动量{r['mom20']:.0f}%",
+                "均线多头",
             ]
         else:  # dip
             reasons = [
