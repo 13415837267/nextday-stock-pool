@@ -109,22 +109,26 @@ jobs:
       # 数据与主策略共用(同一 ZZClient + 同一份 data/cache 面板), 不重复抓数;
       # 策略独立 —— src/satellite.py、账本 output/satellite.json、虚拟本金 10 万,
       # 不读写 config/latest/paper, 也不参与主策略资金调度。
-      - name: 更新独立副策略账本(单吊, 持40日)
+      # 第一百四十五轮: 副策略换赛道 —— 单吊(v3) → 低波 20 只等权轮动(v4)。
+      # 依据: 因子扫描证明低波因子的收益来自"一组等权"而不是"第 1 名",
+      # 单吊是从 100 只里抽样; 实测回撤减半、卡玛从 0.14 提到 0.27(全史 0.32)。
+      # v3 的 satellite.json / satellite_bt.json 保留为归档, 不再每日推进。
+      - name: 更新副策略账本(低波20只轮动)
         if: steps.guard.outputs.skip != 'true'
         env:
           TZ: Asia/Shanghai
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
-        run: python tools/satellite_run.py
+        run: python tools/rotation_run.py
 
       # 副策略回测(第一百四十轮): 页面要与主策略同构, 就必须有同一套「回测绩效」模块。
       # 与主策略回测同一窗口(config backtest.trading_days=1500)、同一份缓存面板,
       # 复用 prepare_context 不再抓数; 只做单吊逐日模拟, 产物 output/satellite_bt.json。
-      - name: 副策略回测(与主策略同窗口 1500 日)
+      - name: 副策略回测(低波轮动, 与主策略同窗口 1500 日)
         if: steps.guard.outputs.skip != 'true'
         env:
           TZ: Asia/Shanghai
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
-        run: python tools/satellite_backtest.py
+        run: python tools/rotation_backtest.py
 
       # 第一百四十一轮: 主策略回放原先只在手工跑 tools/replay.py 时更新(区间还是写死的
       # 20251101~20261031), 与每天刷新的副策略回放并排看就是"一条腿走、一条腿钉住"。
@@ -186,7 +190,7 @@ jobs:
           # 回测/审计中间产物一起推到 Pages —— mkt_gap_events.json 35MB、overnight_offset.json
           # 5.4MB、stock_state_pool.json 4.6MB, 部署体积 48.7MB, 而站点只需约 0.5MB。
           # 新增前端数据源时必须同步改这里, 否则页面会显示"数据未部署"。
-          for f in latest history backtest health replay paper satellite satellite_bt; do
+          for f in latest history backtest health replay paper rotation rotation_bt satellite satellite_bt; do
             cp "output/$f.json" deploy/data/ 2>/dev/null || true
           done
 
