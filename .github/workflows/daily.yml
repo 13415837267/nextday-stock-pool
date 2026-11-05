@@ -113,8 +113,11 @@ jobs:
       # 依据: 因子扫描证明低波因子的收益来自"一组等权"而不是"第 1 名",
       # 单吊是从 100 只里抽样; 实测回撤减半、卡玛从 0.14 提到 0.27(全史 0.32)。
       # v3 的 satellite.json / satellite_bt.json 保留为归档, 不再每日推进。
+      # continue-on-error: 副策略是独立的一条腿, 它失败不该阻断主策略的产物流转与
+      # Pages 部署 —— 否则"加了一条腿"反而降低了主策略的可用性。
       - name: 更新副策略账本(低波20只轮动)
         if: steps.guard.outputs.skip != 'true'
+        continue-on-error: true
         env:
           TZ: Asia/Shanghai
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
@@ -125,6 +128,7 @@ jobs:
       # 复用 prepare_context 不再抓数; 只做单吊逐日模拟, 产物 output/satellite_bt.json。
       - name: 副策略回测(低波轮动, 与主策略同窗口 1500 日)
         if: steps.guard.outputs.skip != 'true'
+        continue-on-error: true
         env:
           TZ: Asia/Shanghai
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}

@@ -1004,11 +1004,21 @@ def main():
     _top_score = verified[0].get("score") if verified else None
     _gate_blocked = bool(_gate is not None and verified and
                          (_top_score is None or float(_top_score) < float(_gate)))
-    _gate_txt = (f"首选评分 {float(_top_score):.2f} < 门槛 {float(_gate):g}(横截面 z 分)"
-                 if _top_score is not None and _gate is not None else "首选评分缺失")
+    # 池深 1 只时横截面 z 分的标准差为 0, selector._zs 直接返回 0 —— 这是"没有可比对象",
+    # 不是"这只票质量差"。原先文案写"当日质量不足", 会让人以为选股出了问题, 故分岔说明。
+    if _top_score is not None and _gate is not None:
+        if _pn_main <= 1:
+            _gate_txt = (f"当日主力池仅 {_pn_main} 只达标, 横截面 z 分无参照"
+                         f"(标准差为 0, 按 0 计) < 门槛 {float(_gate):g}")
+        else:
+            _gate_txt = f"首选评分 {float(_top_score):.2f} < 门槛 {float(_gate):g}(横截面 z 分)"
+    else:
+        _gate_txt = "首选评分缺失"
     if _gate_blocked and allow_buy:
         allow_buy = False
-        buy_note = f"{_gate_txt}: 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)"
+        buy_note = (f"{_gate_txt}: 当日无横截面可比, 空仓不参与(与回测 min_top1_score 同口径)"
+                    if _pn_main <= 1 else
+                    f"{_gate_txt}: 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)")
     elif _gate_blocked:
         buy_note += f"; 另: {_gate_txt}, 即使风控解除也不参与"
     # 第九十六轮: 评分分档下注 —— 门槛降到 1.0 后, 1.0~1.6 的票不再一刀切空仓, 而是按档位减仓

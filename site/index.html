@@ -204,11 +204,11 @@
   <div data-pane="tape" style="margin-top:12px" id="rp-daily"></div>
   <div data-pane="tape" class="panel note" style="margin-top:12px" id="rp-note"></div>
 
-  <h2 data-pane="more">策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
-  <div data-pane="more" id="health"><div class="loading">加载中...</div></div>
+  <h2 data-pane="more" data-strat-pane="main">策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
+  <div data-pane="more" data-strat-pane="main" id="health"><div class="loading">加载中...</div></div>
 
-  <h2 data-pane="more">策略规则与披露</h2>
-  <div data-pane="more" class="panel">
+  <h2 data-pane="more" data-strat-pane="main">主策略规则与披露 <span class="sub">单吊 · 每日最多 1 笔 · T+1 开盘买 · T+2 收盘卖</span></h2>
+  <div data-pane="more" data-strat-pane="main" class="panel">
     <b>执行时点</b>
     <ul class="rules">
       <li>T日收盘后：系统在沪深主板中选股，主力(dip)有候选时固定只发布「次日计划」1只；主力当日无任何候选时，按备用策略顺序（隔夜动量→深跌阳线反转→趋势回踩5日线）补位，网页最多列3只</li>
@@ -256,8 +256,10 @@
     </ul>
   </div>
 
-  <h2 data-pane="more">副策略规则与披露 <span class="sub">低波轮动 · 20 只等权 · 与主策略共用一份数据，各记各的账</span></h2>
-  <div data-pane="more" class="panel">
+  <h2 data-pane="more" data-strat-pane="sat">副策略规则与披露 <span class="sub">低波轮动 · 20 只等权 · 与主策略共用一份数据，各记各的账</span></h2>
+  <div data-pane="more" data-strat-pane="sat" class="panel">
+    <div class="legend" style="margin-bottom:10px">「策略体检」（失效探针 / era 判定 / 观察级苗头）只针对主策略：
+    副策略 v4 自 2026-11-05 才起账，向前样本还不够做失效判定，硬做出来的探针没有意义。</div>
     <b>为什么从「单吊」改成「20 只等权」（第一百四十五轮）</b>
     <ul class="rules">
       <li>先扫因子再改策略：1500 日、69 个调仓点、10 个候选因子。<b>低波（20 日特质波动 ivol20）最强</b>——五组完全单调，Q1 组 +1.10%/20 日、Q5 组 -1.16%，多空 2.26%，IC <b>-0.131</b>；动量是负的（追涨组 -0.89%），趋势/突破/量比都没有区分度</li>
@@ -352,10 +354,17 @@ const replayBadge = () => `<span class="badge"><a href="#replay" style="color:va
 /* ---------- 外壳: 页签 / 策略按钮 ---------- */
 function paintChrome() {
   document.querySelectorAll("#tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.tab === PANE));
-  document.querySelectorAll("[data-pane]").forEach(el => el.classList.toggle("on", el.dataset.pane === PANE));
+  // 面板显隐看两个维度: 页签(data-pane) + 策略(data-strat-pane)。
+  // 规则页原本是把主副两套规则平铺在一起, 手机上要滑三屏才能找到自己看的那条腿;
+  // 现在规则也归到策略按钮下, 切按钮 = 只留该策略的规则。
+  document.querySelectorAll("[data-pane]").forEach(el => {
+    const paneOk = el.dataset.pane === PANE;
+    const stratOk = !el.dataset.stratPane || el.dataset.stratPane === STRAT;
+    el.classList.toggle("on", paneOk && stratOk);
+  });
   document.querySelectorAll(".seg-btn").forEach(b => b.classList.toggle("on", b.dataset.strat === STRAT));
   document.getElementById("seg-note").textContent = STRAT_NOTE[STRAT];
-  document.getElementById("segbar").style.display = PANE === "more" ? "none" : "flex";
+  document.getElementById("segbar").style.display = "flex";
 }
 
 function showTab(name, push) {
@@ -1026,8 +1035,16 @@ function poolSat(d) {
 function planMain(d) {
   const p = d.plan || {}, td = d.t1_decision || {};
   const allow = td.allow_buy !== false && (d.picks || []).length > 0;
+  // 池里只有 1 只时, 横截面 z 分的标准差为 0, selector._zs 恒返回 0 —— 这是"没有可比对象",
+  // 不是"这只票质量差"。产物里的文案是旧版写的"当日质量不足", 这里按同一口径兜底改写,
+  // 免得每个"只剩 1 只"的交易日都要人工解释一遍(下次 daily 重算后产物侧文案也会同步)。
+  const oneOnly = Number(td.pool_n) === 1 && Number(td.top_score) === 0;
+  const noteTxt = oneOnly
+    ? String(td.buy_note || "").replace(/当日质量不足/,
+        "当日无横截面可比（仅 1 只达标，z 分标准差为 0）")
+    : td.buy_note;
   const rows = [];
-  rows.push(`<b>判定：</b>${esc(td.buy_note || (allow ? "按计划执行" : ((d.picks || []).length ? "风控限制" : "今日无合格候选")))}`);
+  rows.push(`<b>判定：</b>${esc(noteTxt || (allow ? "按计划执行" : ((d.picks || []).length ? "风控限制" : "今日无合格候选")))}`);
   if (allow) {
     rows.push(`<b>买入口径：</b>${td.floor_pct != null
       ? `开盘缺口 ≤ <b>${td.floor_pct}%</b> 才买（高开≥10%/一字/停牌放弃）`
@@ -1037,7 +1054,7 @@ function planMain(d) {
     const tier = td.score_tier_mult == null ? "" :
       " · " + (td.score_tier_mult >= 1 ? "满仓" : `${Math.round(td.score_tier_mult * 100)}% 仓位`);
     rows.push(`<b>评分：</b>首选 <b>${td.top_score ?? "-"}</b>（门槛 ≥ ${td.score_gate}；${td.gate_blocked
-      ? `<span class="down">未达门槛 → 不参与</span>`
+      ? `<span class="down">未达门槛 → 不参与${oneOnly ? "（池内仅 1 只，z 分无参照）" : ""}</span>`
       : `<span class="up">达标${tier}</span>`}）`);
   }
   if (td.pool_n != null && td.pool_tier_mult != null) {
@@ -1049,7 +1066,8 @@ function planMain(d) {
   if (td.pool_n != null && td.pool_n >= 11 && td.pool_n <= 20) {
     rows.push(`<b>深低开：</b>若竞价缺口 <b>≤-1%</b> → <b>撤销池深折价、回满仓</b>（深低开＝错杀的直接证据，池深只是共振的间接代理）`);
   }
-  if (td.gap_tier_note) {
+  // 空仓日不写"高开减仓": 本来就不买, 再讲"照常成交、只降仓位"是自相矛盾
+  if (td.gap_tier_note && allow) {
     rows.push(`<b>高开减仓：</b>竞价缺口 ${esc(td.gap_tier_note)} → 照常成交、只降仓位（评分 ≥1.6 的强势票不减）`);
   }
   if (td.month_gain_pct != null) {
@@ -1058,7 +1076,7 @@ function planMain(d) {
   const steps = (td.steps || []).filter(s => s.rank > 0);
   if (steps.length) {
     steps.forEach(s => rows.push(
-      `▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}${s.strategy_cn ? `，<span class="badge" style="font-size:11px">${esc(s.strategy_cn)}</span>` : ""}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}`));
+      `▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}${oneOnly && Number(s.score) === 0 ? "（z 分无参照）" : ""}${s.strategy_cn ? `，<span class="badge" style="font-size:11px">${esc(s.strategy_cn)}</span>` : ""}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}`));
   } else {
     rows.push(`▸ 今日候选池为空${td.empty_funnel ? "：" + Object.entries(td.empty_funnel).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v}`).join(" → ") + " → 全部过滤" : ""}，明日空仓`);
   }
