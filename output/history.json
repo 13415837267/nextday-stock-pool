@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-05",
+   "buy_date": "2026-11-06",
+   "sell_date": "2026-11-09",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "002626.SZ",
+     "name": "金达威",
+     "close": 17.56,
+     "pct": -3.09,
+     "reasons": "回调-3.1%、量比1.32(缩量)、20日动量12%、乖离1.4%、换手2.5%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "528906607aec"
+  },
+  {
    "publish_date": "2026-11-04",
    "buy_date": "2026-11-05",
    "sell_date": "2026-11-06",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "528906607aec"
+   "config_fp": "528906607aec",
+   "skip_chain": [
+    "第1名 惠泉啤酒: 缺口-1.2%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-03",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "528906607aec",
    "skip_chain": [
     "第1名 富春染织: 缺口-0.7%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "605189.SH"
    ]
   },
   {

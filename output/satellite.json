@@ -2,9 +2,9 @@
  "strategy": "lowvol_daily",
  "version": 2,
  "init_capital": 100000.0,
- "nav": 0.994012,
- "capital": 99401.23,
- "updated": "20261104",
+ "nav": 1.016239,
+ "capital": 101623.86,
+ "updated": "20261105",
  "params": {
   "hold_days": 40,
   "cost_pct": 0.3,
@@ -211,7 +211,7 @@
    "archived_by": "v2 日频切换"
   }
  ],
- "cash": 72.76,
+ "cash": 50.4,
  "batches": [
   {
    "id": "20261104-001",
@@ -224,10 +224,10 @@
    "shares": 927.2493,
    "cost": 2488.76,
    "hold_days": 1,
-   "status": "holding",
-   "exit_date": null,
-   "exit_px": null,
-   "ret_pct": 0.0,
+   "status": "closed",
+   "exit_date": "20261105",
+   "exit_px": 2.72,
+   "ret_pct": 1.49,
    "px": 2.68,
    "held_days": 0
   },
@@ -245,9 +245,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 7.83,
-   "held_days": 0
+   "ret_pct": 5.11,
+   "px": 8.23,
+   "held_days": 1
   },
   {
    "id": "20261104-003",
@@ -263,9 +263,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 7.97,
-   "held_days": 0
+   "ret_pct": 3.89,
+   "px": 8.28,
+   "held_days": 1
   },
   {
    "id": "20261104-004",
@@ -281,9 +281,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 6.91,
-   "held_days": 0
+   "ret_pct": 2.03,
+   "px": 7.05,
+   "held_days": 1
   },
   {
    "id": "20261104-005",
@@ -299,9 +299,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 14.7,
-   "held_days": 0
+   "ret_pct": 0.61,
+   "px": 14.79,
+   "held_days": 1
   },
   {
    "id": "20261104-006",
@@ -317,9 +317,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 2.22,
-   "held_days": 0
+   "ret_pct": 3.6,
+   "px": 2.3,
+   "held_days": 1
   },
   {
    "id": "20261104-007",
@@ -335,9 +335,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 3.58,
-   "held_days": 0
+   "ret_pct": 1.4,
+   "px": 3.63,
+   "held_days": 1
   },
   {
    "id": "20261104-008",
@@ -353,9 +353,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 2.44,
-   "held_days": 0
+   "ret_pct": 1.64,
+   "px": 2.48,
+   "held_days": 1
   },
   {
    "id": "20261104-009",
@@ -371,9 +371,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 14.69,
-   "held_days": 0
+   "ret_pct": 1.36,
+   "px": 14.89,
+   "held_days": 1
   },
   {
    "id": "20261104-010",
@@ -389,9 +389,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 9.01,
-   "held_days": 0
+   "ret_pct": 1.66,
+   "px": 9.16,
+   "held_days": 1
   },
   {
    "id": "20261104-011",
@@ -407,9 +407,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 3.64,
-   "held_days": 0
+   "ret_pct": 4.95,
+   "px": 3.82,
+   "held_days": 1
   },
   {
    "id": "20261104-012",
@@ -425,9 +425,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 5.05,
-   "held_days": 0
+   "ret_pct": 0.4,
+   "px": 5.07,
+   "held_days": 1
   },
   {
    "id": "20261104-013",
@@ -443,9 +443,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 7.38,
-   "held_days": 0
+   "ret_pct": -0.14,
+   "px": 7.37,
+   "held_days": 1
   },
   {
    "id": "20261104-014",
@@ -461,9 +461,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 6.5,
-   "held_days": 0
+   "ret_pct": 1.08,
+   "px": 6.57,
+   "held_days": 1
   },
   {
    "id": "20261104-015",
@@ -479,9 +479,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 8.91,
-   "held_days": 0
+   "ret_pct": 0.9,
+   "px": 8.99,
+   "held_days": 1
   },
   {
    "id": "20261104-016",
@@ -497,9 +497,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 7.89,
-   "held_days": 0
+   "ret_pct": 2.03,
+   "px": 8.05,
+   "held_days": 1
   },
   {
    "id": "20261104-017",
@@ -515,9 +515,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 2.62,
-   "held_days": 0
+   "ret_pct": 0.76,
+   "px": 2.64,
+   "held_days": 1
   },
   {
    "id": "20261104-018",
@@ -533,9 +533,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 2.87,
-   "held_days": 0
+   "ret_pct": 2.44,
+   "px": 2.94,
+   "held_days": 1
   },
   {
    "id": "20261104-019",
@@ -551,9 +551,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 11.86,
-   "held_days": 0
+   "ret_pct": 3.46,
+   "px": 12.27,
+   "held_days": 1
   },
   {
    "id": "20261104-020",
@@ -569,9 +569,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 2.08,
-   "held_days": 0
+   "ret_pct": 1.44,
+   "px": 2.11,
+   "held_days": 1
   },
   {
    "id": "20261104-021",
@@ -587,9 +587,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 1.73,
-   "held_days": 0
+   "ret_pct": 1.16,
+   "px": 1.75,
+   "held_days": 1
   },
   {
    "id": "20261104-022",
@@ -605,9 +605,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 2.94,
-   "held_days": 0
+   "ret_pct": 3.06,
+   "px": 3.03,
+   "held_days": 1
   },
   {
    "id": "20261104-023",
@@ -623,9 +623,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 24.67,
-   "held_days": 0
+   "ret_pct": 2.15,
+   "px": 25.2,
+   "held_days": 1
   },
   {
    "id": "20261104-024",
@@ -641,9 +641,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 8.79,
-   "held_days": 0
+   "ret_pct": 2.28,
+   "px": 8.99,
+   "held_days": 1
   },
   {
    "id": "20261104-025",
@@ -659,9 +659,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 5.57,
-   "held_days": 0
+   "ret_pct": 2.33,
+   "px": 5.7,
+   "held_days": 1
   },
   {
    "id": "20261104-026",
@@ -677,9 +677,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 3.09,
-   "held_days": 0
+   "ret_pct": 0.97,
+   "px": 3.12,
+   "held_days": 1
   },
   {
    "id": "20261104-027",
@@ -695,9 +695,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 5.29,
-   "held_days": 0
+   "ret_pct": 3.4,
+   "px": 5.47,
+   "held_days": 1
   },
   {
    "id": "20261104-028",
@@ -713,9 +713,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 2.91,
-   "held_days": 0
+   "ret_pct": 0.69,
+   "px": 2.93,
+   "held_days": 1
   },
   {
    "id": "20261104-029",
@@ -731,9 +731,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 9.78,
-   "held_days": 0
+   "ret_pct": 1.02,
+   "px": 9.88,
+   "held_days": 1
   },
   {
    "id": "20261104-030",
@@ -749,9 +749,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 10.18,
-   "held_days": 0
+   "ret_pct": 1.57,
+   "px": 10.34,
+   "held_days": 1
   },
   {
    "id": "20261104-031",
@@ -767,9 +767,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 7.73,
-   "held_days": 0
+   "ret_pct": 2.2,
+   "px": 7.9,
+   "held_days": 1
   },
   {
    "id": "20261104-032",
@@ -785,9 +785,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 5.3,
-   "held_days": 0
+   "ret_pct": 3.21,
+   "px": 5.47,
+   "held_days": 1
   },
   {
    "id": "20261104-033",
@@ -803,9 +803,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 10.47,
-   "held_days": 0
+   "ret_pct": 0.67,
+   "px": 10.54,
+   "held_days": 1
   },
   {
    "id": "20261104-034",
@@ -821,9 +821,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 3.91,
-   "held_days": 0
+   "ret_pct": 1.28,
+   "px": 3.96,
+   "held_days": 1
   },
   {
    "id": "20261104-035",
@@ -839,9 +839,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 8.88,
-   "held_days": 0
+   "ret_pct": 10.02,
+   "px": 9.77,
+   "held_days": 1
   },
   {
    "id": "20261104-036",
@@ -857,9 +857,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 16.86,
-   "held_days": 0
+   "ret_pct": 1.96,
+   "px": 17.19,
+   "held_days": 1
   },
   {
    "id": "20261104-037",
@@ -875,9 +875,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 9.06,
-   "held_days": 0
+   "ret_pct": 3.53,
+   "px": 9.38,
+   "held_days": 1
   },
   {
    "id": "20261104-038",
@@ -893,9 +893,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": 0.0,
-   "px": 4.19,
-   "held_days": 0
+   "ret_pct": 5.73,
+   "px": 4.43,
+   "held_days": 1
   },
   {
    "id": "20261104-039",
@@ -911,9 +911,9 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
-   "ret_pct": -0.0,
-   "px": 12.12,
-   "held_days": 0
+   "ret_pct": 3.3,
+   "px": 12.52,
+   "held_days": 1
   },
   {
    "id": "20261104-040",
@@ -929,8 +929,26 @@
    "status": "holding",
    "exit_date": null,
    "exit_px": null,
+   "ret_pct": -0.81,
+   "px": 2.44,
+   "held_days": 1
+  },
+  {
+   "id": "20261105-041",
+   "signal_date": "20261105",
+   "code": "000620.SZ",
+   "name": "盈新发展",
+   "ivol20": 0.63,
+   "entry_px": 2.72,
+   "entry_px_raw": 2.72,
+   "shares": 932.6767,
+   "cost": 2540.69,
+   "hold_days": 40,
+   "status": "holding",
+   "exit_date": null,
+   "exit_px": null,
    "ret_pct": 0.0,
-   "px": 2.46,
+   "px": 2.72,
    "held_days": 0
   }
  ],
@@ -940,6 +958,15 @@
    "code": "000620.SZ",
    "name": "盈新发展",
    "ivol20": 0.61,
+   "action": "buy",
+   "note": "",
+   "bought": true
+  },
+  {
+   "date": "20261105",
+   "code": "000620.SZ",
+   "name": "盈新发展",
+   "ivol20": 0.63,
    "action": "buy",
    "note": "",
    "bought": true
