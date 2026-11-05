@@ -97,6 +97,16 @@ def _universe(day, cfg):
     return df.loc[df["ts_code"].map(lambda c: board_of(c) in boards)]
 
 
+def _ranked(codes, vals):
+    """按 vals 降序返回全部 code(过滤 nan)。"""
+    v = np.asarray(vals, dtype=float)
+    ok = np.isfinite(v)
+    c = np.asarray(codes, dtype=object)[ok]
+    vv = v[ok]
+    order = np.argsort(-vv)
+    return [str(c[i]) for i in order]
+
+
 def _top(codes, vals, n, asc=False):
     """按 vals 取前 n 个 code; asc=True 取最小。"""
     v = np.asarray(vals, dtype=float)
@@ -147,11 +157,12 @@ def main():
     print("[3/4] 月度调仓 %d 期, 6 个候选 ..." % len(triples), flush=True)
 
     NAMES = ["tsmom_12_1", "tsmom_abs", "tsmom_ma", "lowvol_ma", "hi52w", "dualma",
-             "lowvol", "lowvol_rp", "lowvol_rev"]
+             "lowvol", "lowvol_rp", "lowvol_rev", "lowvol_buf", "lowvol_q"]
     rets = {n: [] for n in NAMES}
     hold = {n: [] for n in NAMES}
     months, base_rets, mkt_state = [], [], []
     prev = {n: None for n in NAMES}
+    last_q = None
     turn_acc = {n: 0.0 for n in NAMES}
     n_skip = 0
 
@@ -230,6 +241,24 @@ def main():
         rev_in_lv = np.where(valid & np.array([str(c) in wide_set for c in cc]), -mom20_arr, np.nan)
         picks["lowvol_rev"] = (_top(cc, rev_in_lv, TOP_N), None)
 
+        # 低波 + 缓冲带: 旧持仓只要还在前 3*TOP_N 就不卖(压换手)
+        lv_all = _ranked(cc, lv)
+        top_set = lv_all[:TOP_N]
+        keep_n = TOP_N * 3
+        buf_keep = lv_all[:keep_n]
+        if prev["lowvol_buf"]:
+            hold_set = [c for c in prev["lowvol_buf"] if c in set(buf_keep)]
+            add = [c for c in top_set if c not in set(hold_set)]
+            lv_buf = (hold_set + add)[:TOP_N]
+        else:
+            lv_buf = top_set
+        picks["lowvol_buf"] = (lv_buf, None)
+
+        # 低波 + 季度调仓: 仅 3/6/9/12 月换仓
+        if sig_d[4:6] in ("03", "06", "09", "12") or not last_q:
+            last_q = top_set
+        picks["lowvol_q"] = (list(last_q), None)
+
         amap = {str(c): k for k, c in enumerate(cc)}
         for nm in NAMES:
             cs, ws = picks[nm]
@@ -254,6 +283,8 @@ def main():
             cur = set(cs)
             if prev[nm] is None:
                 turn = 1.0
+            elif nm == "lowvol_q" and sig_d[4:6] not in ("03", "06", "09", "12"):
+                turn = 0.0          # 非调仓月: 不动仓位, 不计成本
             else:
                 turn = 1.0 - len(cur & prev[nm]) / max(1, len(cur))
             prev[nm] = cur
