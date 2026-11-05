@@ -544,7 +544,11 @@ async function loadExecHistory() {
           chain: (e.chain || []).join("；") || "第1名直接成交", status: r.status || ""});
       } else if (r.status === "待结算") {
         const isFlat = !(r.picks || []).length;
-        rows.push({pub: r.publish_date, buy: r.buy_date, code: "", name: isFlat ? "空池日(无候选, 空仓)" : "待执行(明日开盘)",
+        // 有 skip_chain = 买入日已判定未成交(只是还没到卖出日、状态尚未终结);
+        // 这时再写"待执行(明日开盘)"会误导 —— 明日不会买, 只是因为 T+2 才改状态。
+        const missed = (r.skip_chain || []).length > 0;
+        rows.push({pub: r.publish_date, buy: r.buy_date, code: "",
+          name: isFlat ? "空池日(无候选, 空仓)" : (missed ? "未成交（跳过原因见右侧）" : "待执行(明日开盘)"),
           rank: null, buyPx: null, sellDate: null, sellPx: null, posPct: null,
           realBuy: null, realSell: null, ret: null, retNote: "待结算",
           chain: (r.skip_chain || []).join("；") || "-", status: "待结算"});
@@ -740,7 +744,15 @@ async function loadSatPlan() {
   const holdN = Number(P.hold_days || 20);
   const modeCN = P.mode_cn || "低波单吊";
   const gateTxt = P.market_gate ? "开（指数在 MA20 上方才开新仓）" : "关";
-  const actCN = a => a === "buy" ? "买入" : (a === "sell" ? "卖出" : (a === "signal" ? "出信号" : "空仓"));
+  // 下一交易日取自主策略的交易日历(同一个日历, 只借一个日期, 不借任何策略结论),
+  // 让两张判定卡的抬头格式完全一致; 取不到就退回"下一交易日"。
+  let buyDate = "";
+  try {
+    const l = await jget("./data/latest.json");
+    if (l.plan && l.plan.buy_date
+        && String(l.signal_date || "").replace(/-/g, "") === String(d.updated))
+      buyDate = l.plan.buy_date;
+  } catch (e) { /* latest.json 缺失不影响副策略卡片 */ }
 
   let head, detail;
   if (sig) {
@@ -778,7 +790,7 @@ async function loadSatPlan() {
 
   box.innerHTML = `<div class="plan-grid">
     <div class="t1-box" style="grid-column:1/-1">
-      <div class="k muted" style="font-size:12px">T+1 执行判定卡 · ${esc(modeCN)} · 信号日 ${satFd(d.updated)} 收盘 · 9:25 竞价结束后照此执行</div>
+      <div class="k muted" style="font-size:12px">T+1（${buyDate || "下一交易日"}）执行判定卡 · ${esc(modeCN)} · 9:25 竞价结束后照此执行</div>
       ${head}${detail}
       <div class="row" style="margin-top:8px;color:var(--muted);font-size:12px">
         虚拟本金 ${(Number(d.init_capital || 0) / 1e4).toFixed(0)} 万 → <b style="color:${nav >= 1 ? "var(--red)" : "var(--green)"}">${(cap / 1e4).toFixed(2)} 万</b>
