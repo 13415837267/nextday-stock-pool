@@ -121,7 +121,7 @@
   <div style="margin-top:12px" id="paper-table"></div>
   <div class="panel note" style="margin-top:12px" id="paper-note"></div>
 
-  <h2 id="sat">六、独立副策略 <span class="sub" id="sat-sub">低波+缓冲带 · 月度调仓 · 等权 20 只 · 与主策略零耦合</span></h2>
+  <h2 id="sat">六、独立副策略 <span class="sub" id="sat-sub">每日 1 只低波票 · 持有 40 个交易日 · 与主策略零耦合</span></h2>
   <div class="cards" id="sat-cards"><div class="card"><div class="k">独立副策略</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
   <div style="margin-top:12px" id="sat-table"></div>
   <div class="panel note" style="margin-top:12px" id="sat-note"></div>
@@ -606,6 +606,7 @@ async function loadSatellite() {
   const box = document.getElementById("sat-cards");
   const tbl = document.getElementById("sat-table");
   const note = document.getElementById("sat-note");
+  const fd = v => (v && String(v).length === 8) ? `${String(v).slice(0,4)}-${String(v).slice(4,6)}-${String(v).slice(6)}` : (v || "-");
   let d;
   try { d = await jget("./data/satellite.json"); }
   catch (e) {
@@ -613,55 +614,73 @@ async function loadSatellite() {
       <div class="v" style="font-size:13px;color:var(--muted)">尚未生成（首次运行后出现）</div></div>`;
     tbl.innerHTML = ""; note.innerHTML = ""; return;
   }
-  const recs = d.records || [];
-  const cur = recs.length ? recs[recs.length - 1] : null;
-  const closed = recs.filter(r => r.status === "closed");
+  const batches = d.batches || [], daily = d.daily || [];
+  const hold = batches.filter(b => b.status === "holding");
+  const closed = batches.filter(b => b.status === "closed");
+  const today = daily.length ? daily[daily.length - 1] : null;
   const nav = Number(d.nav ?? 1);
-  const wins = closed.filter(r => (r.exit_ret_pct ?? 0) > 0).length;
+  const holdN = Number((d.params || {}).hold_days || 40);
+  const win = closed.filter(b => (b.ret_pct ?? 0) > 0).length;
+  const posAmt = hold.reduce((x, b) => x + Number(b.cost || 0), 0);
+  const posPct = Number(d.capital || 0) > 0 ? posAmt / Number(d.capital) * 100 : 0;
   const c = (k, v, sub, cls) => `<div class="card"><div class="k">${k}</div>
     <div class="v ${cls || ""}">${v}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45">${sub || ""}</div></div>`;
+
+  const actCN = a => a === "buy" ? "买入" : (a === "skip" ? "顺延" : "不买");
   box.innerHTML = [
+    c("今日推荐", today ? `${esc(today.code)}<div style="font-size:13px;margin-top:2px">${esc(today.name || "")}</div>` : "—",
+      today ? `${fd(today.date)} · 20日波动 ${today.ivol20 != null ? Number(today.ivol20).toFixed(2) : "-"} · ${actCN(today.action)}${today.note ? "（" + esc(today.note) + "）" : ""}` : "等待首次运行",
+      ""),
+    c("在持批次", `${hold.length} <span style="font-size:14px;color:var(--muted)">/ ${holdN} 只</span>`,
+      `已投入 ${(posAmt / 1e4).toFixed(2)} 万 · 仓位 ${posPct.toFixed(0)}%`),
     c("副策略净值", nav.toFixed(4), `虚拟本金 10 万 → ${(Number(d.capital || 0) / 1e4).toFixed(2)} 万`,
       nav > 1 ? "up" : (nav < 1 ? "down" : "")),
-    c("已结算", closed.length, closed.length ? `胜 ${wins} / ${closed.length}` : "月初换仓后结算"),
-    c("全史回测", "+9.6%/年", "2012-11~2026-11 · 161 期 · 回撤 -29.4% · 卡玛 0.32", "up"),
-    c("与主策略相关", "+0.082", "月收益相关系数（<0.3 即视为独立）"),
+    c("已结算", closed.length, closed.length ? `胜 ${win} / ${closed.length}` : `每只持有 ${holdN} 个交易日`),
+    c("全史回测", "+8.8%/年", "2013-01~2026-11 · 3279 日 · 日频回撤 -52.9%", "up"),
+    c("与主策略相关", "+0.08", "月收益相关（<0.3 视为独立）"),
   ].join("");
 
   let html = "";
-  if (cur) {
-    const rows = (cur.holdings || []).map(h => `<tr>
-      <td>${esc(h.code)}</td><td>${esc(h.name || "")}</td>
-      <td>${h.ivol20 != null ? Number(h.ivol20).toFixed(2) : "-"}</td>
-      <td>${h.weight != null ? (h.weight * 100).toFixed(1) + "%" : "-"}</td>
-      <td>${h.entry_px || "-"}</td><td>${h.px || "-"}</td>
-      <td class="${pctCls(h.ret_pct)}">${h.ret_pct != null ? pctStr(h.ret_pct) : "-"}</td></tr>`).join("");
+  if (today) {
     html += `<div style="font-size:13px;color:var(--muted);margin:0 0 8px">
-      本月持仓 · ${cur.month}（信号日 ${fmtDate(cur.signal_date)} · 换手 ${((cur.turnover || 0) * 100).toFixed(0)}%）</div>
-      <table><thead><tr><th>代码</th><th>名称</th><th>20日波动</th><th>权重</th>
-      <th>建仓价</th><th>现价</th><th>浮动</th></tr></thead><tbody>${rows}</tbody></table>`;
+      今日推荐 · ${fd(today.date)}（收盘后选出，次日开盘执行）</div>
+      <table><thead><tr><th>代码</th><th>名称</th><th>20日波动</th><th>动作</th><th>说明</th></tr></thead>
+      <tbody><tr><td>${esc(today.code || "-")}</td><td>${esc(today.name || "")}</td>
+      <td>${today.ivol20 != null ? Number(today.ivol20).toFixed(2) : "-"}</td>
+      <td>${actCN(today.action)}</td><td>${esc(today.note || (today.bought ? "已按收盘价建仓" : ""))}</td></tr></tbody></table>`;
+  }
+  if (hold.length) {
+    const rows = hold.slice().sort((a, b) => String(b.signal_date).localeCompare(String(a.signal_date))).map(h => `<tr>
+      <td>${fd(h.signal_date)}</td><td>${esc(h.code)}</td><td>${esc(h.name || "")}</td>
+      <td>${h.entry_px_raw != null ? h.entry_px_raw : "-"}</td><td>${h.px || "-"}</td>
+      <td class="${pctCls(h.ret_pct)}">${h.ret_pct != null ? pctStr(h.ret_pct) : "-"}</td>
+      <td>${h.held_days != null ? h.held_days : "-"} / ${h.hold_days || holdN}</td></tr>`).join("");
+    html += `<div style="font-size:13px;color:var(--muted);margin:16px 0 8px">
+      在持批次（按建仓日倒序 · 共 ${hold.length} 只 · 每只 1/${holdN} 仓）</div>
+      <table><thead><tr><th>建仓日</th><th>代码</th><th>名称</th><th>建仓价</th><th>现价</th><th>浮动</th><th>持有</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
   }
   if (closed.length) {
-    const tr = closed.slice().reverse().slice(0, 8).map(r => `<tr>
-      <td>${r.month}</td><td>${r.exit_date ? fmtDate(r.exit_date) : "-"}</td>
-      <td>${(r.holdings || []).length}</td>
-      <td>${((r.turnover || 0) * 100).toFixed(0)}%</td>
-      <td class="${pctCls(r.exit_ret_pct)}">${r.exit_ret_pct != null ? pctStr(r.exit_ret_pct) : "-"}</td>
-      <td>${(r.exit_nav != null ? Number(r.exit_nav) : Number(r.nav || 0)).toFixed(4)}</td></tr>`).join("");
-    html += `<div style="font-size:13px;color:var(--muted);margin:16px 0 8px">已结算期数</div>
-      <table><thead><tr><th>月份</th><th>换仓日</th><th>持仓</th><th>换手</th><th>期收益</th><th>期末净值</th>
-      </tr></thead><tbody>${tr}</tbody></table>`;
+    const tr = closed.slice().reverse().slice(0, 10).map(b => `<tr>
+      <td>${fd(b.exit_date)}</td><td>${esc(b.code)}</td><td>${esc(b.name || "")}</td>
+      <td>${b.entry_px_raw != null ? b.entry_px_raw : "-"}</td><td>${b.exit_px || "-"}</td>
+      <td class="${pctCls(b.ret_pct)}">${b.ret_pct != null ? pctStr(b.ret_pct) : "-"}</td></tr>`).join("");
+    html += `<div style="font-size:13px;color:var(--muted);margin:16px 0 8px">最近结算（逐笔）</div>
+      <table><thead><tr><th>结算日</th><th>代码</th><th>名称</th><th>建仓价</th><th>卖出价</th><th>收益</th></tr></thead>
+      <tbody>${tr}</tbody></table>`;
   }
   tbl.innerHTML = html;
 
-  note.innerHTML = `<b>这本书和主策略完全独立：</b>低特质波动（20 日 ivol 最低 20 只，等权、月度调仓、带 3 倍缓冲带）
-    与 dip 的"日内恐慌错杀"不是同一个 alpha —— 持有期 1 个月 vs 2 天、分散 20 只 vs 单票满仓、
-    月更 vs 日更，月收益相关仅 <b>+0.082</b>。<br>
-    <b>它不并入主策略的原因：</b>年化 9.6% 与主策略（1500 日 106%）不在一个量级，任何非零权重都会拉低组合卡玛；
-    它的价值不是提高收益，是<b>主策略失效时还有一条腿在跑</b>。<br>
-    <b>口径：</b>信号日收盘价建仓、换仓日收盘价结算，成本 0.30%/换手；实盘按次日开盘执行，
-    与收盘口径偏差约 ±0.3%。账本与 <code>paper.json</code> 并列且互不读写（只增不改、同月幂等）。`;
+  note.innerHTML = `<b>每天只推一只，但不是每天只持一只。</b>账户里是过去 ${holdN} 个交易日推荐结果的累积
+    （稳态 ${holdN} 只、每只 1/${holdN} 仓），每天一进一出。这样做不是偷懒——
+    第一百三十八轮实测：<b>只持 1 只、每天换</b>的年化是 <b>-50.8%</b>，因为每天一次往返 0.3%、
+    一年 250 次，成本就是 -52.8%/年，低波因子的收益全部交给了券商。持有 ${holdN} 日把成本压到 2.3%/年，
+    年化 +8.8%（全史）/+7.7%（近 1500 日）。<br>
+    <b>选股：</b>非ST、上市满250日、成交额≥1亿的主板/创业板股票中，按 20 日特质波动（ivol20）升序取最低的
+    <b>一只未持有</b>的票；已在持仓则顺延到下一只，避免重复加仓变成单票满仓。<br>
+    <b>口径：</b>信号日收盘价建仓、持有满 ${holdN} 个交易日按收盘价结算，单边成本 0.15%；实盘按次日开盘执行，
+    与收盘口径偏差约 ±0.3%。账本与 <code>paper.json</code> 并列且互不读写（只增不改、同日幂等）。`;
 }
 
 async function loadReplay() {
