@@ -1,0 +1,183 @@
+{
+ "days": 1500,
+ "n_months": 69,
+ "top_n": 30,
+ "cost_pct": 0.3,
+ "factors": {
+  "size_small": {
+   "ann": -12.95,
+   "mdd": -61.46,
+   "calmar": -0.21,
+   "excess_ann": -12.16,
+   "excess_t": -2.02,
+   "ic": -0.0358,
+   "icir": -0.191,
+   "ic_t": -1.59,
+   "ls_mean": -0.725,
+   "ls_t": -0.79,
+   "turnover": 0.778,
+   "n_months": 69,
+   "corr_dip": 0.118,
+   "pass": [
+    false,
+    false,
+    false,
+    true
+   ]
+  },
+  "rev_1m": {
+   "ann": -4.35,
+   "mdd": -41.53,
+   "calmar": -0.1,
+   "excess_ann": -3.56,
+   "excess_t": -0.12,
+   "ic": 0.0828,
+   "icir": 0.485,
+   "ic_t": 4.03,
+   "ls_mean": 3.443,
+   "ls_t": 2.66,
+   "turnover": 0.965,
+   "n_months": 69,
+   "corr_dip": 0.035,
+   "pass": [
+    false,
+    true,
+    false,
+    true
+   ]
+  },
+  "low_ivol": {
+   "ann": 3.7,
+   "mdd": -26.15,
+   "calmar": 0.14,
+   "excess_ann": 4.49,
+   "excess_t": 0.88,
+   "ic": 0.1247,
+   "icir": 0.751,
+   "ic_t": 6.24,
+   "ls_mean": 2.852,
+   "ls_t": 2.35,
+   "turnover": 0.861,
+   "n_months": 69,
+   "corr_dip": 0.054,
+   "pass": [
+    false,
+    true,
+    false,
+    true
+   ]
+  },
+  "low_turn": {
+   "ann": 6.98,
+   "mdd": -19.77,
+   "calmar": 0.35,
+   "excess_ann": 7.77,
+   "excess_t": 0.74,
+   "ic": 0.1023,
+   "icir": 0.479,
+   "ic_t": 3.98,
+   "ls_mean": 4.349,
+   "ls_t": 3.12,
+   "turnover": 0.371,
+   "n_months": 69,
+   "corr_dip": -0.189,
+   "pass": [
+    false,
+    true,
+    false,
+    true
+   ]
+  },
+  "low_amp": {
+   "ann": 1.09,
+   "mdd": -24.39,
+   "calmar": 0.04,
+   "excess_ann": 1.88,
+   "excess_t": 0.17,
+   "ic": 0.0792,
+   "icir": 0.442,
+   "ic_t": 3.68,
+   "ls_mean": 3.515,
+   "ls_t": 3.03,
+   "turnover": 0.773,
+   "n_months": 69,
+   "corr_dip": -0.129,
+   "pass": [
+    false,
+    true,
+    false,
+    true
+   ]
+  },
+  "mom_1m": {
+   "ann": -39.89,
+   "mdd": -95.09,
+   "calmar": -0.42,
+   "excess_ann": -39.1,
+   "excess_t": -3.15,
+   "ic": -0.0828,
+   "icir": -0.485,
+   "ic_t": -4.03,
+   "ls_mean": -3.443,
+   "ls_t": -2.66,
+   "turnover": 0.95,
+   "n_months": 69,
+   "corr_dip": -0.101,
+   "pass": [
+    false,
+    false,
+    false,
+    true
+   ]
+  },
+  "near_high": {
+   "ann": -34.47,
+   "mdd": -92.84,
+   "calmar": -0.37,
+   "excess_ann": -33.68,
+   "excess_t": -4.37,
+   "ic": -0.007,
+   "icir": -0.043,
+   "ic_t": -0.36,
+   "ls_mean": -2.979,
+   "ls_t": -2.8,
+   "turnover": 0.987,
+   "n_months": 69,
+   "corr_dip": -0.049,
+   "pass": [
+    false,
+    false,
+    false,
+    true
+   ]
+  },
+  "illiq": {
+   "ann": -2.64,
+   "mdd": -53.61,
+   "calmar": -0.05,
+   "excess_ann": -1.85,
+   "excess_t": -0.02,
+   "ic": 0.0259,
+   "icir": 0.193,
+   "ic_t": 1.61,
+   "ls_mean": 0.836,
+   "ls_t": 0.84,
+   "turnover": 0.961,
+   "n_months": 69,
+   "corr_dip": 0.189,
+   "pass": [
+    false,
+    false,
+    false,
+    true
+   ]
+  }
+ },
+ "benchmark": {
+  "ann": -0.79,
+  "mdd": -40.75,
+  "calmar": -0.02,
+  "months": 69,
+  "nav": 0.9554
+ }
+}
