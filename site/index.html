@@ -25,6 +25,9 @@
   h2 { font-size: 18px; margin: 30px 0 12px; padding-left: 10px; border-left: 3px solid var(--gold); }
   h2 .sub { font-size: 12px; color: var(--muted); font-weight: normal; margin-left: 8px; }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  /* 回测固定 8 张指标卡: 桌面 4×2, 手机 2×4 —— auto-fit 在 1120px 下会排成 7+1, 单独一张很扎眼 */
+  #bt-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 640px) { #bt-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
   .card .k { color: var(--muted); font-size: 12px; }
   .card .v { font-size: 20px; font-weight: 600; margin-top: 4px; }
@@ -108,6 +111,39 @@
     .tabs { gap: 4px; }
     .tab { padding: 8px 10px; font-size: 13px; }
   }
+
+  /* ---- 策略切换(第一百四十二轮): 主/副策略共用同一套模块, 只换数据源 ----
+     原先把"主策略/副策略"做成两个页签、首页再单独堆两张计划卡: 同一个策略被拆在
+     两处, 手机要滚三屏才能对上一次账。现在只有一个"策略"页, 顶部按钮切换。 */
+  .segbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0 0; }
+  .seg { display: inline-flex; gap: 4px; padding: 4px; background: var(--panel);
+         border: 1px solid var(--border); border-radius: 10px; }
+  .seg-btn { font-family: inherit; font-size: 14px; line-height: 1; color: var(--muted);
+             background: transparent; border: 0; cursor: pointer; padding: 10px 18px;
+             border-radius: 7px; transition: background .12s, color .12s; }
+  .seg-btn:hover { color: var(--text); }
+  .seg-btn.on { background: #1f2632; color: var(--gold); font-weight: 600;
+                box-shadow: inset 0 0 0 1px var(--border); }
+  .seg-note { font-size: 12px; color: var(--muted); }
+  /* 漏斗: 每一步"还剩多少只", 最后一格就是候选池(= 表内行数) */
+  .funnel { display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+            margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+  .fstep { background: var(--panel2); border: 1px solid var(--border);
+           border-radius: 6px; padding: 4px 9px; }
+  .fstep b { color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .fstep.last { border-color: var(--gold); color: var(--gold); }
+  .fstep.last b { color: var(--gold); }
+  .fa { color: #3b424e; }
+  @media (max-width: 640px) {
+    .segbar { margin: 10px 0 0; }
+    .seg { width: 100%; }
+    .seg-btn { flex: 1; padding: 10px 4px; font-size: 12.5px; }
+    .seg-note { width: 100%; }
+    /* 手机上漏斗会换行, 行尾吊一个"→"很难看: 直接去掉箭头, 每格自带"数字+条件", 读起来仍是递进 */
+    .funnel { font-size: 11px; gap: 4px; }
+    .fa { display: none; }
+    .fstep { padding: 3px 7px; }
+  }
 </style>
 </head>
 <body>
@@ -119,63 +155,54 @@
   </header>
 
   <nav class="tabs" id="tabs">
-    <button class="tab active" data-tab="home">首页 · 明日计划</button>
-    <button class="tab" data-tab="main">主策略</button>
-    <button class="tab" data-tab="sat">副策略</button>
+    <button class="tab active" data-tab="strategy">策略</button>
     <button class="tab" data-tab="tape">台账 · 回放</button>
     <button class="tab" data-tab="more">体检 · 规则</button>
   </nav>
 
-  <h2 data-pane="home">主策略 · 明日计划 <span class="sub">深低开承接 · 每日仅执行评分第 1 名 1 笔</span></h2>
-  <div data-pane="home" id="plan"><div class="loading">加载中...</div></div>
+  <div class="segbar" id="segbar">
+    <div class="seg">
+      <button class="seg-btn on" data-strat="main">主策略 · 深低开承接</button>
+      <button class="seg-btn" data-strat="sat">副策略 · 低波单吊</button>
+    </div>
+    <span class="seg-note" id="seg-note"></span>
+  </div>
 
-  <h2 data-pane="home" id="sat-plan-h">副策略 · 明日计划 <span class="sub" id="sat-plan-sub">单吊 · 每日最多 1 只 · 与主策略同架构、共用一份数据</span></h2>
-  <div data-pane="home" id="sat-plan"><div class="loading">加载中...</div></div>
+  <h2 data-pane="strategy">明日计划 <span class="sub" id="plan-sub"></span></h2>
+  <div data-pane="strategy" id="plan-box"><div class="loading">加载中...</div></div>
 
-  <h2 data-pane="main">当日候选池（1只主选 + 备用漏斗） <span class="sub">仅沪深主板 · 主力有信号日只发1只；主力无信号日按备选顺序补位（至多3只），买入端每日仍只买第一只达标票（第九十一轮）</span></h2>
-  <div data-pane="main" id="pool"><div class="loading">加载中...</div></div>
+  <h2 data-pane="strategy">当日候选池 <span class="sub" id="pool-sub"></span></h2>
+  <div data-pane="strategy" id="pool-box"><div class="loading">加载中...</div></div>
 
-  <h2 data-pane="main">单吊执行记录 <span class="sub">逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）</span></h2>
-  <div data-pane="main" class="cards" id="exec-cards"></div>
-  <div data-pane="main" style="margin-top:12px" id="exec-table"></div>
+  <h2 data-pane="strategy">单吊执行记录 <span class="sub" id="exec-sub"></span></h2>
+  <div data-pane="strategy" class="cards" id="exec-cards"></div>
+  <div data-pane="strategy" style="margin-top:12px" id="exec-table"></div>
 
-  <h2 data-pane="main">回测绩效 <span class="sub">1500 交易日（2020-08~2026-11）· 实盘口径复利（样本内，前瞻预期见披露）</span></h2>
-  <div data-pane="main" class="cards" id="bt-cards"></div>
-  <div data-pane="main" class="panel" style="margin-top:12px" id="bt-chart"></div>
-  <div data-pane="main" class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
+  <h2 data-pane="strategy">回测绩效 <span class="sub" id="bt-sub"></span></h2>
+  <div data-pane="strategy" class="cards" id="bt-cards"></div>
+  <div data-pane="strategy" class="panel" style="margin-top:12px" id="bt-chart"></div>
+  <div data-pane="strategy" class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2 data-pane="tape" id="paper">向前台账 <span class="sub" id="paper-sub">自 2026-11-02 起冻结每日信号，T+1 回填真实成交、T+2 回填结果（只增不改）</span></h2>
-  <div data-pane="tape" class="cards" id="paper-cards"><div class="card"><div class="k">向前台账</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
-  <div data-pane="tape" style="margin-top:12px" id="paper-table"></div>
-  <div data-pane="tape" class="panel note" style="margin-top:12px" id="paper-note"></div>
+  <div data-pane="tape" id="paper-wrap">
+    <h2 id="paper">向前台账 <span class="sub" id="paper-sub">自 2026-11-02 起冻结每日信号，T+1 回填真实成交、T+2 回填结果（只增不改）</span></h2>
+    <div class="cards" id="paper-cards"><div class="card"><div class="k">向前台账</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+    <div style="margin-top:12px" id="paper-table"></div>
+    <div class="panel note" style="margin-top:12px" id="paper-note"></div>
+  </div>
 
-  <h2 data-pane="sat" id="sat">当日候选池（1只主选 + ivol 排序） <span class="sub" id="sat-pool-sub">全池按 20 日特质波动升序，第 1 名即明日计划；池深不足 20 只则不出票</span></h2>
-  <div data-pane="sat" id="sat-pool"><div class="loading">加载中...</div></div>
+  <div data-pane="tape" class="panel note" id="sat-tape-note" style="display:none">
+    <b>副策略没有向前台账。</b>它自 2026-11-05 起才独立记账，真实流水在「策略 → 副策略 → 单吊执行记录」里。
+    下方是<b>历史回放</b>：从 1500 日回测里切出近 12 个月逐日重放，回答"若严格按当前规则走会怎样"，
+    与真实流水是两件事，对账请看策略页。
+  </div>
 
-  <h2 data-pane="sat">单吊执行记录 <span class="sub">逐笔明细：买入哪只、什么价、卖出哪只、什么价（v3 自 2026-11-05 起）</span></h2>
-  <div data-pane="sat" class="cards" id="sat-exec-cards"></div>
-  <div data-pane="sat" style="margin-top:12px" id="sat-exec-table"></div>
-
-  <h2 data-pane="sat">回测绩效 <span class="sub" id="sat-bt-sub">1500 交易日 · 与主策略同一窗口、同一份数据、同一套单吊执行纪律</span></h2>
-  <div data-pane="sat" class="cards" id="sat-bt-cards"></div>
-  <div data-pane="sat" class="panel" style="margin-top:12px" id="sat-bt-chart"></div>
-  <div data-pane="sat" class="legend"><span class="dot" style="background:var(--gold)"></span>副策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
-
-  <h2 data-pane="tape" id="replay">主策略历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
+  <h2 data-pane="tape" id="replay"><span id="rp-name">历史回放</span> <span class="sub" id="rp-sub">加载中...</span></h2>
   <div data-pane="tape" class="cards" id="rp-cards"><div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
   <div data-pane="tape" class="cards" id="rp-months" style="margin-top:12px"></div>
   <div data-pane="tape" class="panel" style="margin-top:12px" id="rp-chart"></div>
   <div data-pane="tape" style="margin-top:12px" id="rp-trades"></div>
   <div data-pane="tape" style="margin-top:12px" id="rp-daily"></div>
   <div data-pane="tape" class="panel note" style="margin-top:12px" id="rp-note"></div>
-
-  <h2 data-pane="tape" id="sat-replay">副策略历史回放 <span class="sub" id="srp-sub">加载中...</span></h2>
-  <div data-pane="tape" class="cards" id="srp-cards"><div class="card"><div class="k">副策略回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
-  <div data-pane="tape" class="cards" id="srp-months" style="margin-top:12px"></div>
-  <div data-pane="tape" class="panel" style="margin-top:12px" id="srp-chart"></div>
-  <div data-pane="tape" style="margin-top:12px" id="srp-trades"></div>
-  <div data-pane="tape" style="margin-top:12px" id="srp-daily"></div>
-  <div data-pane="tape" class="panel note" style="margin-top:12px" id="srp-note"></div>
 
   <h2 data-pane="more">策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
   <div data-pane="more" id="health"><div class="loading">加载中...</div></div>
@@ -233,7 +260,8 @@
   <div data-pane="more" class="panel">
     <b>执行时点（与主策略完全一致）</b>
     <ul class="rules">
-      <li>T日收盘后：全池按 20 日特质波动（ivol20）升序，取第 1 名作为次日计划；<b>池深不足 20 只则当日不出票</b>（宁缺勿滥）</li>
+      <li>T日收盘后：基础票池（通过硬性条件的全部只数）按 20 日特质波动（ivol20）升序，取第 1 名作为次日计划；<b>候选池 = 升序前 20 只</b>，页面上表有几行、池深就是几</li>
+      <li><b>基础票池不足 20 只则当日不出票</b>（宁缺勿滥）。"取前 20"只是展示深度，第 1 名始终是全体 ivol 最低的那只 —— 不改变选股结果</li>
       <li>T+1日开盘集合竞价：<b>按开盘价买入 100% 仓位</b>，一日最多 1 只；竞价缺口在 -3%~+5% 之外不成交（深低开破位不接、高开过多不追），一字涨停/停牌买不到</li>
       <li>持满 <b>40 个交易日</b>收盘卖出；收盘相对买入价跌破 <b>-12%</b> 止损，止损当日收盘成交</li>
       <li>卖出资金当日收盘后即可再出信号、次日照常买入；空仓期<b>不降标准</b>，与主策略同一条规矩</li>
@@ -242,7 +270,7 @@
     <ul class="rules">
       <li>范围：与主策略<b>同一份股票池</b>（沪深主板白名单、非ST、非停牌、上市满 250 个交易日）</li>
       <li>成交额 ≥ 1.0 亿；20 日特质波动 ivol20 &gt; 0</li>
-      <li>按 ivol20 升序取第 1 名 —— <b>不评分、不看动量、不追趋势</b></li>
+      <li>按 ivol20 升序取第 1 名 —— <b>不评分、不看动量、不追趋势</b>；候选池（前 20 只）在「策略」页全部列出，第 2 名以后只备查、不参与执行</li>
       <li>大盘闸门：等权指数在 MA20 上方（且宽度达标）才开新仓；持仓不受闸门影响，照常持满</li>
     </ul>
     <b>为什么"上涨趋势"不用在个股上（第一百三十九轮四组实测，均为年化/回撤）</b>
@@ -263,7 +291,6 @@
 
   <div data-pane="more" class="disclaimer" id="disclaimer"></div>
 
-
   <footer>
     数据来源：<a href="https://github.com/zzquant/zzshare" target="_blank">zzshare（免费公开数据接口）</a>
     · 自动化：<a href="https://docs.github.com/actions" target="_blank">GitHub Actions</a> 每个交易日收盘后更新
@@ -272,164 +299,80 @@
 </div>
 
 <script>
-/* ---------- 标签页切换(第一百三十九轮) ----------
-   首页只放两个策略的明日计划, 其余内容按需切换; 深链 #main/#sat/#tape/#more 可直达。 */
-const TABS = ["home", "main", "sat", "tape", "more"];
-function showTab(name, push) {
-  if (!TABS.includes(name)) name = "home";
-  document.querySelectorAll("#tabs .tab").forEach(b =>
-    b.classList.toggle("active", b.dataset.tab === name));
-  document.querySelectorAll("[data-pane]").forEach(el =>
-    el.classList.toggle("on", el.dataset.pane === name));
-  if (push) history.replaceState(null, "", name === "home" ? " " : "#" + name);
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-document.getElementById("tabs").addEventListener("click", e => {
-  const b = e.target.closest(".tab");
-  if (b) showTab(b.dataset.tab, true);
-});
-/* 章节内锚点(如 badges 里的 #replay)跳到对应标签页 */
-document.addEventListener("click", e => {
-  const a = e.target.closest('a[href^="#"]');
-  if (!a) return;
-  const id = a.getAttribute("href").slice(1);
-  const el = document.getElementById(id);
-  if (el && el.dataset.pane) { e.preventDefault(); showTab(el.dataset.pane, true); }
-});
+/* ================= 页签与策略切换(第一百四十二轮) =================
+   一、布局：只剩 3 个页签（策略 / 台账·回放 / 体检·规则），主副策略用顶部按钮切换。
+      原先"主策略""副策略"是两个页签、首页又单独堆两张计划卡 —— 同一个策略被拆在
+      两处：看计划在首页、看池子和回测要换页签，手机上来回滚三屏。
+   二、候选池：副策略不再显示"全市场 1799 只"这种假池深。候选池 = 基础票池按 ivol
+      升序取前 20 只，页面把 20 只全部列出，池深 = 表内行数，漏斗写清是怎么筛出来的。
+      主策略同理：漏斗两格 = 全池达标 N 只 → 发布（评分第 1 名）1 只。
+   三、多端：桌面与手机是同一份 DOM、同一套渲染器，手机沿用既有 .rtable 卡片规则，
+      没有第二套页面、也没有"手机版隐藏某几列"。
+*/
+const TABS = ["strategy", "tape", "more"];
+const HASHMAP = {
+  "": ["strategy", "main"], "#home": ["strategy", "main"], "#main": ["strategy", "main"],
+  "#sat": ["strategy", "sat"], "#strategy": ["strategy", null],
+  "#tape": ["tape", null], "#replay": ["tape", null], "#paper": ["tape", null],
+  "#more": ["more", null],
+};
+const STRAT_NOTE = {
+  main: "每日只买评分第 1 名 1 笔 · T+1 开盘价成交 · T+2 收盘清仓",
+  sat: "每日只买 ivol 最低 1 只 · 持满 40 个交易日 · 大盘 MA20 闸门",
+};
+const U = {
+  latest: "./data/latest.json", history: "./data/history.json",
+  backtest: "./data/backtest.json", replay: "./data/replay.json", paper: "./data/paper.json",
+  satellite: "./data/satellite.json", satbt: "./data/satellite_bt.json",
+};
+
+let STRAT = "main", PANE = "strategy";
 
 const fmtDate = s => s || "-";
 const pctCls = v => v > 0 ? "up" : (v < 0 ? "down" : "");
-const pctStr = v => (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+const pctStr = v => (v == null || isNaN(v)) ? "-" : (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
 
 async function jget(url) {
   const r = await fetch(url + "?t=" + Date.now());
   if (!r.ok) throw new Error(url + " " + r.status);
   return r.json();
 }
-function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
-
-/* ---------- 一/二: 最新计划与候选池 ---------- */
-async function loadLatest() {
-  const d = await jget("./data/latest.json");
-  document.getElementById("meta").textContent =
-    `信号日 ${fmtDate(d.signal_date)} · 更新于 ${d.update_time} · ${d.strategy}`;
-  const badges = [];
-  badges.push(`<span class="badge"><a href="#replay" style="color:var(--gold);text-decoration:none">历史回放（近12个月）↓</a></span>`);
-  const ok = d.regime && d.regime.ok;
-  badges.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日受限"}</span>`);
-  if (d.regime && d.regime.note) badges.push(`<span class="badge">${esc(d.regime.note)}</span>`);
-  if (d.regime && d.regime.breadth != null)
-    badges.push(`<span class="badge">市场宽度 ${d.regime.breadth}</span>`);
-  // 失效监测灯(第三十九轮): 滚动20笔已结算净收益的事前注册告警(纯提示, 不改执行)
-  const mo = d.monitor;
-  if (mo) {
-    const lv = String(mo.level || "");
-    const mc = lv.startsWith("绿") ? "var(--up)"
-      : lv.startsWith("黄") ? "#b8860b"
-      : (lv.startsWith("红") || lv.startsWith("深红")) ? "var(--red)" : "var(--muted)";
-    badges.push(`<span class="badge" style="color:${mc};border-color:${mc}">失效监测: ${esc(lv)}</span>`);
-  }
-  // 风控空仓对照(第四十九轮): 空仓日虚拟top1收益的前瞻累计, 验证风控机会成本方向(仅提示)
-  const ob = d.observe;
-  if (ob && ob.n > 0) {
-    const oc = ob.avg_pct > 0 ? "var(--gold)" : "var(--green)";
-    badges.push(`<span class="badge" style="color:${oc};border-color:${oc}">空仓对照: n=${ob.n} ${ob.avg_pct > 0 ? "+" : ""}${ob.avg_pct}%/笔</span>`);
-  }
-  badges.push(`<span class="badge gold">候选 ${d.picks.length} 只</span>`);
-  document.getElementById("badges").innerHTML = badges.join("");
-
-  // T+1 执行判定卡: 每晚生成决策树, 次日照卡执行
-  const p = d.plan || {};
-  const t1 = d.picks[0] || {};
-  const td = d.t1_decision || {};
-  const allow = td.allow_buy !== false && d.picks.length > 0;
-  // 月度盈利熔断已删除(第六十三轮): 仅灰色小字展示当月增益, 不再有触发/未触发状态
-  const capLine = td.month_gain_pct != null
-    ? `<div class="row" style="color:var(--muted);font-size:12px">当月净值增益 +${td.month_gain_pct}%（月度盈利熔断已于2026-10-26删除，仅展示）</div>`
-    : "";
-  // 第九十六轮: 评分分档 —— 低于门槛才不参与, 门槛之上按档位定仓位
-  const tierTxt = td.score_tier_mult == null ? ""
-    : (td.score_tier_mult >= 1 ? "满仓" : `${Math.round(td.score_tier_mult * 100)}% 仓位`);
-  const gateLine = td.score_gate == null ? ""
-    : `<div class="row"><b>评分：</b>首选 <b>${td.top_score ?? "-"}</b>（门槛 ≥ ${td.score_gate}；${
-        td.gate_blocked ? `<span class="down">未达门槛 → 不参与</span>`
-                        : `<span class="up">达标${tierTxt ? " · " + tierTxt : ""}</span>`}）</div>`;
-  // 第九十七轮: 高开降仓 —— 竞价才知道缺口, 盘前只给规则; 照常成交, 只降仓位
-  const gapTierLine = !td.gap_tier_note ? ""
-    : `<div class="row"><b>高开减仓：</b>竞价缺口 ${esc(td.gap_tier_note)} → 照常成交、只降仓位（评分 ≥1.6 的强势票不减）</div>`;
-  // 第九十九轮: 池深分档 —— 当日候选池越窄, 越可能是孤立回调(缺共振), 只降仓位不弃单
-  const poolLine = (td.pool_n == null || td.pool_tier_mult == null) ? ""
-    : `<div class="row"><b>池深：</b>当日达标 <b>${td.pool_n}</b> 只（达标＝通过全部筛选并完成评分；实际只买评分第 1 名 1 只）→ ${td.pool_n >= 21 ? `<span class="up">满仓</span>`
-        : td.pool_n >= 11 ? `<span class="down">半仓（11~20 只档）</span>`
-        : `<span class="down">三成仓（≤10 只档）</span>`}　池子越窄＝越可能是孤立回调（缺板块共振），<b>只降仓位、不弃单</b></div>`;
-  // 第一百零一轮: 深低开撤销池深折价 —— 只有"池深 11~20(被砍到半仓)"时这条才有意义
-  const floorLine = (td.pool_n == null || td.pool_n < 11 || td.pool_n > 20) ? ""
-    : `<div class="row"><b>深低开：</b>若竞价缺口 <b>≤-1%</b> → <b>撤销池深折价、回满仓</b>（深低开＝错杀的直接证据，池深只是共振的间接代理）</div>`;
-  const judgeHead = allow
-    ? `<div class="big" style="color:var(--up)">✅ 明日可买入 · 仓位 ${td.position_pct ?? 100}%</div>
-       <div class="row"><b>判定：</b>${esc(td.buy_note || "")}</div>
-       <div class="row"><b>买入口径：</b>${td.floor_pct != null ? `开盘缺口 ≤ <b>${td.floor_pct}%</b> 才买（高开≥10%/一字/停牌放弃）` : `<b>不设缺口门槛，9:25 集合竞价按开盘价直接买入</b>（仅停牌/一字涨停买不到，当日空仓）`}</div>
-       ${gateLine}
-       ${poolLine}
-       ${floorLine}
-       ${gapTierLine}
-       ${capLine}`
-    : `<div class="big" style="color:var(--muted)">⛔ 明日不买入（空仓）</div>
-       <div class="row"><b>判定：</b>${esc(td.buy_note || (d.picks.length === 0 ? "今日无合格候选" : "风控限制"))}</div>
-       ${gateLine}
-       ${poolLine}
-       ${floorLine}`;
-  const stepsHtml = (td.steps || []).filter(s => s.rank > 0).map(s =>
-    `<div class="row">▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}${s.strategy_cn ? `，<span class="badge" style="font-size:11px">${esc(s.strategy_cn)}</span>` : ""}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}</div>`).join("")
-    || `<div class="row">▸ 今日候选池为空${td.empty_funnel ? `：` + Object.entries(td.empty_funnel).filter(([k,v])=>v!=null).map(([k,v])=>`${k} ${v}`).join(" → ") + " → 全部过滤" : ""}，明日空仓</div>`;
-  // 数据质量(过滤"新股首日属正常"条目)
-  // 第一百二十五轮: 移除"两道判定对账"渲染 —— auction.json 已于 2026-11-01 停止更新,
-  // daily_run 不再产出 audit 字段, 此块恒为空, 属死代码。
-  const dq = ((d.data_quality || {}).anomalies || []).filter(s => String(s).indexOf("正常)") < 0);
-  const dqHtml = dq.length
-    ? `<div class="row" style="color:var(--red)">⚠ 数据质量: ${esc(dq.join("；"))}</div>`
-    : "";
-  document.getElementById("plan").innerHTML = `
-    <div class="plan-grid">
-      <div class="t1-box" style="grid-column:1/-1">
-        <div class="k muted" style="font-size:12px">T+1（${fmtDate(p.buy_date)}）执行判定卡 · 9:25 竞价结束后照此执行</div>
-        ${judgeHead}
-        ${stepsHtml}
-        ${dqHtml}
-        <div class="row"><b>卖出：</b>${esc(td.sell_plan || "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)")}</div>
-      </div>
-      <details style="grid-column:1/-1">
-        <summary>执行细则 —— 买入时点 / 卖出时点 / 仓位规则（点击展开）</summary>
-        <div class="plan-grid" style="margin-top:10px">
-          <div class="panel">
-            <b>买入</b><br><span class="muted">${allow
-              ? `${fmtDate(p.buy_date)} ${esc(p.buy_point || "")}`
-              : `不买入（${td.gate_blocked ? "评分未达门槛" : "风控/空仓"}），资金留在账上`}</span>
-            <br><br><b>卖出</b><br><span class="muted">${allow
-              ? `${fmtDate(p.sell_date)} ${esc(p.sell_point || "")}`
-              : "无持仓需卖出"}</span>
-          </div>
-          <div class="panel">
-            <b>仓位</b><br><span class="muted">${esc(p.position || "")}</span>
-          </div>
-        </div>
-      </details>
-    </div>`;
-
-  if (!d.picks.length) {
-    document.getElementById("pool").innerHTML = `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
-  } else {
-    // 与副策略共用同一张候选池表(第一百四十轮), 只有最后一列指标不同: 评分 vs ivol20
-    document.getElementById("pool").innerHTML = poolTable(d.picks.map(x => ({
-      tag: x.strategy_cn || "-", code: x.code, name: x.name, close: x.close, pct: x.pct,
-      volRatio: x.vol_ratio, turnover: x.turnover_rate, amountYi: x.amount_yi,
-      mom20: x.mom20, metric: x.score, reason: x.reasons,
-    })), "评分") +
-      `<div class="legend">池深 ${td.pool_n ?? d.picks.length} 只（通过全部筛选并完成评分，盘后即知）· 风控 ${ok ? "通过" : "触发"}${d.picks[0] ? ` · 今日主选 <b>${esc(d.picks[0].code)}</b>` : ""}</div>`;
-  }
-  document.getElementById("disclaimer").textContent = d.disclaimer || "";
+/* 同一次页面生命周期内同一份 JSON 只取一次: 切策略来回点不该重复下载 */
+const _jc = {};
+function jgetOnce(url) {
+  if (!_jc[url]) _jc[url] = jget(url).catch(e => { delete _jc[url]; throw e; });
+  return _jc[url];
 }
 
+const replayBadge = () => `<span class="badge"><a href="#replay" style="color:var(--gold);text-decoration:none">历史回放（近12个月）↓</a></span>`;
+
+/* ---------- 外壳: 页签 / 策略按钮 ---------- */
+function paintChrome() {
+  document.querySelectorAll("#tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.tab === PANE));
+  document.querySelectorAll("[data-pane]").forEach(el => el.classList.toggle("on", el.dataset.pane === PANE));
+  document.querySelectorAll(".seg-btn").forEach(b => b.classList.toggle("on", b.dataset.strat === STRAT));
+  document.getElementById("seg-note").textContent = STRAT_NOTE[STRAT];
+  document.getElementById("segbar").style.display = PANE === "more" ? "none" : "flex";
+}
+
+function showTab(name, push) {
+  if (!TABS.includes(name)) name = "strategy";
+  PANE = name;
+  paintChrome();
+  if (push) history.replaceState(null, "", name === "strategy" ? "#" + STRAT : "#" + name);
+  if (name === "tape") renderTape();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function setStrategy(k, push) {
+  if ((k !== "main" && k !== "sat") || STRAT === k) return;
+  STRAT = k;
+  paintChrome();
+  if (push && PANE === "strategy") history.replaceState(null, "", "#" + k);
+  renderStrategy();
+  if (PANE === "tape") renderTape();
+}
 
 /* ================= 共用展示模块(第一百四十轮) =================
    主策略与副策略只有「选股条件」不同 —— 候选池 / 单吊执行记录 / 回测绩效
@@ -443,7 +386,7 @@ const BT_ORDER = ["总收益率%", "年化收益率%", "最大回撤%", "夏普�
 function poolTable(rows, metricLabel) {
   let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>#</th><th>策略</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>${esc(metricLabel)}</th><th>入选理由</th></tr>`;
   rows.forEach((x, i) => {
-    html += `<tr><td class="skip ${i === 0 ? "up" : "muted"}" data-label="排名"><b>${x.no ?? (i + 1)}</b></td>
+    html += `<tr><td class="${i === 0 ? "up" : "muted"}" data-label="排名"><b>${x.no ?? (i + 1)}</b></td>
       <td data-label="策略"><span class="badge" style="font-size:11px">${esc(x.tag)}</span></td>
       <td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name)}</td>
       <td data-label="收盘价">${x.close}</td><td class="${pctCls(x.pct)}" data-label="涨幅">${pctStr(x.pct)}</td>
@@ -529,55 +472,11 @@ function btBlock(cardsEl, chartEl, d, initCap) {
   }
 }
 
-/* ---------- 主策略: 执行记录 ---------- */
-async function loadExecHistory() {
-  const hc = document.getElementById("exec-cards"), ht = document.getElementById("exec-table");
-  try {
-    const d = await jget("./data/history.json");
-    // 只展示单吊明细口径: publish_date >= 2026-10-22 的记录; 之前的记录(含待结算)一律不显示
-    const CUTOFF = "2026-10-22";
-    const rows = [];
-    (d.records || []).forEach(r => {
-      if (r.publish_date < CUTOFF) return;
-      const e = r.executed;
-      if (e && e.holding) {
-        rows.push({pub: r.publish_date, buy: e.buy_date, code: e.code, name: e.name, rank: e.rank,
-          buyPx: e.buy_px, sellDate: e.sell_date, sellPx: "待开盘", posPct: e.position_pct,
-          realBuy: e.actual_buy_px, realSell: null, ret: null, retNote: "持仓中",
-          chain: (e.chain || []).join("；") || "第1名直接成交", status: "持仓中"});
-      } else if (e) {
-        rows.push({pub: r.publish_date, buy: e.buy_date, code: e.code, name: e.name, rank: e.rank,
-          buyPx: e.buy_px, sellDate: e.sell_date, sellPx: e.sell_px, posPct: e.position_pct,
-          realBuy: e.actual_buy_px, realSell: e.actual_sell_px, ret: Number(e.ret_pct),
-          chain: (e.chain || []).join("；") || "第1名直接成交", status: r.status || ""});
-      } else if (r.status === "待结算") {
-        const isFlat = !(r.picks || []).length;
-        // 有 skip_chain = 买入日已判定未成交(只是还没到卖出日、状态尚未终结);
-        // 这时再写"待执行(明日开盘)"会误导 —— 明日不会买, 只是因为 T+2 才改状态。
-        const missed = (r.skip_chain || []).length > 0;
-        rows.push({pub: r.publish_date, buy: r.buy_date, code: "",
-          name: isFlat ? "空池日(无候选, 空仓)" : (missed ? "未成交（跳过原因见右侧）" : "待执行(明日开盘)"),
-          rank: null, buyPx: null, sellDate: null, sellPx: null, posPct: null,
-          realBuy: null, realSell: null, ret: null, retNote: "待结算",
-          chain: (r.skip_chain || []).join("；") || "-", status: "待结算"});
-      }
-    });
-    execBlock(hc, ht, rows,
-      `明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。「实盘买/卖价」列用于记录你的真实成交价与模拟价对照。<br>` +
-      `2026-10-30 及之前的历史成交按当时口径(含创业板多票、缺口挑单)记录且<b>不改写</b>；` +
-      `第九十二~九十六轮口径(沪深主板单只、开盘价直接成交、评分≥1.0 且按分档定仓位、风控不强制复参与)自 2026-11-02 买入起执行。`);
-  } catch (e) { ht.innerHTML = `<div class="loading">执行记录加载失败: ${esc(e.message)}</div>`; }
-}
-
-/* ---------- 主策略: 回测绩效 ---------- */
-async function loadBacktest() {
-  const cards = document.getElementById("bt-cards"), chart = document.getElementById("bt-chart");
-  try {
-    const d = await jget("./data/backtest.json");
-    btBlock(cards, chart, d, (d.meta || {}).initial_capital || 1e6);
-  } catch (e) {
-    cards.innerHTML = `<div class="card"><div class="k">回测报告</div><div class="v" style="font-size:14px;color:var(--muted)">尚未运行（可在 Actions 中手动触发「回测」）</div></div>`;
-  }
+/* ---- 候选池漏斗: 每一格写"还剩多少只", 最后一格就是候选池 ---- */
+function funnelBar(steps) {
+  return `<div class="funnel">` + (steps || []).map((s, i) =>
+    `${i ? '<span class="fa">→</span>' : ""}<span class="fstep${s.last ? " last" : ""}"><b>${s.n}</b> ${esc(s.label)}</span>`
+  ).join("") + `</div>`;
 }
 
 function drawChart(el, eq, bench, initCap) {
@@ -605,7 +504,7 @@ function drawChart(el, eq, bench, initCap) {
   </svg><div class="muted" style="font-size:12px;margin-top:4px">区间 ${eq[0].d} ~ ${eq[eq.length - 1].d} · 初始资金${(initCap / 1e4).toFixed(0)}万 · 每日收盘估值</div>`;
 }
 
-/* ---------- 五: 策略体检(第四十七轮, 数据源 output/health.json) ---------- */
+/* ---------- 策略体检(第四十七轮, 数据源 output/health.json) ---------- */
 async function loadHealth() {
   const el = document.getElementById("health");
   let h;
@@ -656,7 +555,10 @@ async function loadHealth() {
     <div class="legend">${esc(h.sources || "")} · 更新于 ${fmtDate(h.updated)}</div>`;
 }
 
-/* ---------- 五: 历史回放(第九十四轮: 并入本页, 独立回放页已删除) ---------- */
+/* ---------- 历史回放共用渲染器 ----------
+   主策略读 replay.json（近 12 个月逐日重放）；副策略读 satellite_bt.json 的 replay 段
+   （从同一次 1500 日回测里切出的同一区间，不重跑）。卡片/月度/曲线/逐笔/逐日列完全相同，
+   只有数据来源与说明文字不同 —— 改一处两边同时生效。 */
 const rpDate = s => (s && String(s).length === 8)
   ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (s || "-");
 
@@ -746,7 +648,7 @@ function replayDaily(el, daily) {
   el.innerHTML = dh + `</table></div></details>`;
 }
 
-/* ---------- 五: 向前台账(第130轮) ---------- */
+/* ---------- 向前台账(第130轮) ---------- */
 const PAPER_STATE = {
   planned: ["待买", "var(--muted)"],
   holding: ["持仓", "var(--gold)"],
@@ -821,170 +723,40 @@ async function loadPaper() {
   note.innerHTML = n;
 }
 
-const satFd = v => (v && String(v).length === 8)
-  ? `${String(v).slice(0,4)}-${String(v).slice(4,6)}-${String(v).slice(6)}` : (v || "-");
-
-/* ---------- 首页: 副策略明日计划 ---------- */
-async function loadSatPlan() {
-  const box = document.getElementById("sat-plan");
-  let d;
-  try { d = await jget("./data/satellite.json"); }
-  catch (e) {
-    box.innerHTML = `<div class="panel note">副策略账本尚未生成（首次运行后出现）。</div>`;
-    return;
+function drawReplayChart(el, curve, base, baseDate) {
+  if (!curve || curve.length < 2) { el.innerHTML = `<div class="muted">回放净值数据不足</div>`; return; }
+  const W = 1120, H = 300, P = { l: 62, r: 16, t: 16, b: 28 };
+  const navs = [base].concat(curve.map(p => p.nav));
+  let lo = Math.min(...navs), hi = Math.max(...navs);
+  const pad = (hi - lo) * 0.12 || hi * 0.01; lo -= pad * 0.7; hi += pad * 0.7;
+  const n = navs.length;
+  const xs = i => P.l + (W - P.l - P.r) * i / (n - 1);
+  const ys = v => P.t + (H - P.t - P.b) * (1 - (v - lo) / (hi - lo));
+  const pts = navs.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
+  const color = navs[n - 1] >= navs[0] ? "var(--red)" : "var(--green)";
+  let grid = "", labels = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4, y = ys(v);
+    grid += `<line x1="${P.l}" y1="${y.toFixed(1)}" x2="${W - P.r}" y2="${y.toFixed(1)}" stroke="#232a36"/>`;
+    labels += `<text x="${P.l - 8}" y="${(y + 4).toFixed(1)}" fill="#8b949e" font-size="11" text-anchor="end">${((v / base - 1) * 100).toFixed(1)}%</text>`;
   }
-  const P = d.params || {}, sig = d.signal, pos = d.position;
-  const nav = Number(d.nav ?? 1), cap = Number(d.capital || 0);
-  const holdN = Number(P.hold_days || 20);
-  const modeCN = P.mode_cn || "低波单吊";
-  const gateTxt = P.market_gate ? "开（指数在 MA20 上方才开新仓）" : "关";
-  // 下一交易日取自主策略的交易日历(同一个日历, 只借一个日期, 不借任何策略结论),
-  // 让两张判定卡的抬头格式完全一致; 取不到就退回"下一交易日"。
-  let buyDate = "";
-  try {
-    const l = await jget("./data/latest.json");
-    if (l.plan && l.plan.buy_date
-        && String(l.signal_date || "").replace(/-/g, "") === String(d.updated))
-      buyDate = l.plan.buy_date;
-  } catch (e) { /* latest.json 缺失不影响副策略卡片 */ }
-
-  let head, detail;
-  if (sig) {
-    head = `<div class="big" style="color:var(--up)">✅ 明日买入 · ${esc(sig.name || "")}（${esc(sig.code)}）</div>`;
-    detail = `
-      <div class="row"><b>选股：</b>${esc(modeCN)} · 20日特质波动 <b>${sig.ivol20 != null ? Number(sig.ivol20).toFixed(2) : "-"}</b>
-        ${sig.pct != null ? ` · 今日 ${sig.pct > 0 ? "+" : ""}${sig.pct}%` : ""}
-        ${sig.mom20 != null ? ` · 20日动量 ${sig.mom20}%` : ""}</div>
-      <div class="row"><b>买入口径：</b>9:25 集合竞价按开盘价买入 100% 仓位；竞价缺口 <b>${P.gap_min}%~+${P.gap_max}%</b> 之外不成交（深低开破位不接、高开过多不追），
-        一字涨停/停牌买不到</div>
-      <div class="row"><b>卖出：</b>持满 <b>${holdN}</b> 个交易日收盘卖${P.stop_pct ? `；收盘相对买入价跌破 <b>${P.stop_pct}%</b> 止损` : ""}</div>`;
-    if (pos) {
-      detail += `<div class="row" style="color:var(--gold)"><b>⚠ 当前仍持有 ${esc(pos.name)}（${esc(pos.code)}），
-        已持 ${pos.held_days ?? "-"} / ${holdN} 日 —— 卖出后才会执行新信号</b></div>`;
-    }
-  } else if (pos) {
-    head = `<div class="big" style="color:var(--gold)">📦 继续持有 · ${esc(pos.name || "")}（${esc(pos.code)}）</div>`;
-    detail = `
-      <div class="row"><b>建仓：</b>${satFd(pos.entry_date)} @ ${pos.entry_px_raw ?? "-"} · 已持 <b>${pos.held_days ?? "-"}</b> / ${holdN} 个交易日</div>
-      <div class="row"><b>卖出：</b>持满 ${holdN} 日收盘卖${P.stop_pct ? `；跌破买入价 ${P.stop_pct}% 止损` : ""}。卖出当日收盘后才会有新信号。</div>`;
-  } else {
-    const lastNote = ((d.daily || []).slice(-1)[0] || {}).note || "";
-    const why = lastNote.indexOf("闸门") >= 0 ? "大盘闸门关闭" : "无合格标的";
-    head = `<div class="big" style="color:var(--muted)">⛔ 明日空仓（${why}）</div>`;
-    detail = `<div class="row"><b>判定：</b>${esc(lastNote || "候选池不足 / 无票通过筛选")}</div>
-      <div class="row"><b>纪律：</b>宁可空仓也不降标准 —— 与主策略同一条规矩。</div>`;
-  }
-
-  const buyLine = sig
-    ? `T+1 9:25 集合竞价，按开盘价买入 100% 仓位（缺口 ${P.gap_min}%~+${P.gap_max}% 之外不成交）`
-    : (pos ? "已满仓持有，无可用资金，不买入" : "不买入，资金留在账上");
-  const sellLine = pos
-    ? `持满 ${holdN} 个交易日（已持 ${pos.held_days ?? "-"} 日）收盘卖${P.stop_pct ? `；跌破 ${P.stop_pct}% 止损` : ""}`
-    : "无持仓需卖出";
-
-  box.innerHTML = `<div class="plan-grid">
-    <div class="t1-box" style="grid-column:1/-1">
-      <div class="k muted" style="font-size:12px">T+1（${buyDate || "下一交易日"}）执行判定卡 · ${esc(modeCN)} · 9:25 竞价结束后照此执行</div>
-      ${head}${detail}
-      <div class="row" style="margin-top:8px;color:var(--muted);font-size:12px">
-        虚拟本金 ${(Number(d.init_capital || 0) / 1e4).toFixed(0)} 万 → <b style="color:${nav >= 1 ? "var(--red)" : "var(--green)"}">${(cap / 1e4).toFixed(2)} 万</b>
-        （净值 ${nav.toFixed(4)}）· 大盘闸门 ${gateTxt} · 与主策略共用同一份数据
-      </div>
-    </div>
-    <details style="grid-column:1/-1">
-      <summary>执行细则 —— 买入时点 / 卖出时点 / 仓位规则（点击展开）</summary>
-      <div class="plan-grid" style="margin-top:10px">
-        <div class="panel">
-          <b>买入</b><br><span class="muted">${buyLine}</span>
-          <br><br><b>卖出</b><br><span class="muted">${sellLine}</span>
-        </div>
-        <div class="panel">
-          <b>仓位</b><br><span class="muted">100% 单吊 · 每日最多买 1 只 · 卖出资金当日收盘后可再出信号、次日买入</span>
-        </div>
-      </div>
-    </details>
-  </div>`;
+  const ticks = [0, Math.floor((n - 1) / 3), Math.floor(2 * (n - 1) / 3), n - 1].map(i => {
+    const dt = curve[Math.min(Math.max(i - 1, 0), curve.length - 1)].d.slice(5);
+    return `<text x="${xs(i).toFixed(1)}" y="${H - 8}" fill="#8b949e" font-size="11" text-anchor="${i === 0 ? "start" : (i === n - 1 ? "end" : "middle")}">${dt}</text>`;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+    <defs><linearGradient id="rpGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity=".28"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}${labels}
+    <polygon points="${xs(0).toFixed(1)},${ys(lo).toFixed(1)} ${pts} ${xs(n - 1).toFixed(1)},${ys(lo).toFixed(1)}" fill="url(#rpGrad)"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"/>
+    <line x1="${P.l}" y1="${ys(base).toFixed(1)}" x2="${W - P.r}" y2="${ys(base).toFixed(1)}" stroke="#8b949e" stroke-dasharray="4 4" stroke-width="1"/>
+    ${ticks}
+  </svg><div class="legend">起点 ${(base / 1e4).toFixed(2)} 万（${rpDate(baseDate)} 收盘）· 纵轴为相对起点的百分比 · 每日收盘估值</div>`;
 }
 
-/* ---------- 副策略页签: 与主策略完全同构的三个模块 ---------- */
-async function loadSatellite() {
-  const pc = document.getElementById("sat-exec-cards"), pt = document.getElementById("sat-exec-table");
-  const poolBox = document.getElementById("sat-pool");
-  let d;
-  try { d = await jget("./data/satellite.json"); }
-  catch (e) {
-    poolBox.innerHTML = `<div class="loading">副策略账本尚未生成（首次运行后出现）</div>`;
-    pc.innerHTML = `<div class="card"><div class="k">副策略</div><div class="v" style="font-size:13px;color:var(--muted)">尚未生成</div></div>`;
-    pt.innerHTML = "";
-    return;
-  }
-  const P = d.params || {}, pos = d.position, sig = d.signal;
-  const D8 = v => (v && String(v).length === 8)
-    ? `${String(v).slice(0, 4)}-${String(v).slice(4, 6)}-${String(v).slice(6)}` : (v || "");
-
-  /* --- 模块一: 当日候选池(单吊只买第 1 名, 其余折叠) --- */
-  const p = d.pool;
-  if (!p || !(p.rows || []).length) {
-    poolBox.innerHTML = `<div class="loading">今日无合格候选（池深 ${p ? p.n : 0} 只 / 需 ≥ 20 只）—— 明日空仓。</div>`;
-  } else {
-    const toRow = (x, no) => ({
-      no: no, tag: P.mode_cn || "低波单吊", code: x.code, name: x.name,
-      close: x.close, pct: x.pct, volRatio: x.vol_ratio ?? "-",
-      turnover: x.turnover_rate ?? "-", amountYi: x.amount_yi, mom20: x.mom20,
-      metric: x.ivol20,
-      reason: x.rank === 1
-        ? `全池 ${p.n} 只中 ivol 最低${p.gate_ok ? " · 明日计划" : " · 闸门关闭，明日不买"}`
-        : `ivol 第 ${x.rank} 名 · 仅供核对，单吊不买`,
-    });
-    const top = p.rows[0], rest = p.rows.slice(1);
-    poolBox.innerHTML =
-      poolTable([toRow(top)], "ivol20") +
-      (rest.length ? `<details style="margin-top:10px"><summary>备选排序（ivol 第 2~${p.rows.length} 名，仅供核对，不参与执行）</summary>
-        <div style="margin-top:10px">${poolTable(rest.map(x => toRow(x, x.rank)), "ivol20")}</div></details>` : "") +
-      `<div class="legend">池深 ${p.n} 只（通过基础筛选并完成 ivol 排序，盘后即知）· 大盘闸门 ${p.gate_ok ? "开" : "关"}
-        ${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""} · <b>单吊 = 每天只买第 1 名 1 只</b>，第 2 名以后不参与执行</div>`;
-  }
-
-  /* --- 模块二: 单吊执行记录 --- */
-  const rows = [];
-  (d.trades || []).forEach(t => rows.push({
-    pub: D8(t.signal_date), buy: D8(t.entry_date), code: t.code, name: t.name || "",
-    rank: 1, buyPx: t.entry_px, sellDate: D8(t.exit_date), sellPx: t.exit_px, posPct: 100,
-    realBuy: null, realSell: null, ret: Number(t.ret_pct),
-    chain: t.note || "持满卖出", status: "已结算"}));
-  if (pos) rows.push({
-    pub: D8(pos.signal_date), buy: D8(pos.entry_date), code: pos.code, name: pos.name || "",
-    rank: 1, buyPx: pos.entry_px_raw, sellDate: "", sellPx: "持有中", posPct: 100,
-    realBuy: null, realSell: null, ret: null,
-    retNote: pos.ret_pct != null ? `浮盈 ${pctStr(pos.ret_pct)}` : "持仓中",
-    chain: `已持 ${pos.held_days ?? "-"} / ${P.hold_days ?? "-"} 个交易日`, status: "持仓中"});
-  if (sig) rows.push({
-    pub: D8(sig.date), buy: "", code: sig.code, name: sig.name || "",
-    rank: 1, buyPx: "-", sellDate: "", sellPx: "-", posPct: 100,
-    realBuy: null, realSell: null, ret: null, retNote: "待执行",
-    chain: `ivol ${sig.ivol20} · 竞价缺口 ${P.gap_min}%~+${P.gap_max}% 内按开盘价买入`, status: "待执行"});
-  rows.sort((a, b) => String(b.pub).localeCompare(String(a.pub)));
-  execBlock(pc, pt, rows,
-    `v3 账本自 2026-11-05 起逐笔记录（v2 的 40 只分散批次已归档，不计入本表）。` +
-    `收益按开盘买/收盘卖的真实价格口径，含单边 0.15% 成本。「实盘买/卖价」列留空，成交后告知即写入。`);
-
-  /* --- 模块三: 回测绩效 --- */
-  loadSatBacktest();
-}
-
-async function loadSatBacktest() {
-  const cards = document.getElementById("sat-bt-cards"), chart = document.getElementById("sat-bt-chart");
-  try {
-    const d = await jget("./data/satellite_bt.json");
-    const mt = d.meta || {};
-    if (mt.start && mt.end) document.getElementById("sat-bt-sub").textContent =
-      `${mt.days} 交易日（${rpDate(mt.start)}~${rpDate(mt.end)}）· ${mt.rules || ""}`;
-    btBlock(cards, chart, d, mt.initial_capital || 1e5);
-  } catch (e) {
-    cards.innerHTML = `<div class="card"><div class="k">回测报告</div><div class="v" style="font-size:14px;color:var(--muted)">尚未生成（每日 workflow 产出 output/satellite_bt.json）</div></div>`;
-  }
-}
-
+/* ---------- 主策略历史回放(数据源 output/replay.json) ---------- */
 async function loadReplay() {
   const cEl = document.getElementById("rp-cards"), moEl = document.getElementById("rp-months");
   const chEl = document.getElementById("rp-chart"), trEl = document.getElementById("rp-trades");
@@ -1114,61 +886,317 @@ async function loadReplay() {
     个别日期的候选池会有出入。数据源：<code>output/replay.json</code>（${rpDate(m.panel_first)} 起面板）。</p>`;
 }
 
-function drawReplayChart(el, curve, base, baseDate) {
-  if (!curve || curve.length < 2) { el.innerHTML = `<div class="muted">回放净值数据不足</div>`; return; }
-  const W = 1120, H = 300, P = { l: 62, r: 16, t: 16, b: 28 };
-  const navs = [base].concat(curve.map(p => p.nav));
-  let lo = Math.min(...navs), hi = Math.max(...navs);
-  const pad = (hi - lo) * 0.12 || hi * 0.01; lo -= pad * 0.7; hi += pad * 0.7;
-  const n = navs.length;
-  const xs = i => P.l + (W - P.l - P.r) * i / (n - 1);
-  const ys = v => P.t + (H - P.t - P.b) * (1 - (v - lo) / (hi - lo));
-  const pts = navs.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
-  const color = navs[n - 1] >= navs[0] ? "var(--red)" : "var(--green)";
-  let grid = "", labels = "";
-  for (let k = 0; k <= 4; k++) {
-    const v = lo + (hi - lo) * k / 4, y = ys(v);
-    grid += `<line x1="${P.l}" y1="${y.toFixed(1)}" x2="${W - P.r}" y2="${y.toFixed(1)}" stroke="#232a36"/>`;
-    labels += `<text x="${P.l - 8}" y="${(y + 4).toFixed(1)}" fill="#8b949e" font-size="11" text-anchor="end">${((v / base - 1) * 100).toFixed(1)}%</text>`;
+/* ================= 主策略: 卡片 / 候选池 / 执行 / 回测 ================= */
+function headMain(d) {
+  document.getElementById("meta").textContent =
+    `信号日 ${fmtDate(d.signal_date)} · 更新于 ${d.update_time} · ${d.strategy}`;
+  const b = [replayBadge()];
+  const ok = d.regime && d.regime.ok;
+  b.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日受限"}</span>`);
+  if (d.regime && d.regime.note) b.push(`<span class="badge">${esc(d.regime.note)}</span>`);
+  if (d.regime && d.regime.breadth != null) b.push(`<span class="badge">市场宽度 ${d.regime.breadth}</span>`);
+  // 失效监测灯(第三十九轮): 滚动20笔已结算净收益的事前注册告警(纯提示, 不改执行)
+  const mo = d.monitor;
+  if (mo) {
+    const lv = String(mo.level || "");
+    const mc = lv.startsWith("绿") ? "var(--green)"
+      : lv.startsWith("黄") ? "#b8860b"
+      : (lv.startsWith("红") || lv.startsWith("深红")) ? "var(--red)" : "var(--muted)";
+    b.push(`<span class="badge" style="color:${mc};border-color:${mc}">失效监测: ${esc(lv)}</span>`);
   }
-  const ticks = [0, Math.floor((n - 1) / 3), Math.floor(2 * (n - 1) / 3), n - 1].map(i => {
-    const dt = curve[Math.min(Math.max(i - 1, 0), curve.length - 1)].d.slice(5);
-    return `<text x="${xs(i).toFixed(1)}" y="${H - 8}" fill="#8b949e" font-size="11" text-anchor="${i === 0 ? "start" : (i === n - 1 ? "end" : "middle")}">${dt}</text>`;
-  }).join("");
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
-    <defs><linearGradient id="rpGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${color}" stop-opacity=".28"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-    </linearGradient></defs>
-    ${grid}${labels}
-    <polygon points="${xs(0).toFixed(1)},${ys(lo).toFixed(1)} ${pts} ${xs(n - 1).toFixed(1)},${ys(lo).toFixed(1)}" fill="url(#rpGrad)"/>
-    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"/>
-    <line x1="${P.l}" y1="${ys(base).toFixed(1)}" x2="${W - P.r}" y2="${ys(base).toFixed(1)}" stroke="#8b949e" stroke-dasharray="4 4" stroke-width="1"/>
-    ${ticks}
-  </svg><div class="legend">起点 ${(base / 1e4).toFixed(2)} 万（${rpDate(baseDate)} 收盘）· 纵轴为相对起点的百分比 · 每日收盘估值</div>`;
+  // 风控空仓对照(第四十九轮): 空仓日虚拟top1收益的前瞻累计(仅提示)
+  const ob = d.observe;
+  if (ob && ob.n > 0) {
+    const oc = ob.avg_pct > 0 ? "var(--gold)" : "var(--green)";
+    b.push(`<span class="badge" style="color:${oc};border-color:${oc}">空仓对照: n=${ob.n} ${ob.avg_pct > 0 ? "+" : ""}${ob.avg_pct}%/笔</span>`);
+  }
+  b.push(`<span class="badge gold">候选 ${d.picks.length} 只</span>`);
+  document.getElementById("badges").innerHTML = b.join("");
 }
 
-/* ---------- 副策略历史回放(与主策略同一套渲染器, 数据来自 satellite_bt.json 的 replay 段) ---------- */
-async function loadSatReplay() {
-  const cEl = document.getElementById("srp-cards"), moEl = document.getElementById("srp-months");
-  const chEl = document.getElementById("srp-chart"), trEl = document.getElementById("srp-trades");
-  const dlEl = document.getElementById("srp-daily"), ntEl = document.getElementById("srp-note");
+function headSat(d) {
+  const P = d.params || {}, p = d.pool || {}, pos = d.position;
+  document.getElementById("meta").textContent =
+    `信号日 ${rpDate(d.updated)} · 更新于 ${rpDate(d.updated)} 收盘后 · 低波单吊（虚拟本金 10 万，独立记账）`;
+  const b = [replayBadge()];
+  b.push(`<span class="badge ${p.gate_ok ? "ok" : "stop"}">大盘闸门 ${p.gate_ok ? "开 · 可开新仓" : "关 · 不开新仓"}</span>`);
+  if ((p.rows || []).length) b.push(`<span class="badge gold">候选池 ${p.rows.length} 只</span>`);
+  b.push(`<span class="badge">净值 ${Number(d.nav ?? 1).toFixed(4)}</span>`);
+  if (pos) b.push(`<span class="badge">持仓 ${esc(pos.code)}（${pos.held_days ?? "-"}/${P.hold_days ?? "-"} 日）</span>`);
+  else if (d.signal) b.push(`<span class="badge ok">明日买入 ${esc(d.signal.code)}</span>`);
+  else b.push(`<span class="badge">空仓</span>`);
+  document.getElementById("badges").innerHTML = b.join("");
+}
+
+/* ---- 明日计划: 主副同一张卡(抬头/判定/口径/执行细则/页脚), 只有内容不同 ---- */
+function planCard(o) {
+  return `<div class="plan-grid">
+    <div class="t1-box" style="grid-column:1/-1">
+      <div class="k muted" style="font-size:12px">${o.kicker}</div>
+      <div class="big" style="color:${o.color}">${o.title}</div>
+      ${(o.rows || []).map(r => `<div class="row">${r}</div>`).join("")}
+      ${o.foot ? `<div class="row" style="margin-top:8px;color:var(--muted);font-size:12px">${o.foot}</div>` : ""}
+    </div>
+    <details style="grid-column:1/-1">
+      <summary>执行细则 —— 买入时点 / 卖出时点 / 仓位规则（点击展开）</summary>
+      <div class="plan-grid" style="margin-top:10px">
+        <div class="panel">
+          <b>买入</b><br><span class="muted">${o.buy}</span>
+          <br><br><b>卖出</b><br><span class="muted">${o.sell}</span>
+        </div>
+        <div class="panel">
+          <b>仓位</b><br><span class="muted">${o.pos}</span>
+        </div>
+      </div>
+    </details>
+  </div>`;
+}
+
+function planMain(d) {
+  const p = d.plan || {}, td = d.t1_decision || {};
+  const allow = td.allow_buy !== false && (d.picks || []).length > 0;
+  const rows = [];
+  rows.push(`<b>判定：</b>${esc(td.buy_note || (allow ? "按计划执行" : ((d.picks || []).length ? "风控限制" : "今日无合格候选")))}`);
+  if (allow) {
+    rows.push(`<b>买入口径：</b>${td.floor_pct != null
+      ? `开盘缺口 ≤ <b>${td.floor_pct}%</b> 才买（高开≥10%/一字/停牌放弃）`
+      : `<b>不设缺口门槛，9:25 集合竞价按开盘价直接买入</b>（仅停牌/一字涨停买不到，当日空仓）`}`);
+  }
+  if (td.score_gate != null) {
+    const tier = td.score_tier_mult == null ? "" :
+      " · " + (td.score_tier_mult >= 1 ? "满仓" : `${Math.round(td.score_tier_mult * 100)}% 仓位`);
+    rows.push(`<b>评分：</b>首选 <b>${td.top_score ?? "-"}</b>（门槛 ≥ ${td.score_gate}；${td.gate_blocked
+      ? `<span class="down">未达门槛 → 不参与</span>`
+      : `<span class="up">达标${tier}</span>`}）`);
+  }
+  if (td.pool_n != null && td.pool_tier_mult != null) {
+    rows.push(`<b>池深：</b>当日达标 <b>${td.pool_n}</b> 只（实际只买评分第 1 名 1 只）→ ${td.pool_n >= 21
+      ? `<span class="up">满仓</span>`
+      : td.pool_n >= 11 ? `<span class="down">半仓（11~20 只档）</span>`
+        : `<span class="down">三成仓（≤10 只档）</span>`}　池子越窄＝越可能是孤立回调（缺板块共振），<b>只降仓位、不弃单</b>`);
+  }
+  if (td.pool_n != null && td.pool_n >= 11 && td.pool_n <= 20) {
+    rows.push(`<b>深低开：</b>若竞价缺口 <b>≤-1%</b> → <b>撤销池深折价、回满仓</b>（深低开＝错杀的直接证据，池深只是共振的间接代理）`);
+  }
+  if (td.gap_tier_note) {
+    rows.push(`<b>高开减仓：</b>竞价缺口 ${esc(td.gap_tier_note)} → 照常成交、只降仓位（评分 ≥1.6 的强势票不减）`);
+  }
+  if (td.month_gain_pct != null) {
+    rows.push(`<span style="color:var(--muted);font-size:12px">当月净值增益 +${td.month_gain_pct}%（月度盈利熔断已于 2026-10-26 删除，仅展示）</span>`);
+  }
+  const steps = (td.steps || []).filter(s => s.rank > 0);
+  if (steps.length) {
+    steps.forEach(s => rows.push(
+      `▸ <b>第${s.rank}名 ${esc(s.name)}</b>（${esc(s.code)}，评分 ${s.score ?? "-"}${s.strategy_cn ? `，<span class="badge" style="font-size:11px">${esc(s.strategy_cn)}</span>` : ""}）：${esc(s.rule)}${s.fallback ? ` · <span class="muted">${esc(s.fallback)}</span>` : ""}`));
+  } else {
+    rows.push(`▸ 今日候选池为空${td.empty_funnel ? "：" + Object.entries(td.empty_funnel).filter(([, v]) => v != null).map(([k, v]) => `${k} ${v}`).join(" → ") + " → 全部过滤" : ""}，明日空仓`);
+  }
+  // 数据质量(过滤"新股首日属正常"条目)
+  const dq = ((d.data_quality || {}).anomalies || []).filter(s => String(s).indexOf("正常)") < 0);
+  if (dq.length) rows.push(`<span style="color:var(--red)">⚠ 数据质量: ${esc(dq.join("；"))}</span>`);
+  rows.push(`<b>卖出：</b>${esc(td.sell_plan || "T+2 收盘一次性卖出（14:55）")}`);
+
+  return planCard({
+    kicker: `T+1（${fmtDate(p.buy_date)}）执行判定卡 · 9:25 竞价结束后照此执行`,
+    color: allow ? "var(--up)" : "var(--muted)",
+    title: allow ? `✅ 明日可买入 · 仓位 ${td.position_pct ?? 100}%` : `⛔ 明日不买入（空仓）`,
+    rows,
+    buy: allow ? `${fmtDate(p.buy_date)} ${esc(p.buy_point || "")}`
+      : `不买入（${td.gate_blocked ? "评分未达门槛" : "风控/空仓"}），资金留在账上`,
+    sell: allow ? `${fmtDate(p.sell_date)} ${esc(p.sell_point || "")}` : "无持仓需卖出",
+    pos: esc(p.position || ""),
+    foot: `信号日 ${fmtDate(d.signal_date)} 收盘后生成 · 判据全部来自当日收盘可知的截面 · 风控 ${d.regime && d.regime.ok ? "通过" : "触发"}`,
+  });
+}
+
+function planSat(d) {
+  const P = d.params || {}, sig = d.signal, pos = d.position, p = d.pool || {};
+  const nav = Number(d.nav ?? 1), cap = Number(d.capital || 0);
+  const holdN = Number(P.hold_days || 20);
+  const rows = [];
+  let title, color;
+
+  if (sig) {
+    title = `✅ 明日买入 · ${esc(sig.name || "")}（${esc(sig.code)}）`;
+    color = "var(--up)";
+    rows.push(`<b>选股：</b>${esc(P.mode_cn || "低波单吊")} · 20日特质波动 <b>${sig.ivol20 != null ? Number(sig.ivol20).toFixed(2) : "-"}</b>${sig.pct != null ? ` · 今日 ${sig.pct > 0 ? "+" : ""}${sig.pct}%` : ""}`);
+    rows.push(`<b>买入口径：</b>9:25 集合竞价按开盘价买入 100% 仓位；竞价缺口 <b>${P.gap_min}%~+${P.gap_max}%</b> 之外不成交（深低开破位不接、高开过多不追），一字涨停/停牌买不到`);
+  } else if (pos) {
+    title = `📦 继续持有 · ${esc(pos.name || "")}（${esc(pos.code)}）`;
+    color = "var(--gold)";
+    rows.push(`<b>建仓：</b>${rpDate(pos.entry_date)} @ ${pos.entry_px_raw ?? "-"} · 已持 <b>${pos.held_days ?? "-"}</b> / ${holdN} 个交易日`);
+    rows.push(`<b>判定：</b>持满 ${holdN} 日收盘卖；卖出当日收盘后才会有新信号`);
+  } else {
+    title = `⛔ 明日空仓（${p.gate_ok === false ? "大盘闸门关闭" : "无合格标的"}）`;
+    color = "var(--muted)";
+    const lastNote = ((d.daily || []).slice(-1)[0] || {}).note || "";
+    rows.push(`<b>判定：</b>${esc(lastNote || "候选池不足 / 无票通过筛选")}`);
+  }
+  rows.push(`<b>卖出：</b>持满 <b>${holdN}</b> 个交易日收盘卖${P.stop_pct ? `；收盘相对买入价跌破 <b>${P.stop_pct}%</b> 止损` : ""}`);
+
+  const ps = (p.rows || []).slice(0, 3);
+  ps.forEach((x, i) => rows.push(
+    `▸ <b>第${i + 1}名 ${esc(x.name)}</b>（${esc(x.code)}，ivol ${x.ivol20}）：${i === 0
+      ? (sig ? "明日计划，9:25 按开盘价买入" : "候选池第 1 名，闸门关闭不执行")
+      : "仅备查，单吊不执行"}`));
+
+  return planCard({
+    kicker: `T+1（${rpDate(d.updated)} 的下一交易日）执行判定卡 · ${esc(P.mode_cn || "低波单吊")} · 9:25 竞价结束后照此执行`,
+    color, title, rows,
+    buy: sig ? `9:25 集合竞价按开盘价买入 100% 仓位（缺口 ${P.gap_min}%~+${P.gap_max}% 之外不成交）`
+      : (pos ? "已满仓持有，无可用资金，不买入" : "不买入，资金留在账上"),
+    sell: pos ? `持满 ${holdN} 个交易日（已持 ${pos.held_days ?? "-"} 日）收盘卖${P.stop_pct ? `；跌破 ${P.stop_pct}% 止损` : ""}`
+      : "无持仓需卖出",
+    pos: "100% 单吊 · 每日最多买 1 只 · 卖出资金当日收盘后可再出信号、次日买入",
+    foot: `虚拟本金 ${(Number(d.init_capital || 0) / 1e4).toFixed(0)} 万 → <b style="color:${nav >= 1 ? "var(--red)" : "var(--green)"}">${(cap / 1e4).toFixed(2)} 万</b>（净值 ${nav.toFixed(4)}）· 与主策略共用同一份数据 · 独立记账`,
+  });
+}
+
+/* ---- 候选池: 池深 = 表内行数, 上面一条漏斗说明怎么筛出来的 ---- */
+function poolMain(d) {
+  const td = d.t1_decision || {};
+  const picks = d.picks || [];
+  if (!picks.length) {
+    return `<div class="loading">今日无合格候选（空池日）—— 全部条件过滤后剩余 0 只，明日空仓。系统正常运行，非数据缺失。</div>`;
+  }
+  const n = td.pool_n ?? picks.length;
+  return funnelBar([
+    { label: "全池达标（通过全部筛选并完成评分）", n },
+    { label: "发布（评分第 1 名）", n: picks.length, last: true },
+  ]) + poolTable(picks.map(x => ({
+    tag: x.strategy_cn || "-", code: x.code, name: x.name, close: x.close, pct: x.pct,
+    volRatio: x.vol_ratio, turnover: x.turnover_rate, amountYi: x.amount_yi,
+    mom20: x.mom20, metric: x.score, reason: x.reasons,
+  })), "评分") +
+    `<div class="legend">当日达标（池深）<b>${n}</b> 只 · 只发布其中评分第 1 名 <b>1</b> 笔，第 2 名以后只在备用漏斗里补位${d.regime ? ` · 风控 ${d.regime.ok ? "通过" : "触发"}` : ""}${picks[0] ? ` · 今日主选 <b>${esc(picks[0].code)}</b>` : ""}</div>`;
+}
+
+function poolSat(d) {
+  const P = d.params || {}, p = d.pool || {};
+  const rows = p.rows || [];
+  const base = p.base ?? p.n ?? rows.length;
+  if (!rows.length) {
+    return `<div class="loading">今日无合格候选（基础票池 ${base} 只 / 需 ≥ 20 只）—— 明日空仓。</div>`;
+  }
+  const funnel = (p.funnel && p.funnel.length)
+    ? p.funnel.slice()
+    : [{ label: "基础票池（主板 · 非ST · 非停牌 · 成交额≥1亿）", n: base }];
+  funnel.push({ label: `候选池（ivol 最低 ${rows.length} 只，全部列在下表）`, n: rows.length, last: true });
+  return funnelBar(funnel) + poolTable(rows.map((x, i) => ({
+    no: x.rank ?? i + 1, tag: P.mode_cn || "低波单吊",
+    code: x.code, name: x.name, close: x.close, pct: x.pct,
+    volRatio: x.vol_ratio ?? "-", turnover: x.turnover_rate ?? "-",
+    amountYi: x.amount_yi, mom20: x.mom20, metric: x.ivol20,
+    reason: i === 0
+      ? `全池 ivol 最低${p.gate_ok ? " · 明日计划" : " · 闸门关闭，明日不买"}`
+      : `ivol 第 ${x.rank ?? i + 1} 名 · 仅备查，单吊不执行`,
+  })), "ivol20") +
+    `<div class="legend">候选池 <b>${rows.length}</b> 只（= 上表行数，全部列出）· 单吊只买第 1 名，第 2 名以后不参与执行 · 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+}
+
+/* ---- 单吊执行记录 ---- */
+function execMain(d) {
+  // 只展示单吊明细口径: publish_date >= 2026-10-22 的记录
+  const CUTOFF = "2026-10-22";
+  const rows = [];
+  (d.records || []).forEach(r => {
+    if (r.publish_date < CUTOFF) return;
+    const e = r.executed;
+    if (e && e.holding) {
+      rows.push({ pub: r.publish_date, buy: e.buy_date, code: e.code, name: e.name, rank: e.rank,
+        buyPx: e.buy_px, sellDate: e.sell_date, sellPx: "待开盘", posPct: e.position_pct,
+        realBuy: e.actual_buy_px, realSell: null, ret: null, retNote: "持仓中",
+        chain: (e.chain || []).join("；") || "第1名直接成交", status: "持仓中" });
+    } else if (e) {
+      rows.push({ pub: r.publish_date, buy: e.buy_date, code: e.code, name: e.name, rank: e.rank,
+        buyPx: e.buy_px, sellDate: e.sell_date, sellPx: e.sell_px, posPct: e.position_pct,
+        realBuy: e.actual_buy_px, realSell: e.actual_sell_px, ret: Number(e.ret_pct),
+        chain: (e.chain || []).join("；") || "第1名直接成交", status: r.status || "" });
+    } else if (r.status === "待结算") {
+      const isFlat = !(r.picks || []).length;
+      // 有 skip_chain = 买入日已判定未成交(只是还没到卖出日), 再写"待执行(明日开盘)"会误导
+      const missed = (r.skip_chain || []).length > 0;
+      rows.push({ pub: r.publish_date, buy: r.buy_date, code: "",
+        name: isFlat ? "空池日(无候选, 空仓)" : (missed ? "未成交（跳过原因见右侧）" : "待执行(明日开盘)"),
+        rank: null, buyPx: null, sellDate: null, sellPx: null, posPct: null,
+        realBuy: null, realSell: null, ret: null, retNote: "待结算",
+        chain: (r.skip_chain || []).join("；") || "-", status: "待结算" });
+    }
+  });
+  return { rows, legend:
+    `明细自 2026-10-22 起逐笔记录。收益含佣金万2.5+印花税万5+滑点千1。「实盘买/卖价」列用于记录你的真实成交价与模拟价对照。<br>` +
+    `2026-10-30 及之前的历史成交按当时口径(含创业板多票、缺口挑单)记录且<b>不改写</b>；` +
+    `第九十二~九十六轮口径(沪深主板单只、开盘价直接成交、评分≥1.0 且按分档定仓位、风控不强制复参与)自 2026-11-02 买入起执行。` };
+}
+
+function execSat(d) {
+  const P = d.params || {}, pos = d.position, sig = d.signal;
+  const D8 = v => (v && String(v).length === 8)
+    ? `${String(v).slice(0, 4)}-${String(v).slice(4, 6)}-${String(v).slice(6)}` : (v || "");
+  const rows = [];
+  (d.trades || []).forEach(t => rows.push({
+    pub: D8(t.signal_date), buy: D8(t.entry_date), code: t.code, name: t.name || "",
+    rank: 1, buyPx: t.entry_px, sellDate: D8(t.exit_date), sellPx: t.exit_px, posPct: 100,
+    realBuy: null, realSell: null, ret: Number(t.ret_pct),
+    chain: t.note || "持满卖出", status: "已结算" }));
+  if (pos) rows.push({
+    pub: D8(pos.signal_date), buy: D8(pos.entry_date), code: pos.code, name: pos.name || "",
+    rank: 1, buyPx: pos.entry_px_raw, sellDate: "", sellPx: "持有中", posPct: 100,
+    realBuy: null, realSell: null, ret: null,
+    retNote: pos.ret_pct != null ? `浮盈 ${pctStr(pos.ret_pct)}` : "持仓中",
+    chain: `已持 ${pos.held_days ?? "-"} / ${P.hold_days ?? "-"} 个交易日`, status: "持仓中" });
+  if (sig) rows.push({
+    pub: D8(sig.date), buy: "", code: sig.code, name: sig.name || "",
+    rank: 1, buyPx: "-", sellDate: "", sellPx: "-", posPct: 100,
+    realBuy: null, realSell: null, ret: null, retNote: "待执行",
+    chain: `ivol ${sig.ivol20} · 竞价缺口 ${P.gap_min}%~+${P.gap_max}% 内按开盘价买入`, status: "待执行" });
+  rows.sort((a, b) => String(b.pub).localeCompare(String(a.pub)));
+  return { rows, legend:
+    `v3 账本自 2026-11-05 起逐笔记录（v2 的 40 只分散批次已归档，不计入本表）。` +
+    `收益按开盘买/收盘卖的真实价格口径，含单边 0.15% 成本。「实盘买/卖价」列留空，成交后告知即写入。` };
+}
+
+/* ---- 回测绩效(主副共用 btBlock，这里只负责取数据) ---- */
+async function renderBt(isMain, seq) {
+  const cards = document.getElementById("bt-cards"), chart = document.getElementById("bt-chart");
+  try {
+    const d = await jgetOnce(isMain ? U.backtest : U.satbt);
+    if (seq != null && seq !== RENDER_SEQ) return;
+    const mt = d.meta || {};
+    if (mt.start && mt.end) {
+      document.getElementById("bt-sub").textContent =
+        `${mt.days} 交易日（${rpDate(mt.start)} ~ ${rpDate(mt.end)}）· ${mt.rules || ""}`;
+    }
+    btBlock(cards, chart, d, mt.initial_capital || (isMain ? 1e6 : 1e5));
+  } catch (e) {
+    cards.innerHTML = `<div class="card"><div class="k">回测报告</div>
+      <div class="v" style="font-size:14px;color:var(--muted)">尚未生成（${isMain ? "在 Actions 中手动触发「回测」" : "每日 workflow 产出 output/satellite_bt.json"}）</div></div>`;
+    chart.innerHTML = "";
+  }
+}
+
+/* ================= 副策略历史回放(读 satellite_bt.json 的 replay 段) ================= */
+async function renderReplaySat() {
+  const g = id => document.getElementById(id);
+  const cEl = g("rp-cards"), moEl = g("rp-months"), chEl = g("rp-chart");
+  const trEl = g("rp-trades"), dlEl = g("rp-daily"), ntEl = g("rp-note");
+  const blank = () => { moEl.innerHTML = ""; chEl.innerHTML = ""; trEl.innerHTML = ""; dlEl.innerHTML = ""; };
   let d;
-  try { d = await jget("./data/satellite_bt.json"); }
+  try { d = await jgetOnce(U.satbt); }
   catch (e) {
     cEl.innerHTML = `<div class="card"><div class="k">副策略回放</div>
       <div class="v" style="font-size:14px;color:var(--muted)">尚未生成（每日 workflow 产出 output/satellite_bt.json）</div></div>`;
-    return;
+    g("rp-sub").textContent = "数据未部署"; ntEl.innerHTML = ""; blank(); return;
   }
   const rp = d.replay;
   if (!rp) {
     cEl.innerHTML = `<div class="card"><div class="k">副策略回放</div>
       <div class="v" style="font-size:14px;color:var(--muted)">回放段随下一交易日刷新（旧版回测文件不含 replay 段）</div></div>`;
-    return;
+    g("rp-sub").textContent = "等待刷新"; ntEl.innerHTML = ""; blank(); return;
   }
   const m = rp.meta || {}, s = rp.summary || {}, mt = d.metrics || {};
   const base = Number(s.base_nav || 1e5);
-  document.getElementById("srp-sub").textContent =
-    `${rpDate(m.start)} ~ ${rpDate(m.end)} 逐笔复现 · 同引擎同口径 · 无未来函数`;
+  g("rp-sub").textContent = `${rpDate(m.start)} ~ ${rpDate(m.end)} 逐笔复现 · 同引擎同口径 · 无未来函数`;
 
   replayCards(cEl, s, base);
   replayMonths(moEl, rp.monthly);
@@ -1181,7 +1209,7 @@ async function loadSatReplay() {
     ret: t.ret_pct, rank: 1, note: t.note,
   }));
   replayTrades(trEl, rows,
-    `T 日收盘按 ivol 取第 1 名 → T+1 开盘价买入 → 持满 ${d.meta?.rules?.match(/持 (\d+)/)?.[1] || "-"} 个交易日收盘卖（跌破止损线当日收盘止损）。` +
+    `T 日收盘按 ivol 取第 1 名 → T+1 开盘价买入 → 持满 ${(d.meta?.rules || "").match(/持 (\d+)/)?.[1] || "-"} 个交易日收盘卖（跌破止损线当日收盘止损）。` +
     `收益含单边 0.15% 成本（往返 0.3%）。共 ${rows.length} 笔，<b>按买入日降序（最新在上）</b>。`);
 
   replayDaily(dlEl, rp.daily || []);
@@ -1191,17 +1219,17 @@ async function loadSatReplay() {
     <p><b>这段回放是什么：</b>把 ${rpDate(d.meta?.start)} ~ ${rpDate(d.meta?.end)} 的 1500 日回测，
     切出最后 <b>${m.days}</b> 个交易日按日展开，逐日写明"这天为什么没买 / 为什么还拿着 / 为什么卖"。
     数据是<b>同一次模拟</b>切出来的（<code>output/satellite_bt.json</code> 的 <code>replay</code> 段），
-    没有第二次运行 —— 所以回放的区间收益与「副策略 · 回测绩效」的净值曲线必然对得上。</p>
+    没有第二次运行 —— 所以回放的区间收益与「副策略 → 回测绩效」的净值曲线必然对得上。</p>
 
-    <p><b>与主策略回放的差异只有策略本身：</b>① 单吊 100% 仓，每天最多 1 只，
-    没有"多票并行"；② 出场只有两个条件 —— 持满 <b>${d.meta?.rules?.match(/持 (\d+)/)?.[1] || "-"}</b> 个交易日，
+    <p><b>与主策略回放的差异只有策略本身：</b>① 单吊 100% 仓，每天最多 1 只，没有"多票并行"；
+    ② 出场只有两个条件 —— 持满 <b>${(d.meta?.rules || "").match(/持 (\d+)/)?.[1] || "-"}</b> 个交易日，
     或收盘相对买入价跌破止损线；③ 开新仓前先过<b>大盘 MA20 闸门</b>，指数在均线下方一律空仓。
     这三条决定了"空仓天数"远多于主策略，是设计而不是漏跑。</p>
 
     <p><b>别用 ${m.days} 天推断长期期望：</b>同一套规则在 1500 个交易日为
     <b>${total != null ? (total > 0 ? "+" : "") + total + "%" : "-"}</b>、最大回撤 <b>${mdd}%</b>、
     ${n} 笔、胜率 ${mt["胜率%"]}%。副策略的定位是"主策略失效时还有一条腿"，不是收益引擎 ——
-    对账请看「副策略」页签的执行记录（那才是真实向前流水），本页回答的是
+    对账请看「策略 → 副策略 → 单吊执行记录」（那才是真实向前流水），本页回答的是
     "若严格按当前规则逐日重放会怎样"。</p>
 
     <p class="muted">口径：T 日收盘选股（盘后即知，无未来函数）→ T+1 开盘价成交 → 收盘估值；
@@ -1209,17 +1237,104 @@ async function loadSatReplay() {
     数据源：<code>output/satellite_bt.json</code>（每日随主流程刷新）。</p>`;
 }
 
-showTab((location.hash || "").replace("#", ""), false);
+/* ================= 编排 ================= */
+function setSub(id, txt) { document.getElementById(id).textContent = txt; }
 
-loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class="loading">候选池加载失败: ${esc(e.message)}</div>`);
-loadExecHistory();
-loadBacktest();
-loadPaper();
-loadSatellite();
-loadSatPlan();
-loadHealth();
-loadReplay();
-loadSatReplay();
+let RENDER_SEQ = 0;      // 切策略比 fetch 快时, 旧的一次渲染不能覆盖新的
+async function renderStrategy() {
+  const seq = ++RENDER_SEQ;
+  const key = STRAT, isMain = key === "main";
+  setSub("plan-sub", isMain ? "深低开承接 · 每日仅执行评分第 1 名 1 笔，T+2 收盘清仓"
+    : "低波单吊 · 每日最多 1 只 · 与主策略同架构、共用一份数据");
+  setSub("pool-sub", isMain ? "仅沪深主板 · 有信号日只发 1 只；无信号日按备用漏斗补位（至多 3 只）"
+    : "基础票池按 20 日特质波动升序，取前 20 只构成候选池；下表全部列出，池深 = 行数");
+  setSub("exec-sub", isMain ? "逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）"
+    : "逐笔明细：买入哪只、什么价、卖出哪只、什么价（v3 自 2026-11-05 起）");
+  setSub("bt-sub", "加载中...");
+
+  // 1) 明日计划
+  const planBox = document.getElementById("plan-box");
+  planBox.innerHTML = `<div class="loading">加载中...</div>`;
+  try {
+    const d = await jgetOnce(isMain ? U.latest : U.satellite);
+    if (seq !== RENDER_SEQ) return;
+    (isMain ? headMain : headSat)(d);
+    planBox.innerHTML = isMain ? planMain(d) : planSat(d);
+  } catch (e) {
+    if (seq === RENDER_SEQ) planBox.innerHTML = `<div class="loading">计划加载失败：${esc(e.message)}</div>`;
+  }
+
+  // 2) 候选池
+  const poolBox = document.getElementById("pool-box");
+  poolBox.innerHTML = `<div class="loading">加载中...</div>`;
+  try {
+    const d = await jgetOnce(isMain ? U.latest : U.satellite);
+    if (seq !== RENDER_SEQ) return;
+    poolBox.innerHTML = isMain ? poolMain(d) : poolSat(d);
+  } catch (e) {
+    if (seq === RENDER_SEQ) poolBox.innerHTML = `<div class="loading">候选池加载失败：${esc(e.message)}</div>`;
+  }
+
+  // 3) 单吊执行记录
+  const ec = document.getElementById("exec-cards"), et = document.getElementById("exec-table");
+  try {
+    const d = await jgetOnce(isMain ? U.history : U.satellite);
+    if (seq !== RENDER_SEQ) return;
+    const r = isMain ? execMain(d) : execSat(d);
+    execBlock(ec, et, r.rows, r.legend);
+  } catch (e) {
+    if (seq === RENDER_SEQ) { ec.innerHTML = ""; et.innerHTML = `<div class="loading">执行记录加载失败：${esc(e.message)}</div>`; }
+  }
+
+  // 4) 回测绩效
+  renderBt(isMain, seq);
+}
+
+async function renderTape() {
+  const isMain = STRAT === "main";
+  document.getElementById("paper-wrap").style.display = isMain ? "" : "none";
+  document.getElementById("sat-tape-note").style.display = isMain ? "none" : "";
+  document.getElementById("rp-name").textContent = isMain ? "主策略历史回放" : "副策略历史回放";
+  document.getElementById("rp-note").innerHTML = "";
+  if (isMain) { loadPaper(); loadReplay(); } else { renderReplaySat(); }
+}
+
+async function loadDisclaimer() {
+  try {
+    const d = await jgetOnce(U.latest);
+    document.getElementById("disclaimer").textContent = d.disclaimer || "";
+  } catch (e) { /* latest.json 缺失不影响其它块 */ }
+}
+
+/* ---------- 事件 ---------- */
+document.getElementById("tabs").addEventListener("click", e => {
+  const b = e.target.closest(".tab");
+  if (b) showTab(b.dataset.tab, true);
+});
+document.getElementById("segbar").addEventListener("click", e => {
+  const b = e.target.closest(".seg-btn");
+  if (b) setStrategy(b.dataset.strat, true);
+});
+/* 章节内锚点(如 badges 里的 #replay)跳到对应页签 */
+document.addEventListener("click", e => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  const el = document.getElementById(a.getAttribute("href").slice(1));
+  if (!el) return;
+  const host = el.dataset.pane ? el : el.closest("[data-pane]");
+  if (host) { e.preventDefault(); showTab(host.dataset.pane, true); }
+});
+
+/* ---------- 启动: 深链 #main / #sat / #tape / #more ---------- */
+(function boot() {
+  const r = HASHMAP[location.hash || ""];
+  if (r) { PANE = r[0]; if (r[1]) STRAT = r[1]; }
+  paintChrome();
+  renderStrategy();
+  if (PANE === "tape") renderTape();
+  loadHealth();
+  loadDisclaimer();
+})();
 </script>
 </body>
 </html>

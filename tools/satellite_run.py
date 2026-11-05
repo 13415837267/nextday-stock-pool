@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 from src.backtest import prepare_context  # noqa: E402
 from src.config import load_config  # noqa: E402
 from src.satellite import (daily_params, entry_gate, pick_one,  # noqa: E402
-                           rank_pool, should_exit, STRATEGY_CN)
+                           pool_funnel, rank_pool, should_exit, STRATEGY_CN)
 
 DAYS = 90
 OUT = ROOT / "output" / "satellite.json"
@@ -69,13 +69,23 @@ def _f(v, nd=2, default=None):
     return None if x != x else round(x, nd)       # NaN -> default
 
 
-def _pool_snapshot(day, cfg, names: dict, topn: int = 8) -> dict:
-    """当日候选池快照(第一百四十轮) —— 与主策略 pool 表同列, 供页面共用一套渲染。
+def _pool_snapshot(day, cfg, names: dict, topn: int = None) -> dict:
+    """当日候选池快照(第一百四十二轮) —— 与主策略 pool 表同列, 供页面共用一套渲染。
 
-    池深 n 是"通过全部筛选并完成 ivol 排序"的只数(盘后即知, 无未来函数);
-    页面只展示前 8 名, 但 n 是全部。picked = 今日实际发出信号的票(空仓/闸门关时为空)。
+    口径(与页面 legend / 漏斗逐字对应, 不各算各的):
+      base   = 基础票池: 通过上市/流动性/板块等硬性条件的只数(rank_pool 的池子)
+      show   = 展示深度(默认 20): base 按 ivol 升序取前 show 只
+      rows   = 这 show 只的全部明细, 页面<b>全部列出</b> —— 表有几行, 池深就是几
+      n      = 实际列出的只数(= len(rows)); 基础票池不足 min_pool 时为 0(不出票)
+      funnel = 全市场 → 上市状态 → 成交额 → 板块 的逐道剩余只数
+
+    第 1 名仍是全体 ivol 最低的那只 —— 取前 20 不改变选股结果, 只决定"展示多少"。
     """
-    rk = rank_pool(day, cfg)
+    P = daily_params(cfg)
+    topn = int(topn or P["pool_show"])
+    fun = pool_funnel(day, cfg)
+    base = int(fun[-1]["n"])
+    rk = rank_pool(day, cfg)          # 不足 min_pool 时返回空表
     rows = []
     for i, (_, r) in enumerate(rk.head(topn).iterrows(), 1):
         code = str(r["ts_code"])
@@ -84,7 +94,7 @@ def _pool_snapshot(day, cfg, names: dict, topn: int = 8) -> dict:
                      "close": _f(r["close"]), "amount_yi": _f(float(r["amount"]) / 1e8),
                      "vol_ratio": _f(r["vol_ratio"]), "turnover_rate": _f(r["turnover_rate"]),
                      "mom20": _f(r["mom20"], 1)})
-    return {"n": int(len(rk)), "rows": rows}
+    return {"n": len(rows), "base": base, "show": topn, "funnel": fun, "rows": rows}
 
 
 def _migrate(tape: dict, day, today: str) -> float:
@@ -161,7 +171,7 @@ def main():
             snap["pick_note"] = ""
             tape["pool"] = snap
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
-            print("  补写候选池快照(池深 %d), 状态机未动" % snap["n"], flush=True)
+            print("  补写候选池快照(候选池 %d 只 / 基础票池 %d), 状态机未动" % (snap["n"], snap["base"]), flush=True)
         print("  今日(%s)已更新, 跳过" % today, flush=True)
         return
 
@@ -270,7 +280,6 @@ def main():
     # ---------- 3.5) 候选池快照(页面用; 与是否成交无关) ----------
     snap = _pool_snapshot(day, cfg, names)
     snap["date"] = today
-    snap["n"] = int(snap["n"]) if snap else 0
     held_code = (tape.get("position") or {}).get("code")
     sig_code = (tape.get("signal") or {}).get("code")
     snap["picked"] = sig_code or held_code or ""

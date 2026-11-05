@@ -16,6 +16,19 @@
   在其中取 20 日特质波动(ivol) 最低的一只 —— "上涨趋势里最稳的票"。
 · lowvol:       不要求趋势, 直接取全池 ivol 最低的一只(对照组)。
 
+候选池 ≠ 全市场(第一百四十二轮)
+--------------------------------
+选股是"排序"不是"筛选": 硬性条件(主板/非ST/非停牌/上市满250日/成交额≥1亿)
+之后仍有 1800 只左右, 把 1800 叫"池深"既没有信息量、也和主策略的池深(几十只)
+对不上。所以把池子拆成两层:
+
+  base(基础票池) = 通过硬性条件的全部只数 —— 只用于画漏斗;
+  pool(候选池)   = base 按 ivol 升序取前 pool_show 只(默认 20),
+                   页面把 20 只全部列出, 表有几行、池深就是几。
+
+第 1 名仍是全体 ivol 最低的那只 —— **取前 20 不改变选股结果**, 只改变"展示多少"。
+页面 legend 与漏斗都由 pool_funnel() 给出, 与 rank_pool() 同一套掩码, 不各算各的。
+
 为什么"上涨趋势"只当过滤器、不当排序器
 --------------------------------------
 第一百三十九轮四组实测(1500 日 / 全史 3378 日, 均为单吊满仓):
@@ -38,6 +51,7 @@
 from __future__ import annotations
 
 MIN_BARS = 250
+POOL_SHOW = 20            # 候选池展示深度: 基础票池按 ivol 升序取前 N 只, 页面全部列出
 
 DEFAULT = {
     "mode": "lowvol",         # lowvol | trend_lowvol
@@ -49,7 +63,8 @@ DEFAULT = {
     "gap_max": 5.0,           # 上限: 高开过多不追
     "stop_pct": 0.0,          # 止损(%): 0=关闭; 收盘相对买入价跌破即卖
     "market_gate": False,     # 大盘闸门: 指数在 MA20 上方才开新仓
-    "min_pool": 20,           # 池子最少只数, 不足则不出票
+    "min_pool": 20,           # 基础票池最少只数, 不足则不出票
+    "pool_show": POOL_SHOW,   # 候选池展示深度(页面把这几只全部列出)
 }
 
 STRATEGY_CN = {"trend_lowvol": "趋势低波单吊", "lowvol": "低波单吊"}
@@ -66,7 +81,8 @@ def daily_params(cfg: dict) -> dict:
             "gap_max": float(s["gap_max"]),
             "stop": float(s["stop_pct"]) / 100.0,
             "gate": bool(s["market_gate"]),
-            "min_pool": int(s["min_pool"])}
+            "min_pool": int(s["min_pool"]),
+            "pool_show": int(s["pool_show"] or POOL_SHOW)}
 
 
 def apply_cost(nav_before: float, turn: float, cost: float = 0.0030) -> float:
@@ -74,35 +90,63 @@ def apply_cost(nav_before: float, turn: float, cost: float = 0.0030) -> float:
     return float(nav_before) * (1.0 - float(cost) * float(turn))
 
 
-def rank_pool(day, cfg: dict):
-    """当日候选池, 已按 ivol 升序。池子不足返回空表。"""
+def _masks(day, cfg: dict):
+    """逐道筛选掩码, 供 rank_pool 与 pool_funnel 共用(同源, 不各算各的)。
+
+    顺序: 上市状态 → 成交额/波动 → 板块白名单 → (可选)趋势过滤。
+    返回 (m_listed, m_liquid, m_final), 均为与 day 等长的布尔数组。
+    """
     from src.config import board_of
 
     P = daily_params(cfg)
     uni = cfg.get("universe") or {}
     boards = set(uni.get("boards") or ["main", "gem"])
-    d = day
-    m = ((d["is_paused"] == 0) & (d["is_st"] == 0) & (d["bars"] >= MIN_BARS)
-         & (d["amount"] >= P["amt_min"]) & (d["ivol20"] > 0))
+
+    m_listed = ((day["is_paused"] == 0) & (day["is_st"] == 0)
+                & (day["bars"] >= MIN_BARS)).to_numpy()
+    m_liquid = m_listed & ((day["amount"] >= P["amt_min"]) & (day["ivol20"] > 0)).to_numpy()
+    m_final = m_liquid & day["ts_code"].map(lambda c: board_of(c) in boards).to_numpy()
     if P["max_ivol"] > 0:
-        m &= (d["ivol20"] <= P["max_ivol"])
-    m &= d["ts_code"].map(lambda c: board_of(c) in boards).to_numpy()
+        m_final = m_final & (day["ivol20"] <= P["max_ivol"]).to_numpy()
     if P["mode"] == "trend_lowvol":
-        m &= ((d["close_adj"] > d["ma5"]) & (d["ma5"] > d["ma10"])
-              & (d["ma10"] > d["ma20"]) & (d["ma20"] > d["ma20_prev"])).to_numpy()
-        m &= (d["mom20"] > 0).to_numpy()
-    df = d.loc[m]
+        m_final = m_final & ((day["close_adj"] > day["ma5"]) & (day["ma5"] > day["ma10"])
+                             & (day["ma10"] > day["ma20"]) & (day["ma20"] > day["ma20_prev"])
+                             & (day["mom20"] > 0)).to_numpy()
+    return m_listed, m_liquid, m_final
+
+
+def rank_pool(day, cfg: dict):
+    """当日基础票池, 已按 ivol 升序。池子不足 min_pool 返回空表。"""
+    P = daily_params(cfg)
+    df = day.loc[_masks(day, cfg)[2]]
     if len(df) < P["min_pool"]:
         return df.iloc[0:0]
     return df.assign(_ivol=df["ivol20"].astype(float)).sort_values("_ivol")
 
 
+def pool_funnel(day, cfg: dict) -> list:
+    """页面漏斗: 每一步"还剩多少只"。数字与 rank_pool 同源, 不是另写一套条件。"""
+    P = daily_params(cfg)
+    m_listed, m_liquid, m_final = _masks(day, cfg)
+    tail = "沪深主板白名单"
+    if P["mode"] == "trend_lowvol":
+        tail += " + 均线多头"
+    if P["max_ivol"] > 0:
+        tail += " + ivol≤%.2f" % P["max_ivol"]
+    return [{"label": "全市场", "n": int(len(day))},
+            {"label": "非ST·非停牌·上市满%d日" % MIN_BARS, "n": int(m_listed.sum())},
+            {"label": "成交额≥%.1f亿" % (P["amt_min"] / 1e8), "n": int(m_liquid.sum())},
+            {"label": tail, "n": int(m_final.sum())}]
+
+
 def pick_one(day, cfg: dict) -> dict | None:
-    """当日唯一候选; 池子不足 min_pool 时返回 None(宁缺勿滥)。"""
+    """当日唯一候选; 基础票池不足 min_pool 时返回 None(宁缺勿滥)。"""
     rk = rank_pool(day, cfg)
-    if len(rk) < daily_params(cfg)["min_pool"]:
+    P = daily_params(cfg)
+    if len(rk) < P["min_pool"]:
         return None
     r = rk.iloc[0]
+    base = int(len(rk))
     return {"code": str(r["ts_code"]),
             "ivol20": round(float(r["_ivol"]), 3),
             "pct": round(float(r["pct"]), 2),
@@ -110,8 +154,11 @@ def pick_one(day, cfg: dict) -> dict | None:
             "close": round(float(r["close"]), 2),
             "amount_yi": round(float(r["amount"]) / 1e8, 2),
             # 池深随候选一起带出: 回放要解释"这天为什么没买", 需要知道是全池排序的结果,
-            # 不是再算一遍 rank_pool(重复排序 1500 次)
-            "pool_n": int(len(rk))}
+            # 不是再算一遍 rank_pool(重复排序 1500 次)。
+            # pool_n = 候选池只数(受展示深度限制, 页面表有几行就是几);
+            # pool_base = 基础票池只数(硬性条件之后的全部, 只用于漏斗第二格)。
+            "pool_n": min(base, P["pool_show"]),
+            "pool_base": base}
 
 
 def entry_gate(gap_pct: float, cfg: dict) -> tuple[bool, str]:
