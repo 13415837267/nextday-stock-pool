@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run_time": "2026-11-05 20:40:10",
+  "run_time": "2026-11-05 20:46:32",
   "start": "20200826",
   "end": "20261105",
   "days": 1500,
@@ -12720,12 +12720,12 @@
  ],
  "replay": {
   "meta": {
-   "start": "20251027",
+   "start": "20251105",
    "end": "20261105",
-   "days": 250,
-   "base_date": "2025-10-24",
+   "days": 243,
+   "base_date": "2025-11-04",
    "strategy": "低波单吊",
-   "window": "近 250 个交易日"
+   "window": "近 243 个交易日"
   },
   "summary": {
    "n_trades": 5,
@@ -12735,20 +12735,16 @@
    "sum_ret_pct": 47.98,
    "best": 15.98,
    "worst": -1.62,
-   "range_ret_pct": 54.17,
+   "range_ret_pct": 41.51,
    "range_mdd_pct": -26.92,
-   "base_date": "2025-10-24",
-   "base_nav": 97866.0,
+   "base_date": "2025-11-04",
+   "base_nav": 106623.0,
    "end_nav": 150883.0
   },
   "monthly": [
    {
-    "month": "202510",
-    "ret_pct": 2.42
-   },
-   {
     "month": "202511",
-    "ret_pct": 10.81
+    "ret_pct": 4.17
    },
    {
     "month": "202512",
@@ -12800,34 +12796,6 @@
    }
   ],
   "curve": [
-   {
-    "d": "2025-10-27",
-    "nav": 100114.0
-   },
-   {
-    "d": "2025-10-28",
-    "nav": 101297.0
-   },
-   {
-    "d": "2025-10-29",
-    "nav": 102954.0
-   },
-   {
-    "d": "2025-10-30",
-    "nav": 100232.0
-   },
-   {
-    "d": "2025-10-31",
-    "nav": 100232.0
-   },
-   {
-    "d": "2025-11-03",
-    "nav": 105084.0
-   },
-   {
-    "d": "2025-11-04",
-    "nav": 106623.0
-   },
    {
     "d": "2025-11-05",
     "nav": 117273.0
@@ -13864,76 +13832,6 @@
    }
   ],
   "daily": [
-   {
-    "date": "20251027",
-    "trade_ok": true,
-    "alloc": 100.0,
-    "pool_n": null,
-    "holding": true,
-    "fills": [],
-    "skipped": [],
-    "note": "持仓 保变电气（18/40 日）"
-   },
-   {
-    "date": "20251028",
-    "trade_ok": true,
-    "alloc": 100.0,
-    "pool_n": null,
-    "holding": true,
-    "fills": [],
-    "skipped": [],
-    "note": "持仓 保变电气（19/40 日）"
-   },
-   {
-    "date": "20251029",
-    "trade_ok": true,
-    "alloc": 100.0,
-    "pool_n": null,
-    "holding": true,
-    "fills": [],
-    "skipped": [],
-    "note": "持仓 保变电气（20/40 日）"
-   },
-   {
-    "date": "20251030",
-    "trade_ok": true,
-    "alloc": 100.0,
-    "pool_n": null,
-    "holding": true,
-    "fills": [],
-    "skipped": [],
-    "note": "持仓 保变电气（21/40 日）"
-   },
-   {
-    "date": "20251031",
-    "trade_ok": true,
-    "alloc": 100.0,
-    "pool_n": null,
-    "holding": true,
-    "fills": [],
-    "skipped": [],
-    "note": "持仓 保变电气（22/40 日）"
-   },
-   {
-    "date": "20251103",
-    "trade_ok": true,
-    "alloc": 100.0,
-    "pool_n": null,
-    "holding": true,
-    "fills": [],
-    "skipped": [],
-    "note": "持仓 保变电气（23/40 日）"
-   },
-   {
-    "date": "20251104",
-    "trade_ok": true,
-    "alloc": 100.0,
-    "pool_n": null,
-    "holding": true,
-    "fills": [],
-    "skipped": [],
-    "note": "持仓 保变电气（24/40 日）"
-   },
    {
     "date": "20251105",
     "trade_ok": true,
