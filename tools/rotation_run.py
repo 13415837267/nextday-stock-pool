@@ -23,7 +23,8 @@ sys.path.insert(0, str(ROOT))
 
 from src.backtest import prepare_context  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.rotation import STRATEGY_CN, diff_basket, params, pick_basket  # noqa: E402
+from src.rotation import (STRATEGY_CN, diff_basket, funnel, params,  # noqa: E402
+                          pick_basket)
 
 DAYS = 300
 HALF = 0.0015
@@ -68,7 +69,7 @@ def main():
     if not tape:
         tape = {"version": 1, "strategy": "lowvol_rotation", "engine": "basket",
                 "init_capital": 100000.0, "cash": 100000.0, "nav": 1.0,
-                "holdings": {}, "pending": {}, "next_rebalance": None,
+                "holdings": {}, "pending": {}, "last_rebalance": None, "next_rebalance": None,
                 "rounds": [], "daily": [], "updated": None}
     if tape.get("updated") == today:
         print("  今日(%s)已更新, 跳过" % today, flush=True)
@@ -134,13 +135,19 @@ def main():
     nav = (cash + mv) / init if init else 1.0
 
     # ---------- 3) 生成下一次清单 ----------
-    due = tape.get("next_rebalance")
-    if not due or today >= due:
+    # 用"上次调仓日 + 交易日计数"判断, 不能看 next_rebalance: 它的日期一旦落在
+    # 已知日历窗口外就是 None, 而 `if not due` 会让它每天都成立(天天调仓)。
+    last = tape.get("last_rebalance")
+    gap = idx.get(today, 0) - idx.get(last, -9999) if last else 9999
+    due = gap >= P["hold_days"]
+    if due:
         basket = pick_basket(day, cfg, names)
         if basket:
             codes = [b["code"] for b in basket]
             tape["pending"] = {"signal_date": today, "codes": codes, "basket": basket}
+            tape["last_rebalance"] = today
             nxt = idx.get(today, 0) + P["hold_days"]
+            # 只用于展示; 窗口外写 None, 判定一律走 last_rebalance(见上)
             tape["next_rebalance"] = main_dates[nxt] if nxt < len(main_dates) else None
             d = diff_basket([c for c in holds], codes)
             note = (note + "；" if note else "") + \
@@ -153,6 +160,7 @@ def main():
                  "rounds": rounds[-60:],
                  "daily": (daily + [{"date": today, "holding_n": len(holds),
                                      "nav": round(nav, 4), "note": note}])[-260:],
+                 "funnel": funnel(day, cfg),
                  "params": {"strategy_cn": STRATEGY_CN, "n_hold": P["n_hold"],
                             "hold_days": P["hold_days"],
                             "amount_min_yi": round(P["amt_min"] / 1e8, 2),

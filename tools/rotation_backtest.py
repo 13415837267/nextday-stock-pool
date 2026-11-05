@@ -176,6 +176,12 @@ def simulate(ctx, cfg, days=None):
                         "span": "%s ~ %s" % (dates[0], dates[-1])},
             "curve": [{"d": d, "nav": round(v / init, 4)} for d, v in navs],
             "monthly": monthly[-13:],
+            # 回放页按"轮次"展示: 一次调仓一行(买N/卖N/留N/换手), 不是单票逐笔
+            "trades": [{"signal_date": r["date"], "entry_date": r["date"], "exit_date": r["date"],
+                        "code": "", "name": "%d买/%d卖" % (len(r["bought"]), len(r["sold"])),
+                        "entry_px": None, "exit_px": None, "ret_pct": r["ret_pct"],
+                        "note": "留 %d · 换手 %.1f%%" % (r["keep"], r["turn_pct"])}
+                       for r in rounds],
             "daily": daily[-260:],
         },
     }
