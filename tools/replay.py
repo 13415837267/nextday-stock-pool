@@ -179,14 +179,36 @@ def build(start: str, end: str) -> dict:
     }
 
 
+def _default_range() -> tuple[str, str]:
+    """默认区间: 最新交易日往前推 12 个月。
+
+    第一百四十一轮改。旧默认写死 "20251101"/"20261031", 过了那天回放就原地不动,
+    页面却仍写着"近 12 个月" —— 副策略回放每天刷新, 主策略回放停在 10-31,
+    两块并排看就是"一条腿在走、一条腿钉住"。
+    """
+    from src.data_api import ZZClient
+    cal = sorted(str(d) for d in ZZClient(load_config()).trade_days(days=800))
+    if not cal:
+        raise SystemExit("取不到交易日历, 请稍后重试")
+    end = cal[-1]
+    start = f"{int(end[:4]) - 1}{end[4:]}"
+    nxt = [x for x in cal if x >= start]
+    return (nxt[0] if nxt else start), end
+
+
 def main():
     ap = argparse.ArgumentParser(description="生成站点历史回放数据")
-    ap.add_argument("--start", default="20251101", help="区间起(含), YYYYMMDD")
-    ap.add_argument("--end", default="20261031", help="区间止(含), YYYYMMDD")
+    ap.add_argument("--start", default="", help="区间起(含), YYYYMMDD; 留空=最新交易日前推 12 个月")
+    ap.add_argument("--end", default="", help="区间止(含), YYYYMMDD; 留空=最新交易日")
     ap.add_argument("--out", default=str(ROOT / "output" / "replay.json"))
     args = ap.parse_args()
 
-    payload = build(args.start, args.end)
+    start, end = args.start, args.end
+    if not start or not end:
+        d0, d1 = _default_range()
+        start, end = start or d0, end or d1
+    print(f"[replay] 区间 {start} ~ {end}")
+    payload = build(start, end)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=1, default=float), encoding="utf-8")
