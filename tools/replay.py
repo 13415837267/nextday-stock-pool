@@ -19,7 +19,9 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+TZ_CN = timezone(timedelta(hours=8))  # 北京时间: Actions 运行于 UTC, 展示型时间戳统一 +8
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -163,7 +165,7 @@ def build(start: str, end: str) -> dict:
             "rules": rules_line(ex, "复利/" + (
                 f"佣金万{ex['commission_rate'] * 10000:g}+印花税万{ex['stamp_tax'] * 10000:g}"
                 f"+滑点千{ex['slippage'] * 1000:g}")),
-            "generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "generated": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
             "note": ("复用回测引擎, 指标仅用截至当日数据; 买入取 T+1 真实开盘价, "
                      "卖出按 T+2 开盘/收盘两条腿加权(比例见每笔 sell_frac_open), "
                      "收益含佣金万2.5+印花税万5+滑点千1; "

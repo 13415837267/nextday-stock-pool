@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+TZ_CN = timezone(timedelta(hours=8))  # 北京时间: Actions 运行于 UTC, 展示型时间戳统一 +8
 from pathlib import Path
 
 import numpy as np
@@ -160,7 +162,7 @@ def simulate(ctx, cfg, days=None):
                               "unrealized_pct": round((lp / epx - 1) * 100, 2) if epx else None})
 
     return {
-        "meta": {"run_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "meta": {"run_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
                  "start": dates[0], "end": dates[-1], "days": len(dates),
                  "initial_capital": init, "strategy": STRATEGY_CN,
                  "rules": "低波 %d 只等权 · 每 %d 个交易日调仓 · T+1 开盘 · 单边成本 0.15%%"

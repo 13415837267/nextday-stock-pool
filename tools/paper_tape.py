@@ -30,7 +30,9 @@ from __future__ import annotations
 import argparse
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+TZ_CN = timezone(timedelta(hours=8))  # 北京时间: Actions 运行于 UTC, 展示型时间戳统一 +8
 from pathlib import Path
 
 import numpy as np
@@ -63,7 +65,7 @@ def load_tape() -> dict:
             return json.loads(TAPE.read_text(encoding="utf-8"))
         except Exception:
             pass
-    return {"meta": {"created": datetime.now().strftime("%Y-%m-%d"), "version": 1},
+    return {"meta": {"created": datetime.now(TZ_CN).strftime("%Y-%m-%d"), "version": 1},
             "records": [], "stats": {}}
 
 
@@ -215,7 +217,7 @@ def append_signal(tape: dict, latest: dict) -> bool:
         "fallbacks": [{"code": p.get("code"), "name": p.get("name"), "score": p.get("score")}
                       for p in picks[1:4]],
         "state": "planned",
-        "recorded_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "recorded_at": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
         "buy_px": None, "sell_px": None, "gap_pct": None,
         "ret_gross_pct": None, "ret_net_pct": None, "weighted_pct": None,
         "exec": None, "note": "",
@@ -308,7 +310,7 @@ def main() -> None:
             rec["note"] = (rec.get("note") or "") + f" | 回填异常: {type(e).__name__}: {e}"
 
     tape["stats"] = compute_stats(tape)
-    tape["meta"]["updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    tape["meta"]["updated"] = datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S")
     tape["meta"]["n"] = len(tape["records"])
 
     if args.report:

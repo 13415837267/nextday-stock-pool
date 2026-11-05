@@ -33,7 +33,9 @@ import json
 import math
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+TZ_CN = timezone(timedelta(hours=8))  # 北京时间: Actions 运行于 UTC, 展示型时间戳统一 +8
 from pathlib import Path
 
 import numpy as np
@@ -984,7 +986,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
 
     result = {
         "meta": {
-            "run_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "run_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
             "start": main_dates[0], "end": main_dates[-1], "days": n,
             "initial_capital": bt_cfg["initial_capital"],
             # 第一百二十五轮: 口径与成本均按 config 生成, 不再写死"T+2开盘卖出"。

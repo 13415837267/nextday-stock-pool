@@ -37,7 +37,9 @@ import math
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+TZ_CN = timezone(timedelta(hours=8))  # 北京时间: Actions 运行于 UTC, 展示型时间戳统一 +8
 from pathlib import Path
 
 import numpy as np
@@ -311,7 +313,7 @@ def main() -> None:
 
     out = {
         "meta": {
-            "run_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "run_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
             "days": args.days, "years": round(years, 2),
             "start": res["meta"]["start"], "end": res["meta"]["end"],
             "n_trades": len(trades),

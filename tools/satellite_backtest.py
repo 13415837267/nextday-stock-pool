@@ -24,7 +24,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+TZ_CN = timezone(timedelta(hours=8))  # 北京时间: Actions 运行于 UTC, 展示型时间戳统一 +8
 from pathlib import Path
 
 import numpy as np
@@ -295,7 +297,7 @@ def run(ctx: dict, cfg: dict) -> dict:
 
     return {
         "meta": {
-            "run_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "run_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
             "start": dates[0], "end": dates[-1], "days": len(dates),
             "initial_capital": init, "strategy": STRATEGY_CN.get(P["mode"], P["mode"]),
             "rules": (f"单吊 100% 仓位 · 每日最多 1 只 · 持 {P['hold_days']} 个交易日收盘卖"

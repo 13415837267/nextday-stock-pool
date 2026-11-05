@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+TZ_CN = timezone(timedelta(hours=8))  # 北京时间: Actions 运行于 UTC, 展示型时间戳统一 +8
 
 import pandas as pd
 
@@ -459,7 +461,14 @@ def main():
     # 幂等闸门会以"这天已处理过"为由继续展示旧口径的结果, 三端静默不一致。
     _fp = _config_fp(cfg)
     if _prev_sig == _fmt(signal_date) and _prev_fp == _fp:
-        print(f"信号日{_fmt(signal_date)}已处理过(latest.json一致, 口径{_fp}), 幂等跳过")
+        # 第一百四十八轮: 幂等跳过时仍刷新 update_time —— 数据内容不变不重算,
+        # 但"更新于"时间戳应反映最近一次检查(北京时间), 否则多次手动触发后页面时间停在首跑时刻
+        try:
+            _prev["update_time"] = datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S")
+            _latest_path.write_text(json.dumps(_prev, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:  # noqa: BLE001 时间戳刷新失败不影响幂等语义
+            pass
+        print(f"信号日{_fmt(signal_date)}已处理过(latest.json一致, 口径{_fp}), 幂等跳过(仅刷新更新时间戳)")
         return
     if _prev_sig == _fmt(signal_date):
         print(f"信号日{_fmt(signal_date)}已处理过但口径已变更({_prev_fp or '无'}→{_fp}), 按新口径重算")
@@ -1144,7 +1153,7 @@ def main():
     }
 
     latest = {
-        "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "update_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
         "config_fp": _fp,
         "plan": {
@@ -1215,7 +1224,7 @@ def main():
         regime_tag = f"超限复参与({regime_info['reenter_frac']:.0%})"
     else:
         regime_tag = "触发空仓"
-    line = (f"- {datetime.now().strftime('%Y-%m-%d %H:%M')} 自动运行: 信号日 {_fmt(signal_date)}, "
+    line = (f"- {datetime.now(TZ_CN).strftime('%Y-%m-%d %H:%M')} 自动运行: 信号日 {_fmt(signal_date)}, "
             f"候选 {len(verified)} 只, {regime_tag}, "
             f"耗时 {time.time()-t0:.0f}s\n")
     text = cl.read_text(encoding="utf-8") if cl.exists() else "# 更新日志\n\n## 自动运行记录\n"

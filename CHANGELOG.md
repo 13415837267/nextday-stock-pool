@@ -1,5 +1,30 @@
 # 更新日志
 
+## 第一百四十八轮: 网页端"更新时间"修复 —— UTC 时区 + 幂等跳过双根因(2026-11-06)
+
+> 用户问"更新了网页端时间怎么还是 16:18"。核查线上 `latest.json`：
+> `update_time = 2026-11-05 16:18:37`，对照 Actions run 列表（16:36~17:28 UTC 连续 5 次
+> run 全部 success）后确认是**双根因叠加**，数据本身早已是最新（信号日 11-05、主副空仓、
+> 候选 1 只盈新发展）。
+
+### 根因
+
+1. **UTC 时区**：Actions 运行于 UTC，`datetime.now()` 生成的展示型时间戳是 UTC。
+   那条 "16:18:37" 实为北京时间 **11-06 00:18:37**（首跑时刻），按北京读像"昨天下午的旧时间"。
+2. **幂等跳过不刷时间戳**：信号日幂等闸门让后续每次触发都直接 return，`latest.json`
+   不重写，`update_time` 永远停在**首跑时刻** —— 所以后面再触发多少次、页面时间都不动。
+
+### 改动清单
+
+- 7 个脚本展示型时间戳统一 `datetime.now(TZ_CN)`（UTC+8，沿用 `tools/evolve.py` 惯例）：
+  `src/daily_run.py`（latest.update_time、运行记录行）、`src/backtest.py`、`tools/paper_tape.py`
+  （created/recorded_at/updated）、`tools/replay.py`、`tools/exp_capacity.py`、
+  `tools/rotation_backtest.py`、`tools/satellite_backtest.py`。
+  `daily_run.py` 交易日判定用的 `_now` **不动**（避免改变信号日选择行为，零行为风险）。
+- `src/daily_run.py` 幂等跳过分支：不再空手 return，改为**仅刷新 `update_time` 写回
+  latest.json**（数据内容不变、不重算，时间戳反映最近一次检查，同样北京时间）。
+
+
 ## 第一百四十七轮: 副策略改回单吊 —— 用户拍板"形态一致优先于绩效"(2026-11-06)
 
 > 用户问"说好单吊为什么计划买入 20 个"。核查：第 145 轮"优化策略"时用户选了"换赛道重做",
