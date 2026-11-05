@@ -169,7 +169,8 @@ def main():
         # 展示格式升级(第一百四十三轮): 老快照可能是 20 行候选池 / 缺 alt 字段。
         # 只在格式对不上时重算展示层, 状态机一律不动 —— 重跑状态机会重复记账。
         if (_snap.get("date") != today or "funnel" not in _snap
-                or "alt" not in _snap or _snap.get("show") != P["pool_show"]):
+                or "alt" not in _snap or _snap.get("show") != P["pool_show"]
+                or "min_pool" not in (tape.get("params") or {})):
             same_day = _snap.get("date") == today
             snap = _pool_snapshot(day, cfg, names)
             snap["date"] = today

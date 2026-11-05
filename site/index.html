@@ -1037,7 +1037,10 @@ function planSat(d) {
     `▸ <b>候选池唯一标的 ${esc(top.name)}</b>（${esc(top.code)}，ivol ${top.ivol20}）：${sig
       ? "明日计划，9:25 按开盘价买入"
       : (pos ? "持仓中，不重复买入" : "第 1 名，闸门关闭不执行")}`);
-  if (nAlt) rows.push(`<b>备选 ${nAlt} 只：</b>第 2~${nAlt + 1} 名折叠备查，<b>不参与执行、不影响仓位</b>`);
+  if (nAlt) {
+    const a0 = (p.alt || [])[0], aN = (p.alt || []).slice(-1)[0];
+    rows.push(`<b>备选 ${nAlt} 只：</b>第 ${a0 ? a0.rank : 2}~${aN ? aN.rank : nAlt + 1} 名折叠备查，<b>不参与执行、不影响仓位</b>`);
+  }
 
   return planCard({
     kicker: `T+1（${rpDate(d.updated)} 的下一交易日）执行判定卡 · ${esc(P.mode_cn || "低波单吊")} · 9:25 竞价结束后照此执行`,
@@ -1099,7 +1102,7 @@ function poolSat(d) {
     amountYi: x.amount_yi, mom20: x.mom20, metric: x.ivol20 });
 
   const altHtml = alt.length ? `<details class="altbox" style="margin-top:10px">
-    <summary>备选排序：第 2 ~ ${alt.length + 1} 名（${alt.length} 只，仅供核对，不参与执行）</summary>
+    <summary>备选排序：第 ${alt[0].rank} ~ ${alt[alt.length - 1].rank} 名（${alt.length} 只，仅供核对，不参与执行）</summary>
     <div class="muted" style="font-size:12px;margin:10px 0 2px;line-height:1.7">
       单吊只买第 1 名，下面这些<b>不产生任何委托</b> —— 列出来只为回答"第 2 名是谁、差多少"，以及复核排序本身有没有问题。<br>
       它们不进候选池、不影响仓位、不参与回测。</div>
