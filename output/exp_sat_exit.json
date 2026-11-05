@@ -1,0 +1,94 @@
+{
+ "days": 1500,
+ "matrix": {
+  "closeexit_closestop_gap1": {
+   "total": 50.88,
+   "ann": 7.1,
+   "mdd": -49.13,
+   "calmar": 0.14,
+   "sharpe": 0.38,
+   "trades": 32,
+   "win": 50.0,
+   "avg": 2.111
+  },
+  "closeexit_closestop_reentry": {
+   "total": 50.88,
+   "ann": 7.1,
+   "mdd": -49.13,
+   "calmar": 0.14,
+   "sharpe": 0.38,
+   "trades": 32,
+   "win": 50.0,
+   "avg": 2.111
+  },
+  "closeexit_openstop_gap1": {
+   "total": 57.52,
+   "ann": 7.87,
+   "mdd": -50.1,
+   "calmar": 0.16,
+   "sharpe": 0.4,
+   "trades": 32,
+   "win": 50.0,
+   "avg": 2.295
+  },
+  "closeexit_openstop_reentry": {
+   "total": 46.96,
+   "ann": 6.63,
+   "mdd": -50.1,
+   "calmar": 0.13,
+   "sharpe": 0.36,
+   "trades": 32,
+   "win": 50.0,
+   "avg": 2.038
+  },
+  "openexit_closestop_gap1": {
+   "total": 53.26,
+   "ann": 7.38,
+   "mdd": -45.19,
+   "calmar": 0.16,
+   "sharpe": 0.39,
+   "trades": 32,
+   "win": 53.1,
+   "avg": 2.12
+  },
+  "openexit_closestop_reentry": {
+   "total": 46.98,
+   "ann": 6.63,
+   "mdd": -42.75,
+   "calmar": 0.16,
+   "sharpe": 0.36,
+   "trades": 32,
+   "win": 43.8,
+   "avg": 2.403
+  },
+  "openexit_openstop_gap1": {
+   "total": 58.29,
+   "ann": 7.96,
+   "mdd": -46.24,
+   "calmar": 0.17,
+   "sharpe": 0.41,
+   "trades": 32,
+   "win": 53.1,
+   "avg": 2.263
+  },
+  "openexit_openstop_reentry": {
+   "total": 44.21,
+   "ann": 6.29,
+   "mdd": -42.75,
+   "calmar": 0.15,
+   "sharpe": 0.35,
+   "trades": 32,
+   "win": 43.8,
+   "avg": 2.358
+  }
+ },
+ "exp_trend_single4_pure_H40_gate_s12": {
+  "total": 44.21,
+  "ann": 6.29,
+  "mdd": -42.75,
+  "calmar": 0.15,
+  "trades": 32,
+  "win": 43.8,
+  "avg": 2.205
+ }
+}
