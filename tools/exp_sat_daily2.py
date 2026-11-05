@@ -143,6 +143,7 @@ def main():
     t1 = time.time()
     rank = {}                  # date -> [code...] 前 50
     ivol_of = {}               # (date, code) -> ivol
+    ivol_m = np.full((len(codes), len(dates)), np.nan, dtype=np.float32)
     for k, d in enumerate(main_dates):
         j = dpos[d]
         if j < 1 or j >= len(dates) - 1:
@@ -151,6 +152,8 @@ def main():
         if len(day) < MIN_POOL:
             continue
         v = pd.to_numeric(day["ivol20"], errors="coerce").to_numpy(dtype=float)
+        ci_all = day["ts_code"].map(cpos).to_numpy()
+        ivol_m[ci_all, j] = np.where(np.isfinite(v), v, np.nan)
         ok = np.isfinite(v) & (v > 0)
         if ok.sum() < 60:
             continue
@@ -194,7 +197,7 @@ def main():
         j = dpos[d]
         day = _universe(by_date[d], cfg)
         ci = day["ts_code"].map(cpos).to_numpy()
-        r = ret_m[ci, j - 1]
+        r = ret_m[ci, j]
         r = r[np.isfinite(r)]
         bench.append(float(np.mean(r)) if len(r) else 0.0)
     res["benchmark"] = _stats(bench)
@@ -211,7 +214,7 @@ def main():
             return
         sd = month_sig[d]
         lst = rank.get(sd) or []
-        if len(lst) < 60:
+        if len(lst) < 20:
             return
         top20 = lst[:20]
         if state["prev"]:
@@ -266,14 +269,14 @@ def main():
                 # 最差持仓: 当日 ivol 最大者
                 worst, wv = None, -1.0
                 for c in bk.hold:
-                    v = ivol_of.get((d, c))
-                    if v is None:
-                        # 不在前 50 的持仓视为最差
-                        worst, wv = c, 9e9
-                        break
+                    i = cpos.get(c)
+                    v = float(ivol_m[i, j]) if i is not None else np.nan
+                    if not np.isfinite(v):
+                        v = 9e9          # 当日无 ivol(停牌/退市)视为最差
                     if v > wv:
                         worst, wv = c, v
-                cv = ivol_of.get((d, cand), 9e9)
+                i = cpos.get(cand)
+                cv = float(ivol_m[i, j]) if i is not None else 9e9
                 if worst and cv < wv * (1.0 - mg):
                     got = bk.sell(worst)
                     bk.buy(cand, got, j + 10 ** 6)
