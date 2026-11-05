@@ -67,7 +67,24 @@ replayDaily(el, daily)                 逐日判定（交易日/风控/成交/�
 - `site/index.html`：候选池 1 行 + 折叠；新增 `srp-*` 六块 DOM 与 `loadSatReplay()`；
   抽出 `replayCards / replayMonths / replayTrades / replayDaily` 四个共用渲染器；
   `drawReplayChart` 改为接收元素；主策略回放标题改为「主策略历史回放」；
-- `.github/workflows/daily.yml` 无需改：回放段随 `satellite_bt.json` 一起发布。
+- `tools/replay.py`：默认区间从写死的 `20251101~20261031` 改为「最新交易日前推 12 个月」——
+  旧默认过了那天回放就原地不动，页面却仍写"近 12 个月"，与每天刷新的副策略回放并排看
+  就是"一条腿在走、一条腿钉住"；
+- `.github/workflows/daily.yml`：新增「刷新历史回放」步骤（`continue-on-error`：回放是展示层，
+  失败不阻断 Pages 部署），并把 push 冲突处理从 `rebase` 改为 `merge --ours`。
+
+### 五、合并冲突：并发 run 写同一份 JSON
+
+本轮两次 `每日选股更新` 都挂在第 12 步"提交更新记录"，日志是
+`CONFLICT (content): Merge conflict in output/satellite_bt.json`。
+
+原因是结构性的：研究通道和每日通道都会重写 `output/satellite_bt.json`，而这份 JSON 带
+`run_time` 时间戳，任何两次运行的内容都不同 —— **这类文件没有逐行合并的语义**。
+旧的 `git push || (git pull --rebase --autostash && git push)` 一遇冲突就失败，
+连带跳过 Pages 部署、站点停在旧数据，还发了两条假告警（#46/#47，已关闭）。
+
+改为 `merge --ours`：冲突时 `output/ data/ CHANGELOG.md` 一律取**本次运行**的版本，
+再提交推送。研究通道同样处理。这样并发只影响提交历史，不影响产物与部署。
 
 ## 第一百四十轮: 主副策略展示模块同构 + 副策略回测口径审计(2026-11-05)
 
