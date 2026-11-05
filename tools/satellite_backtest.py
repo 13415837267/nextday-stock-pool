@@ -90,7 +90,11 @@ def _build_replay(dates: list, nav: pd.Series, trades: list[dict],
 
     回放与回测同一引擎、同一次模拟 —— 只切片不重跑, 所以两者永远不会打架。
     """
-    span = dates[-REPLAY_DAYS:] if len(dates) > REPLAY_DAYS else dates
+    # 区间口径与主策略 tools/replay.py 一致: 最新交易日前推 12 个月(不是"最近 N 个交易日"),
+    # 这样两块回放的起点日期相同, 并排看不会出现"一个 10-27、一个 11-05"的错位。
+    end = dates[-1]
+    since = f"{int(end[:4]) - 1}{end[4:]}"
+    span = [x for x in dates if x >= since] or dates[-REPLAY_DAYS:]
     start = span[0]
     pre = [x for x in dates if x < start]
     base_date = pre[-1] if pre else start
