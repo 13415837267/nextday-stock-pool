@@ -350,17 +350,22 @@ async function loadLatest() {
         ${dqHtml}
         <div class="row"><b>卖出：</b>${esc(td.sell_plan || "T+2 开盘集合竞价卖出(开盘跌停则当日收盘卖出)")}</div>
       </div>
-      <div class="panel">
-        <b>买入</b><br><span class="muted">${allow
-          ? `${fmtDate(p.buy_date)} ${esc(p.buy_point || "")}`
-          : `不买入（${td.gate_blocked ? "评分未达门槛" : "风控/空仓"}），资金留在账上`}</span>
-        <br><br><b>卖出</b><br><span class="muted">${allow
-          ? `${fmtDate(p.sell_date)} ${esc(p.sell_point || "")}`
-          : "无持仓需卖出"}</span>
-      </div>
-      <div class="panel">
-        <b>仓位</b><br><span class="muted">${esc(p.position || "")}</span>
-      </div>
+      <details style="grid-column:1/-1">
+        <summary>执行细则 —— 买入时点 / 卖出时点 / 仓位规则（点击展开）</summary>
+        <div class="plan-grid" style="margin-top:10px">
+          <div class="panel">
+            <b>买入</b><br><span class="muted">${allow
+              ? `${fmtDate(p.buy_date)} ${esc(p.buy_point || "")}`
+              : `不买入（${td.gate_blocked ? "评分未达门槛" : "风控/空仓"}），资金留在账上`}</span>
+            <br><br><b>卖出</b><br><span class="muted">${allow
+              ? `${fmtDate(p.sell_date)} ${esc(p.sell_point || "")}`
+              : "无持仓需卖出"}</span>
+          </div>
+          <div class="panel">
+            <b>仓位</b><br><span class="muted">${esc(p.position || "")}</span>
+          </div>
+        </div>
+      </details>
     </div>`;
 
   if (!d.picks.length) {
