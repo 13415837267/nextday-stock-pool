@@ -102,7 +102,8 @@ def main():
                 sub = df.loc[q == gi, "fwd"]
                 if len(sub):
                     acc[f][gi].append(float(sub.mean()))
-            ics[f].append(float(s.corr(df["fwd"], method="spearman")))
+            # Spearman = 两列各自 rank 后的 Pearson; 不走 scipy, 免得多装一个依赖
+            ics[f].append(float(s.rank().corr(df["fwd"].rank())))
 
     out = []
     print(f"\n调仓点 {n_periods} 个, 每期平均 {np.mean(rows_per_period):.0f} 只\n", flush=True)
