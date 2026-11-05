@@ -1,0 +1,210 @@
+{
+ "strategy": "lowvol_buf",
+ "version": 1,
+ "init_capital": 100000.0,
+ "nav": 0.997,
+ "capital": 99700.0,
+ "updated": "20261104",
+ "params": {
+  "top_n": 20,
+  "buf_n": 60,
+  "cost_pct": 0.3,
+  "amount_min_yi": 1.0,
+  "universe": "非ST/上市满250日/成交额>=1亿"
+ },
+ "records": [
+  {
+   "month": "202611",
+   "signal_date": "20261104",
+   "status": "holding",
+   "prev_nav": 1.0,
+   "entry_nav": 0.997,
+   "nav": 0.997,
+   "ret_pct": -0.3,
+   "turnover": 1.0,
+   "holdings": [
+    {
+     "code": "000620.SZ",
+     "name": "盈新发展",
+     "ivol20": 0.61,
+     "weight": 0.05,
+     "entry_px": 2.68,
+     "px": 2.68,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002208.SZ",
+     "name": "合肥城建",
+     "ivol20": 0.72,
+     "weight": 0.05,
+     "entry_px": 7.83,
+     "px": 7.83,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002079.SZ",
+     "name": "苏州固锝",
+     "ivol20": 0.84,
+     "weight": 0.05,
+     "entry_px": 7.97,
+     "px": 7.97,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "000925.SZ",
+     "name": "众合科技",
+     "ivol20": 0.85,
+     "weight": 0.05,
+     "entry_px": 6.91,
+     "px": 6.91,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002130.SZ",
+     "name": "沃尔核材",
+     "ivol20": 0.88,
+     "weight": 0.05,
+     "entry_px": 14.7,
+     "px": 14.7,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "000981.SZ",
+     "name": "山子高科",
+     "ivol20": 0.91,
+     "weight": 0.05,
+     "entry_px": 2.22,
+     "px": 2.22,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002067.SZ",
+     "name": "景兴纸业",
+     "ivol20": 0.91,
+     "weight": 0.05,
+     "entry_px": 3.58,
+     "px": 3.58,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002721.SZ",
+     "name": "金一文化",
+     "ivol20": 0.92,
+     "weight": 0.05,
+     "entry_px": 2.44,
+     "px": 2.44,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "000969.SZ",
+     "name": "安泰科技",
+     "ivol20": 0.92,
+     "weight": 0.05,
+     "entry_px": 14.69,
+     "px": 14.69,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002194.SZ",
+     "name": "武汉凡谷",
+     "ivol20": 0.94,
+     "weight": 0.05,
+     "entry_px": 9.01,
+     "px": 9.01,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002418.SZ",
+     "name": "康盛股份",
+     "ivol20": 0.95,
+     "weight": 0.05,
+     "entry_px": 3.64,
+     "px": 3.64,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "000419.SZ",
+     "name": "通程控股",
+     "ivol20": 0.95,
+     "weight": 0.05,
+     "entry_px": 5.05,
+     "px": 5.05,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "600133.SH",
+     "name": "东湖高新",
+     "ivol20": 0.95,
+     "weight": 0.05,
+     "entry_px": 7.38,
+     "px": 7.38,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "000967.SZ",
+     "name": "盈峰环境",
+     "ivol20": 0.97,
+     "weight": 0.05,
+     "entry_px": 6.5,
+     "px": 6.5,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002171.SZ",
+     "name": "楚江新材",
+     "ivol20": 0.97,
+     "weight": 0.05,
+     "entry_px": 8.91,
+     "px": 8.91,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "000779.SZ",
+     "name": "甘咨询",
+     "ivol20": 0.97,
+     "weight": 0.05,
+     "entry_px": 7.89,
+     "px": 7.89,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "600208.SH",
+     "name": "衢州发展",
+     "ivol20": 0.98,
+     "weight": 0.05,
+     "entry_px": 2.62,
+     "px": 2.62,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "600255.SH",
+     "name": "鑫科材料",
+     "ivol20": 1.01,
+     "weight": 0.05,
+     "entry_px": 2.87,
+     "px": 2.87,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002351.SZ",
+     "name": "漫步者",
+     "ivol20": 1.02,
+     "weight": 0.05,
+     "entry_px": 11.86,
+     "px": 11.86,
+     "ret_pct": 0.0
+    },
+    {
+     "code": "002310.SZ",
+     "name": "东方新能",
+     "ivol20": 1.02,
+     "weight": 0.05,
+     "entry_px": 2.08,
+     "px": 2.08,
+     "ret_pct": 0.0
+    }
+   ],
+   "marked": "20261104"
+  }
+ ]
+}
