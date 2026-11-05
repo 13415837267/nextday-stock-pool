@@ -146,6 +146,22 @@ def main():
         print("  v3 初始化: 本金 %.0f, 现金 %.2f" % (init_cap, cash), flush=True)
 
     if tape.get("updated") == today:
+        # 幂等跳过, 但有一个例外: 老版本账本没有 pool 快照(第一百四十轮新增)。
+        # 这种情况只补写展示字段, 状态机一律不动 —— 重跑状态机会重复记账。
+        if (tape.get("pool") or {}).get("date") != today:
+            snap = _pool_snapshot(day, cfg, names)
+            snap["date"] = today
+            gate_ok = True
+            reg = ctx.get("reg")
+            if P["gate"] and reg is not None and today in reg.index:
+                gate_ok = bool(reg.loc[today, "trade_ok"])
+            snap["gate_ok"] = gate_ok
+            snap["picked"] = (tape.get("signal") or {}).get("code") \
+                or (tape.get("position") or {}).get("code") or ""
+            snap["pick_note"] = ""
+            tape["pool"] = snap
+            OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
+            print("  补写候选池快照(池深 %d), 状态机未动" % snap["n"], flush=True)
         print("  今日(%s)已更新, 跳过" % today, flush=True)
         return
 
