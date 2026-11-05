@@ -1,0 +1,208 @@
+{
+ "days": 1500,
+ "features": [
+  "pct",
+  "mom20",
+  "close_pos",
+  "vol_ratio",
+  "bias20",
+  "dist_high20",
+  "dist_low20",
+  "turnover_rate",
+  "turnover_cool",
+  "log_amount",
+  "gap_pct",
+  "breadth",
+  "mkt_pct",
+  "mkt_mom5",
+  "mkt_mom20",
+  "mkt_vol20",
+  "mkt_bias20"
+ ],
+ "cost_pct": 0.3,
+ "cut": "20240516",
+ "trend": {
+  "n_train": 877,
+  "n_val": 574,
+  "lam": 10.0,
+  "auc_train": 0.613,
+  "auc_val": 0.531,
+  "base": {
+   "n": 574,
+   "avg": -0.256,
+   "win": 40.8,
+   "t": -1.19
+  },
+  "buckets": [
+   {
+    "q": 1,
+    "stats": {
+     "n": 115,
+     "avg": -0.441,
+     "win": 39.1,
+     "t": -1.01
+    }
+   },
+   {
+    "q": 2,
+    "stats": {
+     "n": 115,
+     "avg": -0.806,
+     "win": 40.0,
+     "t": -1.91
+    }
+   },
+   {
+    "q": 3,
+    "stats": {
+     "n": 115,
+     "avg": 0.157,
+     "win": 40.0,
+     "t": 0.33
+    }
+   },
+   {
+    "q": 4,
+    "stats": {
+     "n": 115,
+     "avg": -0.634,
+     "win": 37.4,
+     "t": -1.32
+    }
+   },
+   {
+    "q": 5,
+    "stats": {
+     "n": 114,
+     "avg": 0.451,
+     "win": 47.4,
+     "t": 0.78
+    }
+   }
+  ],
+  "top": {
+   "n": 114,
+   "avg": 0.451,
+   "win": 47.4,
+   "t": 0.78
+  },
+  "bottom": {
+   "n": 115,
+   "avg": -0.441,
+   "win": 39.1,
+   "t": -1.01
+  },
+  "spread": 0.892,
+  "coef": {
+   "pct": 0.4768,
+   "mom20": -0.5766,
+   "close_pos": -0.443,
+   "vol_ratio": -0.2968,
+   "bias20": -0.1484,
+   "dist_high20": 0.126,
+   "dist_low20": 0.5739,
+   "turnover_rate": -0.2555,
+   "turnover_cool": 0.1168,
+   "log_amount": 0.1746,
+   "gap_pct": -0.0086,
+   "breadth": -0.1708,
+   "mkt_pct": -0.157,
+   "mkt_mom5": -0.1893,
+   "mkt_mom20": 0.782,
+   "mkt_vol20": 0.2121,
+   "mkt_bias20": -0.3465
+  }
+ },
+ "dip": {
+  "n_train": 862,
+  "n_val": 570,
+  "lam": 10.0,
+  "auc_train": 0.58,
+  "auc_val": 0.574,
+  "base": {
+   "n": 570,
+   "avg": -0.015,
+   "win": 45.1,
+   "t": -0.07
+  },
+  "buckets": [
+   {
+    "q": 1,
+    "stats": {
+     "n": 114,
+     "avg": -0.045,
+     "win": 40.4,
+     "t": -0.09
+    }
+   },
+   {
+    "q": 2,
+    "stats": {
+     "n": 114,
+     "avg": -0.728,
+     "win": 37.7,
+     "t": -1.88
+    }
+   },
+   {
+    "q": 3,
+    "stats": {
+     "n": 114,
+     "avg": -0.143,
+     "win": 40.4,
+     "t": -0.3
+    }
+   },
+   {
+    "q": 4,
+    "stats": {
+     "n": 114,
+     "avg": 0.039,
+     "win": 49.1,
+     "t": 0.09
+    }
+   },
+   {
+    "q": 5,
+    "stats": {
+     "n": 114,
+     "avg": 0.805,
+     "win": 57.9,
+     "t": 1.76
+    }
+   }
+  ],
+  "top": {
+   "n": 114,
+   "avg": 0.805,
+   "win": 57.9,
+   "t": 1.76
+  },
+  "bottom": {
+   "n": 114,
+   "avg": -0.045,
+   "win": 40.4,
+   "t": -0.09
+  },
+  "spread": 0.8500000000000001,
+  "coef": {
+   "pct": 0.0891,
+   "mom20": -0.2229,
+   "close_pos": -0.2651,
+   "vol_ratio": -0.014,
+   "bias20": -0.8254,
+   "dist_high20": 0.4354,
+   "dist_low20": 0.4653,
+   "turnover_rate": -0.0458,
+   "turnover_cool": 0.4712,
+   "log_amount": 0.1679,
+   "gap_pct": -0.2836,
+   "breadth": -0.3776,
+   "mkt_pct": -0.0384,
+   "mkt_mom5": -0.1295,
+   "mkt_mom20": 0.5843,
+   "mkt_vol20": 0.2834,
+   "mkt_bias20": 0.1575
+  }
+ }
+}
