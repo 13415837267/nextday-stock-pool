@@ -105,6 +105,16 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python tools/paper_tape.py
 
+      # 独立副策略(第一百三十七轮): 低波+缓冲带, 月度调仓, 等权20只。
+      # 与主策略零耦合 —— 独立模块 src/satellite.py、独立账本 output/satellite.json、
+      # 独立虚拟本金 10 万, 不读写 config/latest/paper, 也不参与主策略资金调度。
+      - name: 更新独立副策略账本(低波+缓冲带, 月更)
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
+        run: python tools/satellite_run.py
+
       - name: 刷新策略体检数据(探针/季度剖面随每日回测日更, 第48轮)
         if: steps.guard.outputs.skip != 'true'
         env:
@@ -140,7 +150,7 @@ jobs:
           # 回测/审计中间产物一起推到 Pages —— mkt_gap_events.json 35MB、overnight_offset.json
           # 5.4MB、stock_state_pool.json 4.6MB, 部署体积 48.7MB, 而站点只需约 0.5MB。
           # 新增前端数据源时必须同步改这里, 否则页面会显示"数据未部署"。
-          for f in latest history backtest health replay paper; do
+          for f in latest history backtest health replay paper satellite; do
             cp "output/$f.json" deploy/data/ 2>/dev/null || true
           done
 
