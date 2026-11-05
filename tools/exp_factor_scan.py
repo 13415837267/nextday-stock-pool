@@ -43,7 +43,13 @@ from src.backtest import prepare_context  # noqa: E402
 from src.config import board_of, load_config  # noqa: E402
 from src.satellite import MIN_BARS, daily_params  # noqa: E402
 
-FACTORS = ["mom3", "mom20", "bias20", "ivol20", "amount", "turnover_rate", "vol_ratio"]
+FACTORS = ["mom3", "mom20", "bias20", "ivol20", "amount", "turnover_rate", "vol_ratio",
+           "SYN 低波+小额", "SYN 低波+超跌", "SYN 低波+小额+超跌"]
+SYNTH = {
+    "SYN 低波+小额": lambda z: -z("ivol20") - z("amount"),
+    "SYN 低波+超跌": lambda z: -z("ivol20") - z("bias20"),
+    "SYN 低波+小额+超跌": lambda z: -z("ivol20") - z("amount") - z("bias20"),
+}
 
 
 def _pool(day, cfg):
@@ -91,6 +97,13 @@ def main():
         df = pool.set_index("ts_code").join(fwd, how="inner").dropna(subset=["fwd"])
         if len(df) < 100:
             continue
+        # 合成因子: 截面 z 分数后等权相加(每个调仓日重新标准化, 无跨期参数)
+        for c in ("ivol20", "amount", "bias20", "mom20"):
+            sd = float(df[c].std())
+            df["_z_" + c] = (df[c] - df[c].mean()) / sd if sd else 0.0
+        zz = lambda c: df["_z_" + c]        # noqa: E731
+        for name, fn in SYNTH.items():
+            df[name] = fn(zz)
         n_periods += 1
         rows_per_period.append(int(len(df)))
         for f in FACTORS:
