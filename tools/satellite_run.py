@@ -184,6 +184,12 @@ def main():
                 or (tape.get("position") or {}).get("code") or "")
             snap["pick_note"] = _snap.get("pick_note", "") if same_day else ""
             tape["pool"] = snap
+            # 池口径参数同样补写: 老账本的 params 没有这三个字段, 若只升级 pool 不升级 params,
+            # 页面就得靠前端 fallback 猜"样本下限多少" —— 配置一改就成假披露。
+            _pr = dict(tape.get("params") or {})
+            _pr.update({"min_pool": P["min_pool"], "pool_show": P["pool_show"],
+                        "pool_alt": P["pool_alt"]})
+            tape["params"] = _pr
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
             print("  升级候选池快照(候选池 %d 只 / 备选 %d 只 / 基础票池 %d 只), 状态机未动"
                   % (snap["n"], len(snap.get("alt") or []), snap["base"]), flush=True)
