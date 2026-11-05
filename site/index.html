@@ -161,13 +161,21 @@
   <div data-pane="sat" class="panel" style="margin-top:12px" id="sat-bt-chart"></div>
   <div data-pane="sat" class="legend"><span class="dot" style="background:var(--gold)"></span>副策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2 data-pane="tape" id="replay">历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
+  <h2 data-pane="tape" id="replay">主策略历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
   <div data-pane="tape" class="cards" id="rp-cards"><div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
   <div data-pane="tape" class="cards" id="rp-months" style="margin-top:12px"></div>
   <div data-pane="tape" class="panel" style="margin-top:12px" id="rp-chart"></div>
   <div data-pane="tape" style="margin-top:12px" id="rp-trades"></div>
   <div data-pane="tape" style="margin-top:12px" id="rp-daily"></div>
   <div data-pane="tape" class="panel note" style="margin-top:12px" id="rp-note"></div>
+
+  <h2 data-pane="tape" id="sat-replay">副策略历史回放 <span class="sub" id="srp-sub">加载中...</span></h2>
+  <div data-pane="tape" class="cards" id="srp-cards"><div class="card"><div class="k">副策略回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+  <div data-pane="tape" class="cards" id="srp-months" style="margin-top:12px"></div>
+  <div data-pane="tape" class="panel" style="margin-top:12px" id="srp-chart"></div>
+  <div data-pane="tape" style="margin-top:12px" id="srp-trades"></div>
+  <div data-pane="tape" style="margin-top:12px" id="srp-daily"></div>
+  <div data-pane="tape" class="panel note" style="margin-top:12px" id="srp-note"></div>
 
   <h2 data-pane="more">策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
   <div data-pane="more" id="health"><div class="loading">加载中...</div></div>
@@ -435,7 +443,7 @@ const BT_ORDER = ["总收益率%", "年化收益率%", "最大回撤%", "夏普�
 function poolTable(rows, metricLabel) {
   let html = `<div class="tscroll"><table class="rtable"><tr class="h"><th>#</th><th>策略</th><th>代码</th><th>名称</th><th>收盘价</th><th>涨幅</th><th>量比</th><th>换手率</th><th>成交额(亿)</th><th>20日动量</th><th>${esc(metricLabel)}</th><th>入选理由</th></tr>`;
   rows.forEach((x, i) => {
-    html += `<tr><td class="skip ${i === 0 ? "up" : "muted"}" data-label="排名"><b>${i + 1}</b></td>
+    html += `<tr><td class="skip ${i === 0 ? "up" : "muted"}" data-label="排名"><b>${x.no ?? (i + 1)}</b></td>
       <td data-label="策略"><span class="badge" style="font-size:11px">${esc(x.tag)}</span></td>
       <td data-label="代码">${esc(x.code)}</td><td data-label="名称">${esc(x.name)}</td>
       <td data-label="收盘价">${x.close}</td><td class="${pctCls(x.pct)}" data-label="涨幅">${pctStr(x.pct)}</td>
@@ -652,6 +660,92 @@ async function loadHealth() {
 const rpDate = s => (s && String(s).length === 8)
   ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (s || "-");
 
+/* ---------- 共用: 历史回放渲染器 ----------
+   主策略读 replay.json（近 12 个月逐日重放）；副策略读 satellite_bt.json 的 replay 段
+   （从同一次 1500 日回测里切出的同一区间，不重跑）。卡片/月度/曲线/逐笔/逐日列完全相同，
+   只有数据来源与说明文字不同 —— 改一处两边同时生效。 */
+
+function replayCards(el, s, base) {
+  const card = (k, v, cls, sub) =>
+    `<div class="card"><div class="k">${k}</div><div class="v ${cls || ""}">${v}</div>` +
+    (sub ? `<div class="legend" style="margin-top:2px">${sub}</div>` : "") + `</div>`;
+  el.innerHTML = [
+    card("成交笔数", s.n_trades ?? "-", "", `胜 ${s.n_win ?? "-"} 负 ${(s.n_trades ?? 0) - (s.n_win ?? 0)}`),
+    card("胜率", `${s.win_rate ?? "-"}%`),
+    card("平均单笔", pctStr(s.avg_ret_pct), pctCls(s.avg_ret_pct)),
+    card("区间收益", pctStr(s.range_ret_pct), pctCls(s.range_ret_pct),
+      `自 ${rpDate(s.base_date)}：${(base / 1e4).toFixed(1)}万 → ${((s.end_nav || 0) / 1e4).toFixed(1)}万`),
+    card("区间最大回撤", `${Number(s.range_mdd_pct ?? 0).toFixed(2)}%`, "down"),
+    card("最好一笔", pctStr(s.best), "up"),
+    card("最差一笔", pctStr(s.worst), "down"),
+  ].join("");
+}
+
+function replayMonths(el, mo) {
+  // 月度卡片: 一律写成 YYYY-MM。原先写"2025年11月", 在"最近12个月"的语境里
+  // 极易被读成"本月"(尤其当浏览当天也是 11 月), 误以为当月已经产生整月收益。
+  mo = mo || [];
+  el.innerHTML = mo.map(x =>
+    `<div class="card"><div class="k" style="font-variant-numeric:tabular-nums">${x.month.slice(0, 4)}-${x.month.slice(4)}</div>
+     <div class="v ${pctCls(x.ret_pct)}">${pctStr(x.ret_pct)}</div></div>`).join("") +
+    (mo.length ? `<div class="legend" style="grid-column:1/-1;margin-top:2px">
+      ${mo[0].month.slice(0,4)}-${mo[0].month.slice(4)} ~ ${mo[mo.length-1].month.slice(0,4)}-${mo[mo.length-1].month.slice(4)}，
+      共 ${mo.length} 个月；每月收益 = 当月最后交易日净值 / 上月末净值 − 1。
+      <b>首张是回放区间的起点月，不是本月。</b></div>` : "");
+}
+
+/* rows 统一结构: {sig,buy,sell,code,name,buyPx,sellCell(HTML),ret,rank,note} */
+function replayTrades(el, rows, legend) {
+  let th = `<div class="tscroll"><table class="rtable"><tr class="h"><th>信号日</th><th>买入日</th><th>卖出日</th>
+    <th>代码</th><th>名称</th><th>买入价</th><th>卖出价</th><th>收益</th><th>名次</th><th>备注</th></tr>`;
+  rows.forEach(t => {
+    th += `<tr><td class="muted" data-label="信号日">${rpDate(t.sig)}</td>
+      <td data-label="买入日">${rpDate(t.buy)}</td><td data-label="卖出日">${rpDate(t.sell)}</td>
+      <td data-label="代码">${esc(t.code)}</td><td class="full" data-label="名称"><b>${esc(t.name)}</b></td>
+      <td data-label="买入价">${t.buyPx != null ? Number(t.buyPx).toFixed(2) : "-"}</td>
+      <td data-label="卖出价">${t.sellCell}</td>
+      <td class="${pctCls(t.ret)}" data-label="收益"><b>${pctStr(t.ret)}</b></td>
+      <td class="muted" data-label="名次">${t.rank ?? "-"}</td>
+      <td class="muted full" data-label="备注" style="white-space:normal">${esc(t.note || "")}</td></tr>`;
+  });
+  el.innerHTML = rows.length
+    ? th + `</table></div><div class="legend" style="margin-top:8px">${legend}</div>`
+    : `<div class="loading">区间内没有已平仓交易（单吊持仓跨月时会出现这种情况）</div>`;
+}
+
+/* daily 统一结构: {date,trade_ok,alloc,holding,fills,skipped,note} */
+function replayDaily(el, daily) {
+  let dh = `<details><summary>展开 ${daily.length} 个交易日的选股/买入判定（解释"这天为什么没买"，最新在上）</summary>
+    <div class="tscroll" style="margin-top:12px"><table class="rtable"><tr class="h"><th>交易日</th><th>风控</th><th>成交</th><th>候选与跳过原因</th></tr>`;
+  daily.slice().reverse().forEach(x => {
+    const fills = (x.fills || []).map(f =>
+      `<span class="up">${esc(f.code)} ${esc(f.name)} ${f.ret_pct != null ? pctStr(f.ret_pct) : "持仓中"}</span>`).join("；");
+    const skips = (x.skipped || []).map(k => `${esc(k.code)} ${esc(k.name)}：${esc(k.note)}`).join("；");
+    const hasFill = (x.fills || []).length > 0;
+    // 无成交时的原因: 先看跳过原因, 再看当日说明(闸门关闭/持仓中/池深不足)
+    const cand = fills || skips || (x.note ? `<span class="muted">${esc(x.note)}</span>` : `<span class="muted">无候选</span>`);
+    const noAction = !hasFill && !(x.skipped || []).length;
+    const reason = (x.skipped || []).some(k => String(k.note || "").includes("评分"));
+    // 六态: 正常(有成交) / 风控·跌深接 / 持仓 / 空仓(闸门关) / 无候选 / 评分不足
+    // 成交优先于持仓: 买入当天既成交又持仓, 该显示"正常", 而不是"持仓"
+    let gate;
+    if (hasFill) gate = (x.trade_ok === false)
+      ? `<span style="color:var(--gold)">风控·跌深接</span>`
+      : `<span class="up">正常</span>`;
+    else if (x.holding) gate = `<span style="color:var(--gold)">持仓</span>`;
+    else if (x.alloc != null && x.alloc <= 0) gate = `<span class="down">空仓</span>`;
+    else if (x.trade_ok === false) gate = `<span class="down">空仓</span>`;
+    else if (x.trade_ok == null) gate = `<span class="muted">-</span>`;
+    else if (noAction) gate = `<span class="muted">无候选</span>`;
+    else if (reason) gate = `<span style="color:var(--gold)">评分不足</span>`;
+    else gate = `<span class="up">正常</span>`;
+    dh += `<tr><td data-label="交易日">${rpDate(x.date)}</td><td data-label="风控">${gate}</td>
+      <td data-label="成交">${hasFill ? 1 : `<span class="muted">0</span>`}</td>
+      <td class="muted full" data-label="候选与跳过原因" style="white-space:normal">${cand}</td></tr>`;
+  });
+  el.innerHTML = dh + `</table></div></details>`;
+}
+
 /* ---------- 五: 向前台账(第130轮) ---------- */
 const PAPER_STATE = {
   planned: ["待买", "var(--muted)"],
@@ -828,22 +922,27 @@ async function loadSatellite() {
   const D8 = v => (v && String(v).length === 8)
     ? `${String(v).slice(0, 4)}-${String(v).slice(4, 6)}-${String(v).slice(6)}` : (v || "");
 
-  /* --- 模块一: 当日候选池 --- */
+  /* --- 模块一: 当日候选池(单吊只买第 1 名, 其余折叠) --- */
   const p = d.pool;
   if (!p || !(p.rows || []).length) {
     poolBox.innerHTML = `<div class="loading">今日无合格候选（池深 ${p ? p.n : 0} 只 / 需 ≥ 20 只）—— 明日空仓。</div>`;
   } else {
-    const prows = p.rows.map(x => ({
-      tag: P.mode_cn || "低波单吊", code: x.code, name: x.name,
+    const toRow = (x, no) => ({
+      no: no, tag: P.mode_cn || "低波单吊", code: x.code, name: x.name,
       close: x.close, pct: x.pct, volRatio: x.vol_ratio ?? "-",
       turnover: x.turnover_rate ?? "-", amountYi: x.amount_yi, mom20: x.mom20,
       metric: x.ivol20,
       reason: x.rank === 1
         ? `全池 ${p.n} 只中 ivol 最低${p.gate_ok ? " · 明日计划" : " · 闸门关闭，明日不买"}`
-        : `ivol 第 ${x.rank} 名 · 仅供核对，单吊只买第 1 名`,
-    }));
-    poolBox.innerHTML = poolTable(prows, "ivol20") +
-      `<div class="legend">候选 ${p.n} 只（通过基础筛选，盘后即知）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+        : `ivol 第 ${x.rank} 名 · 仅供核对，单吊不买`,
+    });
+    const top = p.rows[0], rest = p.rows.slice(1);
+    poolBox.innerHTML =
+      poolTable([toRow(top)], "ivol20") +
+      (rest.length ? `<details style="margin-top:10px"><summary>备选排序（ivol 第 2~${p.rows.length} 名，仅供核对，不参与执行）</summary>
+        <div style="margin-top:10px">${poolTable(rest.map(x => toRow(x, x.rank)), "ivol20")}</div></details>` : "") +
+      `<div class="legend">池深 ${p.n} 只（通过基础筛选并完成 ivol 排序，盘后即知）· 大盘闸门 ${p.gate_ok ? "开" : "关"}
+        ${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""} · <b>单吊 = 每天只买第 1 名 1 只</b>，第 2 名以后不参与执行</div>`;
   }
 
   /* --- 模块二: 单吊执行记录 --- */
@@ -901,39 +1000,13 @@ async function loadReplay() {
   document.getElementById("rp-sub").textContent =
     `${rpDate(m.start)} ~ ${rpDate(m.end)} 逐笔复现 · 同引擎同口径 · 无未来函数`;
 
-  const rpCard = (k, v, cls, sub) =>
-    `<div class="card"><div class="k">${k}</div><div class="v ${cls || ""}">${v}</div>` +
-    (sub ? `<div class="legend" style="margin-top:2px">${sub}</div>` : "") + `</div>`;
-  cEl.innerHTML = [
-    rpCard("成交笔数", s.n_trades ?? "-", "", `胜 ${s.n_win ?? "-"} 负 ${(s.n_trades ?? 0) - (s.n_win ?? 0)}`),
-    rpCard("胜率", `${s.win_rate ?? "-"}%`),
-    rpCard("平均单笔", pctStr(s.avg_ret_pct), pctCls(s.avg_ret_pct)),
-    rpCard("区间收益", pctStr(s.range_ret_pct), pctCls(s.range_ret_pct),
-      `自 ${rpDate(s.base_date)}：${(base / 1e4).toFixed(1)}万 → ${((s.end_nav || 0) / 1e4).toFixed(1)}万`),
-    rpCard("区间最大回撤", `${Number(s.range_mdd_pct ?? 0).toFixed(2)}%`, "down"),
-    rpCard("最好一笔", pctStr(s.best), "up"),
-    rpCard("最差一笔", pctStr(s.worst), "down"),
-  ].join("");
-
-  // 月度卡片: 一律写成 YYYY-MM。原先写"2025年11月", 在"最近12个月"的语境里
-  // 极易被读成"本月"(尤其当浏览当天也是 11 月), 误以为当月已经产生整月收益。
-  const mo = d.monthly || [];
-  moEl.innerHTML = mo.map(x =>
-    `<div class="card"><div class="k" style="font-variant-numeric:tabular-nums">${x.month.slice(0, 4)}-${x.month.slice(4)}</div>
-     <div class="v ${pctCls(x.ret_pct)}">${pctStr(x.ret_pct)}</div></div>`).join("") +
-    (mo.length ? `<div class="legend" style="grid-column:1/-1;margin-top:2px">
-      ${mo[0].month.slice(0,4)}-${mo[0].month.slice(4)} ~ ${mo[mo.length-1].month.slice(0,4)}-${mo[mo.length-1].month.slice(4)}，
-      共 ${mo.length} 个月；每月收益 = 当月最后交易日净值 / 上月末净值 − 1。
-      <b>首张是回放区间的起点月，不是本月。</b></div>` : "");
-
-  drawReplayChart(d.curve || [], base, s.base_date);
+  replayCards(cEl, s, base);
+  replayMonths(moEl, d.monthly);
+  drawReplayChart(chEl, d.curve || [], base, s.base_date);
 
   // 成交明细: T日信号 -> T+1开盘买入 -> T+2(分批)卖出
-  // 排序: 最新在上(用户视角"先看最近做了什么"), 序号用 trades.length - i 保持与原始升序一致
-  let th = `<div class="tscroll"><table class="rtable"><tr class="h"><th>信号日</th><th>买入日</th><th>卖出日</th>
-    <th>代码</th><th>名称</th><th>买入价</th><th>卖出价</th><th>收益</th><th>名次</th><th>备注</th></tr>`;
-  const trDesc = trades.slice().reverse();
-  trDesc.forEach((t, i) => {
+  // 排序: 最新在上(用户视角"先看最近做了什么")
+  const trDesc = trades.slice().reverse().map(t => {
     // 分批出场: sell_px 是(开盘腿×比例 + 收盘腿×比例)的加权均价。
     // 单腿出场时直接标"开盘价/收盘价", 让收益能由表内两列价格复现 ——
     // 旧版无论几条腿都只印开盘价(且与收益不同源), 于是出现"卖价低于买价却是正收益"。
@@ -952,52 +1025,25 @@ async function loadReplay() {
     } else {
       sellCell = Number(t.sell_px).toFixed(2);
     }
-    th += `<tr><td class="muted" data-label="信号日">${rpDate(t.signal_date)}</td>
-      <td data-label="买入日">${rpDate(t.buy_date)}</td><td data-label="卖出日">${rpDate(t.sell_date)}</td>
-      <td data-label="代码">${esc(t.code)}</td><td class="full" data-label="名称"><b>${esc(t.name)}</b></td>
-      <td data-label="买入价">${Number(t.buy_px).toFixed(2)}</td><td data-label="卖出价">${sellCell}</td>
-      <td class="${pctCls(t.ret_pct)}" data-label="收益"><b>${pctStr(t.ret_pct)}</b></td>
-      <td class="muted" data-label="名次">${t.rank ?? "-"}</td>
-      <td class="muted full" data-label="备注" style="white-space:normal">${esc(t.note || "")}</td></tr>`;
+    return {sig: t.signal_date, buy: t.buy_date, sell: t.sell_date, code: t.code, name: t.name,
+            buyPx: t.buy_px, sellCell, ret: t.ret_pct, rank: t.rank, note: t.note};
   });
   // 是否真的存在"分批出场"（比例严格在 0~1 之间）—— 决定 legend 怎么写
   const hasSplit = trades.some(t => {
     const f = (t.sell_frac_open != null) ? Number(t.sell_frac_open) : null;
     return f != null && f > 0.001 && f < 0.999;
   });
-  trEl.innerHTML = th + `</table></div>
-    <div class="legend" style="margin-top:8px">买入取 T+1 真实开盘价。<b>「卖出价」是实际成交价</b>：
-    ${hasSplit
+  replayTrades(trEl, trDesc,
+    `买入取 T+1 真实开盘价。<b>「卖出价」是实际成交价</b>：` +
+    (hasSplit
       ? `分批出场时为 T+2 开盘腿与收盘腿的<b>加权均价</b>（比例见副行），所以<b>卖价低于买价仍可能为正收益</b>——收盘腿把开盘腿的亏损赚了回来；`
-      : `当前口径为 T+2 <b>收盘一次性卖出</b>（14:55），副行标注「收盘价」；`}
-    收益含佣金万2.5+印花税万5+滑点千1。共 ${trades.length} 笔，<b>按买入日降序（最新在上）</b>。</div>`;
+      : `当前口径为 T+2 <b>收盘一次性卖出</b>（14:55），副行标注「收盘价」；`) +
+    `收益含佣金万2.5+印花税万5+滑点千1。共 ${trades.length} 笔，<b>按买入日降序（最新在上）</b>。`);
 
   // 逐日决策: 解释"这天为什么没买"（同样最新在上）
-  let dh = `<details><summary>展开 ${daily.length} 个交易日的选股/买入判定（解释"这天为什么没买"，最新在上）</summary>
-    <div class="tscroll" style="margin-top:12px"><table class="rtable"><tr class="h"><th>买入日</th><th>风控</th><th>成交</th><th>候选与跳过原因</th></tr>`;
-  daily.slice().reverse().forEach(x => {
-    const fills = (x.fills || []).map(f =>
-      `<span class="up">${esc(f.code)} ${esc(f.name)} ${pctStr(f.ret_pct)}</span>`).join("；");
-    const skips = (x.skipped || []).map(k => `${esc(k.code)} ${esc(k.name)}：${esc(k.note)}`).join("；");
-    const cand = fills || skips || `<span class="muted">无候选</span>`;
-    const reason = (x.skipped || []).some(k => String(k.note || "").includes("评分"));
-    // 四态: 风控空仓 / 风控内接恐慌深跌 / 无候选 / 评分不足 / 正常
-    // 注意: 风控日不等于"一定没成交"——缺口 ≤-2.5% 时按 40% 仓接恐慌深跌, 那天 trade_ok=false 但有成交
-    const hasFill = (x.fills || []).length > 0;
-    const noAction = !hasFill && !(x.skipped || []).length;
-    const gate = (x.alloc != null && x.alloc <= 0)
-      ? `<span class="down">空仓</span>`
-      : (x.trade_ok === false
-        ? (hasFill ? `<span style="color:var(--gold)">风控·跌深接</span>` : `<span class="down">空仓</span>`)
-        : (x.trade_ok == null ? `<span class="muted">-</span>`
-          : (noAction ? `<span class="muted">无候选</span>`
-            : (reason ? `<span style="color:var(--gold)">评分不足</span>` : `<span class="up">正常</span>`))));
-    dh += `<tr><td data-label="买入日">${rpDate(x.date)}</td><td data-label="风控">${gate}</td>
-      <td data-label="成交">${(x.fills || []).length || `<span class="muted">0</span>`}</td>
-      <td class="muted full" data-label="候选与跳过原因" style="white-space:normal">${cand}</td></tr>`;
-  });
-  dlEl.innerHTML = dh + `</table></div></details>` +
-    `<div class="legend" style="margin-top:8px">风控列: 正常 = 市场宽度/指数达标，允许开仓；空仓 = 风控/恐慌熔断，或首选评分未达门槛。第九十五轮起取消"超限满仓"（连续风控超上限后强行参与）。</div>`;
+  replayDaily(dlEl, daily);
+  dlEl.insertAdjacentHTML("beforeend",
+    `<div class="legend" style="margin-top:8px">风控列: 正常 = 市场宽度/指数达标，允许开仓；空仓 = 风控/恐慌熔断，或首选评分未达门槛。第九十五轮起取消"超限满仓"（连续风控超上限后强行参与）。</div>`);
 
   // 口径说明(数据驱动: 笔数/空仓天数/放弃次数均由 payload 计算)
   const nDay = daily.length, nTr = s.n_trades || 0;
@@ -1068,8 +1114,7 @@ async function loadReplay() {
     个别日期的候选池会有出入。数据源：<code>output/replay.json</code>（${rpDate(m.panel_first)} 起面板）。</p>`;
 }
 
-function drawReplayChart(curve, base, baseDate) {
-  const el = document.getElementById("rp-chart");
+function drawReplayChart(el, curve, base, baseDate) {
   if (!curve || curve.length < 2) { el.innerHTML = `<div class="muted">回放净值数据不足</div>`; return; }
   const W = 1120, H = 300, P = { l: 62, r: 16, t: 16, b: 28 };
   const navs = [base].concat(curve.map(p => p.nav));
@@ -1102,6 +1147,68 @@ function drawReplayChart(curve, base, baseDate) {
   </svg><div class="legend">起点 ${(base / 1e4).toFixed(2)} 万（${rpDate(baseDate)} 收盘）· 纵轴为相对起点的百分比 · 每日收盘估值</div>`;
 }
 
+/* ---------- 副策略历史回放(与主策略同一套渲染器, 数据来自 satellite_bt.json 的 replay 段) ---------- */
+async function loadSatReplay() {
+  const cEl = document.getElementById("srp-cards"), moEl = document.getElementById("srp-months");
+  const chEl = document.getElementById("srp-chart"), trEl = document.getElementById("srp-trades");
+  const dlEl = document.getElementById("srp-daily"), ntEl = document.getElementById("srp-note");
+  let d;
+  try { d = await jget("./data/satellite_bt.json"); }
+  catch (e) {
+    cEl.innerHTML = `<div class="card"><div class="k">副策略回放</div>
+      <div class="v" style="font-size:14px;color:var(--muted)">尚未生成（每日 workflow 产出 output/satellite_bt.json）</div></div>`;
+    return;
+  }
+  const rp = d.replay;
+  if (!rp) {
+    cEl.innerHTML = `<div class="card"><div class="k">副策略回放</div>
+      <div class="v" style="font-size:14px;color:var(--muted)">回放段随下一交易日刷新（旧版回测文件不含 replay 段）</div></div>`;
+    return;
+  }
+  const m = rp.meta || {}, s = rp.summary || {}, mt = d.metrics || {};
+  const base = Number(s.base_nav || 1e5);
+  document.getElementById("srp-sub").textContent =
+    `${rpDate(m.start)} ~ ${rpDate(m.end)} 逐笔复现 · 同引擎同口径 · 无未来函数`;
+
+  replayCards(cEl, s, base);
+  replayMonths(moEl, rp.monthly);
+  drawReplayChart(chEl, rp.curve || [], base, s.base_date);
+
+  const rows = (rp.trades || []).slice().reverse().map(t => ({
+    sig: t.signal_date, buy: t.entry_date, sell: t.exit_date,
+    code: t.code, name: t.name, buyPx: t.entry_px,
+    sellCell: `<b>${Number(t.exit_px).toFixed(2)}</b><br><span class="muted" style="font-size:11px">收盘价</span>`,
+    ret: t.ret_pct, rank: 1, note: t.note,
+  }));
+  replayTrades(trEl, rows,
+    `T 日收盘按 ivol 取第 1 名 → T+1 开盘价买入 → 持满 ${d.meta?.rules?.match(/持 (\d+)/)?.[1] || "-"} 个交易日收盘卖（跌破止损线当日收盘止损）。` +
+    `收益含单边 0.15% 成本（往返 0.3%）。共 ${rows.length} 笔，<b>按买入日降序（最新在上）</b>。`);
+
+  replayDaily(dlEl, rp.daily || []);
+
+  const total = mt["总收益率%"], mdd = mt["最大回撤%"], n = mt["交易次数"];
+  ntEl.innerHTML = `
+    <p><b>这段回放是什么：</b>把 ${rpDate(d.meta?.start)} ~ ${rpDate(d.meta?.end)} 的 1500 日回测，
+    切出最后 <b>${m.days}</b> 个交易日按日展开，逐日写明"这天为什么没买 / 为什么还拿着 / 为什么卖"。
+    数据是<b>同一次模拟</b>切出来的（<code>output/satellite_bt.json</code> 的 <code>replay</code> 段），
+    没有第二次运行 —— 所以回放的区间收益与「副策略 · 回测绩效」的净值曲线必然对得上。</p>
+
+    <p><b>与主策略回放的差异只有策略本身：</b>① 单吊 100% 仓，每天最多 1 只，
+    没有"多票并行"；② 出场只有两个条件 —— 持满 <b>${d.meta?.rules?.match(/持 (\d+)/)?.[1] || "-"}</b> 个交易日，
+    或收盘相对买入价跌破止损线；③ 开新仓前先过<b>大盘 MA20 闸门</b>，指数在均线下方一律空仓。
+    这三条决定了"空仓天数"远多于主策略，是设计而不是漏跑。</p>
+
+    <p><b>别用 ${m.days} 天推断长期期望：</b>同一套规则在 1500 个交易日为
+    <b>${total != null ? (total > 0 ? "+" : "") + total + "%" : "-"}</b>、最大回撤 <b>${mdd}%</b>、
+    ${n} 笔、胜率 ${mt["胜率%"]}%。副策略的定位是"主策略失效时还有一条腿"，不是收益引擎 ——
+    对账请看「副策略」页签的执行记录（那才是真实向前流水），本页回答的是
+    "若严格按当前规则逐日重放会怎样"。</p>
+
+    <p class="muted">口径：T 日收盘选股（盘后即知，无未来函数）→ T+1 开盘价成交 → 收盘估值；
+    大盘闸门只用信号日收盘可知的 <code>trade_ok</code>；单边成本 0.15%。
+    数据源：<code>output/satellite_bt.json</code>（每日随主流程刷新）。</p>`;
+}
+
 showTab((location.hash || "").replace("#", ""), false);
 
 loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class="loading">候选池加载失败: ${esc(e.message)}</div>`);
@@ -1112,6 +1219,7 @@ loadSatellite();
 loadSatPlan();
 loadHealth();
 loadReplay();
+loadSatReplay();
 </script>
 </body>
 </html>
