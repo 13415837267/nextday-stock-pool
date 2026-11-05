@@ -149,7 +149,7 @@
   <div data-pane="tape" style="margin-top:12px" id="paper-table"></div>
   <div data-pane="tape" class="panel note" style="margin-top:12px" id="paper-note"></div>
 
-  <h2 data-pane="sat" id="sat">副策略 · 独立账本 <span class="sub" id="sat-sub">每日 1 只低波票 · 持有 40 个交易日 · 与主策略零耦合</span></h2>
+  <h2 data-pane="sat" id="sat">副策略 · 账本 <span class="sub" id="sat-sub">单吊 · 每日最多 1 只 · 持 40 日 · 数据与主策略共用、策略与账本独立</span></h2>
   <div data-pane="sat" class="cards" id="sat-cards"><div class="card"><div class="k">独立副策略</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
   <div data-pane="sat" style="margin-top:12px" id="sat-table"></div>
   <div data-pane="sat" class="panel note" style="margin-top:12px" id="sat-note"></div>
@@ -694,8 +694,10 @@ async function loadSatPlan() {
       <div class="row"><b>建仓：</b>${satFd(pos.entry_date)} @ ${pos.entry_px_raw ?? "-"} · 已持 <b>${pos.held_days ?? "-"}</b> / ${holdN} 个交易日</div>
       <div class="row"><b>卖出：</b>持满 ${holdN} 日收盘卖${P.stop_pct ? `；跌破买入价 ${P.stop_pct}% 止损` : ""}。卖出当日收盘后才会有新信号。</div>`;
   } else {
-    head = `<div class="big" style="color:var(--muted)">⛔ 明日空仓（无合格标的）</div>`;
-    detail = `<div class="row"><b>判定：</b>${esc((d.daily || []).slice(-1)[0]?.note || "趋势池不足 / 无票通过筛选")}</div>
+    const lastNote = ((d.daily || []).slice(-1)[0] || {}).note || "";
+    const why = lastNote.indexOf("闸门") >= 0 ? "大盘闸门关闭" : "无合格标的";
+    head = `<div class="big" style="color:var(--muted)">⛔ 明日空仓（${why}）</div>`;
+    detail = `<div class="row"><b>判定：</b>${esc(lastNote || "候选池不足 / 无票通过筛选")}</div>
       <div class="row"><b>纪律：</b>宁可空仓也不降标准 —— 与主策略同一条规矩。</div>`;
   }
 
