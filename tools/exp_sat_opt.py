@@ -46,8 +46,12 @@ def _row(day, code):
     return r.iloc[0] if len(r) else None
 
 
-def _rank_one(day, cfg, mom20_min=None):
-    """与 pick_one 同口径, 只多一个可选动量门槛(用于 V3)。"""
+def _rank_one(day, cfg, mom20_min=None, depth=None, order_by=None, pick_nth=0):
+    """与 pick_one 同口径, 只是可选地"先取 ivol 前 depth 名, 再按 order_by 排序取第 pick_nth 个"。
+
+    order_by=None 时就是原始口径(全池 ivol 升序第 1 名)。
+    depth=20 + order_by="mom20"/"amount"/"bias20" = "在最低波的 20 只里挑最超跌/最大额/最偏离均线"。
+    """
     rk = rank_pool(day, cfg)
     P = daily_params(cfg)
     if len(rk) < P["min_pool"]:
@@ -56,12 +60,22 @@ def _rank_one(day, cfg, mom20_min=None):
         rk = rk.loc[rk["mom20"] > mom20_min]
         if not len(rk):
             return None
+    if depth:
+        rk = rk.head(int(depth))
+    if order_by:
+        # amount 要"最大额"(降序), mom20/bias20 要"最超跌"(升序)
+        rk = rk.sort_values(order_by, ascending=(order_by != "amount"))
+    if pick_nth:
+        rk = rk.iloc[int(pick_nth):]
+        if not len(rk):
+            return None
     r = rk.iloc[0]
     return {"code": str(r["ts_code"]), "ivol20": round(float(r["ivol20"]), 3),
             "close": round(float(r["close"]), 2)}
 
 
-def simulate(ctx, cfg, *, hold=None, exit_gate=False, mom20_min=None, trail=None):
+def simulate(ctx, cfg, *, hold=None, exit_gate=False, mom20_min=None, trail=None,
+             depth=None, order_by=None, pick_nth=0):
     """跑一遍单吊模拟, 返回指标 + 分年 + 逐笔。"""
     by_date, dates, reg, names = ctx["by_date"], ctx["main_dates"], ctx["reg"], ctx["names"]
     cfg = json.loads(json.dumps(cfg))
@@ -128,7 +142,8 @@ def simulate(ctx, cfg, *, hold=None, exit_gate=False, mom20_min=None, trail=None
         # 3) 收盘信号
         if pos is None:
             if gate:
-                c = _rank_one(day, cfg, mom20_min)
+                c = _rank_one(day, cfg, mom20_min, depth=depth, order_by=order_by,
+                              pick_nth=pick_nth)
                 if c:
                     c["date"] = d
                     sig = c
@@ -192,6 +207,12 @@ def main():
         ("V4 移动止盈10%", dict(trail=10)),
         ("V5 V1+移动止盈", dict(exit_gate=True, trail=10)),
         ("V6 V1+持有20日", dict(exit_gate=True, hold=20)),
+        # 第二轮: 不动交易规则, 只换"低波池内怎么挑那 1 只"
+        ("V7 低波20里最超跌", dict(depth=20, order_by="mom20")),
+        ("V8 低波20里最大额", dict(depth=20, order_by="amount")),
+        ("V9 低波20里最偏离MA20", dict(depth=20, order_by="bias20")),
+        ("V10 ivol第2名", dict(pick_nth=1)),
+        ("V11 低波5里最超跌", dict(depth=5, order_by="mom20")),
     ]
     out = []
     for name, kw in variants:
