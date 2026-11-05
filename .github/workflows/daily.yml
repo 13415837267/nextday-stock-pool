@@ -105,10 +105,10 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python tools/paper_tape.py
 
-      # 独立副策略(第一百三十七轮): 低波+缓冲带, 月度调仓, 等权20只。
+      # 独立副策略(第一百三十八轮): 每日一只低波票, 持有40个交易日, 稳态40只等权。
       # 与主策略零耦合 —— 独立模块 src/satellite.py、独立账本 output/satellite.json、
       # 独立虚拟本金 10 万, 不读写 config/latest/paper, 也不参与主策略资金调度。
-      - name: 更新独立副策略账本(低波+缓冲带, 月更)
+      - name: 更新独立副策略账本(每日一只, 持40日)
         if: steps.guard.outputs.skip != 'true'
         env:
           TZ: Asia/Shanghai
