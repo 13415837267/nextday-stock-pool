@@ -435,7 +435,27 @@
   "cost_pct": 0.3
  },
  "pool": {
-  "n": 1799,
+  "n": 20,
+  "base": 1799,
+  "show": 20,
+  "funnel": [
+   {
+    "label": "全市场",
+    "n": 5578
+   },
+   {
+    "label": "非ST·非停牌·上市满250日",
+    "n": 5121
+   },
+   {
+    "label": "成交额≥1.0亿",
+    "n": 2932
+   },
+   {
+    "label": "沪深主板白名单",
+    "n": 1799
+   }
+  ],
   "rows": [
    {
     "rank": 1,
@@ -532,6 +552,150 @@
     "vol_ratio": 1.04,
     "turnover_rate": 2.23,
     "mom20": -6.9
+   },
+   {
+    "rank": 9,
+    "code": "002351.SZ",
+    "name": "漫步者",
+    "ivol20": 0.948,
+    "pct": 3.46,
+    "close": 12.27,
+    "amount_yi": 4.08,
+    "vol_ratio": 1.63,
+    "turnover_rate": 6.35,
+    "mom20": 26.4
+   },
+   {
+    "rank": 10,
+    "code": "000779.SZ",
+    "name": "甘咨询",
+    "ivol20": 0.949,
+    "pct": 2.03,
+    "close": 8.05,
+    "amount_yi": 1.31,
+    "vol_ratio": 0.94,
+    "turnover_rate": 3.52,
+    "mom20": -3.9
+   },
+   {
+    "rank": 11,
+    "code": "000981.SZ",
+    "name": "山子高科",
+    "ivol20": 0.958,
+    "pct": 3.6,
+    "close": 2.3,
+    "amount_yi": 6.05,
+    "vol_ratio": 1.37,
+    "turnover_rate": 2.79,
+    "mom20": -14.2
+   },
+   {
+    "rank": 12,
+    "code": "002130.SZ",
+    "name": "沃尔核材",
+    "ivol20": 0.967,
+    "pct": 0.61,
+    "close": 14.79,
+    "amount_yi": 3.56,
+    "vol_ratio": 1.21,
+    "turnover_rate": 2.08,
+    "mom20": -5.0
+   },
+   {
+    "rank": 13,
+    "code": "002243.SZ",
+    "name": "力合科创",
+    "ivol20": 0.976,
+    "pct": 2.47,
+    "close": 7.05,
+    "amount_yi": 1.23,
+    "vol_ratio": 1.13,
+    "turnover_rate": 1.46,
+    "mom20": 0.6
+   },
+   {
+    "rank": 14,
+    "code": "600255.SH",
+    "name": "鑫科材料",
+    "ivol20": 0.979,
+    "pct": 2.44,
+    "close": 2.94,
+    "amount_yi": 1.35,
+    "vol_ratio": 1.05,
+    "turnover_rate": 2.56,
+    "mom20": -12.0
+   },
+   {
+    "rank": 15,
+    "code": "000967.SZ",
+    "name": "盈峰环境",
+    "ivol20": 0.98,
+    "pct": 1.08,
+    "close": 6.57,
+    "amount_yi": 3.91,
+    "vol_ratio": 1.16,
+    "turnover_rate": 1.77,
+    "mom20": -14.0
+   },
+   {
+    "rank": 16,
+    "code": "002171.SZ",
+    "name": "楚江新材",
+    "ivol20": 1.018,
+    "pct": 0.9,
+    "close": 8.99,
+    "amount_yi": 2.44,
+    "vol_ratio": 1.09,
+    "turnover_rate": 1.68,
+    "mom20": -7.2
+   },
+   {
+    "rank": 17,
+    "code": "600208.SH",
+    "name": "衢州发展",
+    "ivol20": 1.019,
+    "pct": 0.76,
+    "close": 2.64,
+    "amount_yi": 1.41,
+    "vol_ratio": 0.94,
+    "turnover_rate": 0.63,
+    "mom20": -7.4
+   },
+   {
+    "rank": 18,
+    "code": "002515.SZ",
+    "name": "金字火腿",
+    "ivol20": 1.024,
+    "pct": 2.33,
+    "close": 5.7,
+    "amount_yi": 2.49,
+    "vol_ratio": 1.16,
+    "turnover_rate": 3.98,
+    "mom20": -16.4
+   },
+   {
+    "rank": 19,
+    "code": "600895.SH",
+    "name": "张江高科",
+    "ivol20": 1.024,
+    "pct": 2.15,
+    "close": 25.2,
+    "amount_yi": 3.99,
+    "vol_ratio": 1.22,
+    "turnover_rate": 1.02,
+    "mom20": -7.8
+   },
+   {
+    "rank": 20,
+    "code": "002208.SZ",
+    "name": "合肥城建",
+    "ivol20": 1.03,
+    "pct": 5.11,
+    "close": 8.23,
+    "amount_yi": 2.24,
+    "vol_ratio": 1.69,
+    "turnover_rate": 3.41,
+    "mom20": -14.5
    }
   ],
   "date": "20261105",
