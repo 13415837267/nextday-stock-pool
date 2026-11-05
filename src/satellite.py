@@ -1,33 +1,51 @@
 # -*- coding: utf-8 -*-
-"""独立副策略(卫星仓): 低特质波动 + 缓冲带, 月度调仓, 等权 20 只。
+"""独立副策略(卫星仓) v2: 每日一只低波票, 持有 40 个交易日。
 
-为什么它与主策略(dip)完全独立
-------------------------------
-| 维度 | 主策略 dip | 副策略 satellite |
+v1(第一百三十七轮)是月度调仓、等权 20 只。v2 改成"每天推一只":
+  · 每天收盘后在股票池里按 20 日特质波动(ivol20)升序, 取**第一只未持有**的票;
+  · 次日开盘买入 1/40 仓位, 持有 40 个交易日后结算;
+  · 稳态持仓 40 只, 每天一进一出, 日换手 1/40。
+
+为什么不是"每天只持 1 只、天天换"
+----------------------------------
+第一百三十八轮实测(1500 日, 同窗口基准 -5.86%):
+| 方式 | 年化 | 回撤 | 年换手 |
+|---|---:|---:|---:|
+| 只持 1 只, 每天换 | **-50.8%** | -98.3% | 250 倍 |
+| 每天新增 1 只, 持 20 日 | +6.0% | -30.1% | 14.6 倍 |
+| 每天新增 1 只, 持 40 日 | **+7.7%** | **-27.4%** | 7.7 倍 |
+| 每天新增 1 只, 持 60 日 | +5.8% | -27.8% | 4.7 倍 |
+| 月度 20 只 + 缓冲(v1) | +7.5% | -28.7% | 15.6 倍 |
+
+"只持 1 只"的 -50.8% 几乎全部是成本: 每天一次往返 0.3%, 一年 250 次,
+(1-0.003)^250-1 = **-52.8%** —— 低波因子的毛 alpha 被券商吃干。
+持有 40 日把成本压到 2.3%/年, 才留得住收益。
+
+为什么不做趋势过滤
+------------------
+"低波 + 站上 20 日线"在 1500 日窗口能到 +9.5%, 但全史只有 +9.9%(无过滤 +8.8%),
+且回撤 -51.5% 不比无过滤好 —— 是近五年的现象, 不是稳定 alpha, 故不采纳。
+H 从 20 到 120 收益都在 6~9% 之间(全史 8~10%), 说明 alpha 来自"持有低波票"
+本身而不是换仓时点, 因此 H=40 取的是换手与分散的折中, 不是收益峰值。
+
+与主策略的关系
+--------------
+| 维度 | 主策略 dip | 副策略 lowvol_daily |
 |---|---|---|
 | alpha 来源 | 日内恐慌错杀 + 隔夜修复 | 横截面低波动定价偏差 |
-| 持有期 | 2 个交易日 | 约 1 个月 |
-| 资金形态 | 单票满仓 | 等权 20 只 |
-| 交易节奏 | 每日 | 每月 |
+| 持有期 | 2 个交易日 | 40 个交易日 |
+| 资金形态 | 单票满仓 | 40 只等权 |
+| 交易节奏 | 每日 1 买 1 卖 | 每日 1 买 1 卖(不同标的池) |
 | 账本 | output/paper.json | output/satellite.json |
-| 代码路径 | src/backtest.py | 本文件(不 import 回测引擎) |
 
-全史 14 年(161 期, 2012-11~2026-11): 年化 **+9.6%**、回撤 **-29.4%**、卡玛 0.32、
-月胜率 52.8%、与 dip 月收益相关 **+0.082**。基准(全市场等权)同期 +1.6%/年。
-研究过程与候选比较见 `tools/exp_satellite.py`、CHANGELOG 第一百三十七轮。
-
-为什么是"低波 + 缓冲带"
------------------------
-· 低波(ivol20 最低 20 只)是 136 轮 IC 检验里唯一在长短持有期都稳定为正的因子
-  (k=60 时 IC +0.141), 也是九个候选里唯一全史为正的;
-· 裸低波年化 +7.0%, 但月换手 0.88, 成本吃掉 3.2%/年;
-· 加 3 倍缓冲带(旧持仓跌出前 60 才卖)后换手降到 0.73, 年化 +9.6%、回撤反而降到 -29.4%;
-· 季度调仓(换手 0.30)只有 +4.7% —— 再平衡太慢会错过低波组合的均值回复。
+全史 14 年(2013-01~2026-11, 3279 日): 年化 +8.8%、回撤 -52.9%(日频口径)、
+与 dip 月收益相关 +0.08。日频回撤远大于 v1 月频口径的 -29.4%, 这是口径差异,
+不是策略变差 —— 月频净值天然平滑, 页面上必须按日频披露。
 
 红线
 ----
-· 只读 T 日及之前数据; 不 import backtest/daily_run, 不改主策略任何参数;
-· 账本只增不改、同月幂等、不参与主策略资金调度。
+· 只读 T 日及之前数据; 不 import backtest/daily_run 的交易逻辑;
+· 账本只增不改、同日幂等、不参与主策略资金调度。
 """
 from __future__ import annotations
 
@@ -37,8 +55,12 @@ import pandas as pd
 from .config import board_of
 
 MIN_BARS = 250       # 上市满 250 日
-# 默认值 = 研究口径(tools/exp_satellite.py), 可在 config.yaml 的 satellite 段覆盖
+
+# v1 月度参数(仅用于归档旧账本)
 DEFAULT = {"top_n": 20, "buf_n": 60, "amount_min_yi": 1.0, "cost_pct": 0.3}
+# v2 日频参数
+DEFAULT_DAILY = {"hold_days": 40, "amount_min_yi": 1.0, "cost_pct": 0.3,
+                 "ma20_filter": False, "scan": 50}
 
 
 def params(cfg: dict) -> dict:
@@ -48,10 +70,19 @@ def params(cfg: dict) -> dict:
             "cost": float(s["cost_pct"]) / 100.0}
 
 
+def daily_params(cfg: dict) -> dict:
+    s = {**DEFAULT_DAILY, **(cfg.get("satellite") or {})}
+    return {"hold_days": max(2, int(s["hold_days"])),
+            "amt_min": float(s["amount_min_yi"]) * 1e8,
+            "cost": float(s["cost_pct"]) / 100.0,
+            "ma20_filter": bool(s.get("ma20_filter", False)),
+            "scan": max(1, int(s.get("scan", 50)))}
+
+
 def universe(day: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """与主策略一致的股票池: 非停牌/非ST/上市满250日/成交额达标/板块在内。"""
     boards = set(cfg["universe"]["boards"])
-    amt_min = params(cfg)["amt_min"]
+    amt_min = daily_params(cfg)["amt_min"]
     m = ((day["is_paused"] == 0) & (day["is_st"] == 0)
          & (day["bars"] >= MIN_BARS) & (day["amount"] >= amt_min))
     df = day.loc[m]
@@ -59,14 +90,41 @@ def universe(day: pd.DataFrame, cfg: dict) -> pd.DataFrame:
 
 
 def rank_lowvol(day: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    """按 20 日特质波动升序排列(低波在前)。"""
+    """按 20 日特质波动升序排列(低波在前), 可选"站上 20 日线"过滤。"""
     df = universe(day, cfg)
+    p = daily_params(cfg)
+    if p["ma20_filter"]:
+        m = pd.to_numeric(df["close_adj"], errors="coerce") > pd.to_numeric(df["ma20"], errors="coerce")
+        df = df.loc[m.fillna(False)]
     v = pd.to_numeric(df["ivol20"], errors="coerce")
-    ok = v.notna() & np.isfinite(v)
+    ok = v.notna() & np.isfinite(v) & (v > 0)
     df = df.loc[ok].assign(_ivol=v[ok])
     return df.sort_values("_ivol", kind="mergesort").reset_index(drop=True)
 
 
+def pick_one(day: pd.DataFrame, cfg: dict, held=()) -> dict | None:
+    """选今日 top1: 按 ivol 升序, 取第一只**不在 held** 的票(最多顺延 scan 名)。
+
+    去重是必须的: 低波票持续性很强, 若允许重复买入, 连续 20 天都推同一只,
+    账户会退化成单票满仓 —— 第一百三十八轮第一版就是这么跑出 -1.5% 的。
+    """
+    p = daily_params(cfg)
+    rk = rank_lowvol(day, cfg)
+    if len(rk) < 40:          # 池子太小(数据不全)时不出票, 避免极端集中
+        return None
+    held = set(held or ())
+    for _, row in rk.head(p["scan"]).iterrows():
+        c = str(row["ts_code"])
+        if c in held:
+            continue
+        return {"code": c, "name": "", "ivol20": round(float(row["_ivol"]), 2),
+                "close": round(float(row["close_adj"]), 4)}
+    return None
+
+
+# ---------------------------------------------------------------------------
+# v1 月度函数(归档用, 新账本不再调用)
+# ---------------------------------------------------------------------------
 def pick(day: pd.DataFrame, cfg: dict, prev_codes=None, names=None) -> list[dict]:
     """选出本月持仓。prev_codes 用于缓冲带(降低换手)。"""
     p = params(cfg)
