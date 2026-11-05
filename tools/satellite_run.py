@@ -1,25 +1,19 @@
 # -*- coding: utf-8 -*-
-"""独立副策略每日维护 v2: 每天推一只低波票, 持有 40 个交易日(2026-11-05)。
+"""独立副策略账本 v3 —— 单吊(与主策略同构)。
 
-账本 output/satellite.json 结构(v2)
------------------------------------
-{
- "strategy": "lowvol_daily", "version": 2,
- "init_capital": 100000, "cash": 12000.5, "nav": 1.03, "capital": 103000,
- "params": {"hold_days":40, ...},
- "batches": [ {id, signal_date, code, name, ivol20, entry_px, entry_px_raw,
-               shares, cost, exp_date, status, exit_date, exit_px, ret_pct} ],
- "daily":   [ {date, code, name, ivol20, action, note} ],   # 最近 120 条
- "legacy_records": [ ...v1 月度记录, 原样保留... ],
- "updated": "20261105"
-}
+数据：复用 src.backtest.prepare_context（与主策略同一个 ZZClient、同一份面板缓存
+data/cache/market_*.pkl），不单独抓数、不单独建指标。每日流程仍是"取一次数据 →
+主策略算一遍 → 副策略算一遍"。
 
-三条铁律: 只增不改(已结算批次不改)、同日幂等、不碰 config/latest/paper。
+账本状态机（与主策略 paper.json 同构）：
+    T 日收盘  -> 写 signal（今日唯一候选）
+    T+1 开盘  -> 若在 gap 区间内、未一字涨停/停牌, 用开盘价买入（100% 仓位）
+    持有 N 日 -> 第 N 个交易日收盘价卖出（或触发止损）
+    空仓      -> 不买, 等下一次信号（"不到标准不成交"）
 
-用法
-----
-  python3 -m tools.satellite_run              # 每日维护
-  python3 -m tools.satellite_run --rebuild    # 丢弃 v2 账本重建(调试用)
+幂等：updated == 今日 时直接退出, 重复运行不重复买卖。
+
+用法: python tools/satellite_run.py [--rebuild]
 """
 from __future__ import annotations
 
@@ -33,64 +27,62 @@ sys.path.insert(0, str(ROOT))
 
 from src.backtest import prepare_context  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.satellite import daily_params, pick_one  # noqa: E402
+from src.satellite import (daily_params, entry_gate, pick_one,  # noqa: E402
+                           rank_pool, should_exit, STRATEGY_CN)
 
-TAPE = ROOT / "output" / "satellite.json"
-INIT_CAP = 100000.0
-DAYS = 400          # 40 日持有 + 300 余日缓冲, 足够算到期日
-HALF = 0.0015       # 单边成本(往返 0.3% 的一半)
+DAYS = 90
+OUT = ROOT / "output" / "satellite.json"
+HALF = 0.0015          # 单边成本 0.15%（佣金万2.5 + 印花税万5 的一半 + 千1滑点）
 
 
 def _load() -> dict:
-    if TAPE.exists():
+    if OUT.exists():
         try:
-            d = json.loads(TAPE.read_text(encoding="utf-8"))
-            if isinstance(d, dict):
-                return d
-        except Exception:  # noqa: BLE001
+            return json.loads(OUT.read_text(encoding="utf-8"))
+        except Exception:
             pass
-    return {"strategy": "lowvol_daily", "version": 2, "init_capital": INIT_CAP,
-            "cash": INIT_CAP, "nav": 1.0, "capital": INIT_CAP,
-            "params": {}, "batches": [], "daily": [], "legacy_records": [],
-            "updated": None}
+    return {}
 
 
-def _px(day):
-    """code -> (close_adj, close)"""
-    return {str(c): (float(a), float(b)) for c, a, b in
-            zip(day["ts_code"], day["close_adj"], day["close"])}
+def _fmt(code: str) -> str:
+    return code
 
 
-def _migrate_v1(tape: dict, day, today: str) -> float:
-    """把 v1 月度持仓按今日收盘归档, 返回可用现金。"""
-    recs = tape.get("records") or []
-    px = _px(day)
-    cash = INIT_CAP
-    if recs:
-        last = recs[-1]
-        if last.get("status") == "holding":
-            entry_nav = float(last.get("entry_nav") or last.get("nav") or 1.0)
-            r = 0.0
-            wsum = 0.0
-            for h in last.get("holdings") or []:
-                p = px.get(str(h.get("code")))
-                if not p or not h.get("entry_px"):
-                    continue
-                r += float(h.get("weight") or 0) * (p[0] / float(h["entry_px"]) - 1)
-                wsum += float(h.get("weight") or 0)
-            if wsum > 0:
-                r = r / wsum
-            nav = entry_nav * (1 + r)
-            last["status"] = "closed"
-            last["exit_date"] = today
-            last["exit_nav"] = round(nav, 6)
-            last["exit_ret_pct"] = round((nav / max(1e-9, last.get("prev_nav", 1.0)) - 1) * 100, 2)
-            last["archived_by"] = "v2 日频切换"
-            cash = INIT_CAP * nav * (1 - HALF)
-            print("  归档 v1 %s: 净值 %.4f (%+.2f%%), 转出现金 %.0f"
-                  % (last.get("month"), nav, last["exit_ret_pct"], cash), flush=True)
-        tape["legacy_records"] = recs
-    tape.pop("records", None)
+def _px(day, code):
+    """返回 (收盘价, 原始收盘价, 开盘价, 原始开盘价, 是否可交易)。"""
+    r = day.loc[day["ts_code"] == code] if code else None
+    if r is None or not len(r):
+        return None
+    r = r.iloc[0]
+    if bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
+        return None
+    return (float(r["close_adj"]), float(r["close"]), float(r["open_adj"]),
+            float(r["open"]), float(r["pre_close"]), float(r["high_limit"]),
+            float(r["low_limit"]))
+
+
+def _migrate(tape: dict, day, today: str) -> float:
+    """v2(40 只低波批次) -> v3(单吊): 按今日收盘价全部清仓, 净值结转。"""
+    batches = tape.get("batches") or []
+    cash = float(tape.get("cash") or 0.0)
+    left = [b for b in batches if b.get("status") == "holding"]
+    closed = []
+    for b in left:
+        p = _px(day, b["code"])
+        if not p:
+            continue
+        proceeds = float(b.get("shares") or 0) * p[0] * (1 - HALF)
+        cash += proceeds
+        closed.append({"code": b["code"], "name": b.get("name", ""),
+                       "entry_date": b.get("signal_date"), "exit_date": today,
+                       "entry_px": b.get("entry_px_raw"), "exit_px": round(p[1], 3),
+                       "ret_pct": round((p[0] / float(b.get("entry_px") or p[0]) - 1) * 100, 2),
+                       "note": "v2 归档"})
+        b["status"] = "closed"
+        b["exit_date"] = today
+    tape["legacy_batches"] = len(left)
+    tape["legacy_trades"] = (tape.get("legacy_trades") or []) + closed
+    print("  迁移 v2: 清仓 %d 只, 结转现金 %.2f" % (len(closed), cash), flush=True)
     return cash
 
 
@@ -101,169 +93,166 @@ def main():
 
     cfg = load_config()
     P = daily_params(cfg)
-    tape = _load()
-    if args.rebuild:
-        tape = {"strategy": "lowvol_daily", "version": 2, "init_capital": INIT_CAP,
-                "cash": INIT_CAP, "nav": 1.0, "capital": INIT_CAP,
-                "params": {}, "batches": [], "daily": [], "legacy_records": [], "updated": None}
+    tape = {} if args.rebuild else _load()
 
-    print("[1/2] 加载面板 %d 日 ..." % DAYS, flush=True)
+    print("[1/2] 加载面板(与主策略共用缓存) %d 日 ..." % DAYS, flush=True)
     ctx = prepare_context(cfg, DAYS)
-    by_date, dates = ctx["by_date"], sorted(ctx["by_date"])
+    by_date = ctx["by_date"]
+    dates = sorted(by_date)
     main_dates = ctx["main_dates"]
     names = ctx.get("names") or {}
     today = main_dates[-1]
     day = by_date[today]
-    px = _px(day)
 
-    # ---- 版本迁移 ----
-    if int(tape.get("version") or 1) < 2:
-        tape["cash"] = _migrate_v1(tape, day, today)
-        tape["version"] = 2
-        tape["strategy"] = "lowvol_daily"
-    cash = float(tape.get("cash", INIT_CAP))
-    batches = tape.get("batches") or []
+    # ---------- 初始化 / 迁移 ----------
+    ver = int(tape.get("version") or 0)
+    if ver < 3:
+        # v2 的 capital 是"当前总资产", init_capital 才是本金 —— 取后者, 否则净值会被归一化错
+        init_cap = float(tape.get("init_capital") or 100000.0)
+        cash = _migrate(tape, day, today) if ver == 2 else init_cap
+        tape = {"version": 3, "strategy": "trend_single", "engine": "single",
+                "init_capital": init_cap, "capital": init_cap, "cash": cash,
+                "nav": round(cash / init_cap, 4) if init_cap else 1.0,
+                "signal": None, "position": None, "trades": [],
+                "daily": [], "legacy_batches": tape.get("legacy_batches", 0),
+                "legacy_trades": tape.get("legacy_trades") or [],
+                "updated": None}
+        print("  v3 初始化: 本金 %.0f, 现金 %.2f" % (init_cap, cash), flush=True)
+
+    if tape.get("updated") == today:
+        print("  今日(%s)已更新, 跳过" % today, flush=True)
+        return
+
+    cash = float(tape.get("cash") or 0.0)
+    pos = tape.get("position")
+    sig = tape.get("signal")
+    trades = tape.get("trades") or []
     daily = tape.get("daily") or []
+    params = {"mode": P["mode"], "mode_cn": STRATEGY_CN.get(P["mode"], P["mode"]),
+              "hold_days": P["hold_days"], "max_ivol": P["max_ivol"],
+              "amount_min_yi": round(P["amt_min"] / 1e8, 2),
+              "gap_min": P["gap_min"], "gap_max": P["gap_max"],
+              "stop_pct": round(P["stop"] * 100, 2), "market_gate": P["gate"],
+              "cost_pct": round(P["cost"] * 100, 3)}
+    tape["params"] = params
 
-    book = {"hold_days": P["hold_days"], "cost_pct": round(P["cost"] * 100, 3),
-            "amount_min_yi": P["amt_min"] / 1e8, "ma20_filter": P["ma20_filter"],
-            "universe": "非ST/上市满250日/成交额>=1亿"}
-    tape["params"] = book
+    action, note, code_today = "none", "", ""
 
-    # ---- 1) 结算到期批次 ----
-    n_close = 0
-    for b in batches:
-        if b.get("status") != "holding":
-            continue
-        hd = int(b.get("hold_days") or P["hold_days"])
-        elapsed = _held_days(dates, b.get("signal_date"), today)
-        if elapsed is None or elapsed < hd:
-            continue
-        p = px.get(b["code"])
-        if not p:
-            continue                      # 停牌/退市: 顺延到有价格的日子
-        proceeds = float(b["shares"]) * p[0] * (1 - HALF)
-        cash += proceeds
-        b["status"] = "closed"
-        b["exit_date"] = today
-        b["exit_px"] = round(p[1], 3)
-        b["ret_pct"] = round((p[0] / float(b["entry_px"]) - 1) * 100, 2)
-        n_close += 1
-    if n_close:
-        print("  结算 %d 笔" % n_close, flush=True)
+    # ---------- 1) T+1 开盘: 执行昨日信号 ----------
+    if sig and not pos:
+        code_today = sig["code"]
+        p = _px(day, code_today)
+        if p is None:
+            note = "停牌, 未成交"
+            tape["signal"] = None
+        else:
+            _cl, _clr, _op, op_raw, pre, hi_lim, _lo = p
+            gap = (op_raw / pre - 1) * 100 if pre else 0.0
+            if op_raw >= hi_lim - 1e-9:
+                note = "一字涨停, 买不到"
+                tape["signal"] = None
+            else:
+                ok, why = entry_gate(gap, cfg)
+                if not ok:
+                    note = why
+                    tape["signal"] = None
+                else:
+                    px = _op * (1 + HALF)
+                    shares = cash / px
+                    pos = {"code": code_today, "name": names.get(code_today, sig.get("name", "")),
+                           "signal_date": sig["date"], "entry_date": today,
+                           "entry_px": round(px, 4), "entry_px_raw": round(op_raw, 3),
+                           "gap_pct": round(gap, 2), "shares": round(shares, 4),
+                           "cost": round(cash, 2), "hold_days": P["hold_days"],
+                           "status": "holding"}
+                    cash = 0.0
+                    tape["position"] = pos
+                    tape["signal"] = None
+                    action = "buy"
+                    note = note or "开盘 %.3f 买入" % op_raw
+                    print("  买入 %s %s @%.3f (缺口 %+.2f%%)" % (code_today, pos["name"], op_raw, gap), flush=True)
 
-    held = [b["code"] for b in batches if b.get("status") == "holding"]
+    # ---------- 2) 收盘: 卖出判定 ----------
+    pos = tape.get("position")
+    if pos:
+        code_today = pos["code"]
+        p = _px(day, code_today)
+        if p is None:
+            note = (note + " 持仓停牌").strip()
+        else:
+            cl, clr, *_ = p
+            ret = (cl / float(pos["entry_px"]) - 1) * 100
+            held = dates.index(today) - dates.index(pos["entry_date"]) if pos["entry_date"] in dates else 0
+            ex, why = should_exit(held, ret, cfg)
+            if ex:
+                proceeds = float(pos["shares"]) * cl * (1 - HALF)
+                cash += proceeds
+                trades.append({"code": code_today, "name": pos.get("name", ""),
+                               "signal_date": pos.get("signal_date"),
+                               "entry_date": pos["entry_date"], "exit_date": today,
+                               "entry_px": pos.get("entry_px_raw"), "exit_px": round(clr, 3),
+                               "hold_days": held, "ret_pct": round(ret, 2), "note": why})
+                action = "sell"
+                note = (note + " " + why).strip()
+                tape["position"] = None
+                print("  卖出 %s %s @%.3f %+.2f%% (%s)" % (code_today, pos.get("name", ""), clr, ret, why), flush=True)
 
-    # ---- 2) 选票 ----
-    cand = pick_one(day, cfg, held)
-    action, note = "none", ""
-    if not cand:
-        note = "股票池无合格标的"
-    elif cand["code"] in held:
-        action = "skip"
-        note = "已在持仓, 今日不加仓"
+    # ---------- 3) 收盘: 选明日信号(先过大盘闸门) ----------
+    gate_ok, gate_note = True, ""
+    if P["gate"]:
+        reg = ctx.get("reg")
+        if reg is not None and today in reg.index:
+            gate_ok = bool(reg.loc[today, "trade_ok"])
+        if not gate_ok:
+            gate_note = "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
+    if not tape.get("position") and not gate_ok:
+        tape["signal"] = None
+        action, note = "none", gate_note
+    elif not tape.get("position"):
+        cand = pick_one(day, cfg)
+        if cand:
+            cand["date"] = today
+            cand["name"] = names.get(cand["code"], "")
+            tape["signal"] = cand
+            code_today = code_today or cand["code"]
+            if action == "none":
+                action = "signal"
+                note = note or "ivol %.2f, 明日开盘买入" % cand["ivol20"]
+            print("  信号 %s %s (ivol %.2f)" % (cand["code"], cand["name"], cand["ivol20"]), flush=True)
+        else:
+            tape["signal"] = None
+            note = note or "候选池不足/无合格票, 明日空仓"
     else:
-        action = "buy"
+        tape["signal"] = None
 
-    # ---- 3) 建仓 / 初始化 ----
-    today_done = bool(daily and daily[-1].get("date") == today)
-    nav_before = (cash + sum(float(b["shares"]) * px.get(b["code"], (b["entry_px"], 0))[0]
-                             for b in batches if b.get("status") == "holding")) / INIT_CAP
-    n_buy = 0
-
-    def _buy(c: dict, num: int, hd: int | None = None):
-        nonlocal cash, n_buy
-        p = px.get(c["code"])
-        if not p or p[0] <= 0:
-            return False
-        nav_now = (cash + sum(float(b["shares"]) * px.get(b["code"], (b["entry_px"], 0))[0]
-                              for b in batches if b.get("status") == "holding")) / INIT_CAP
-        amount = nav_now * INIT_CAP / max(1, num)
-        amount = min(amount, cash * 0.999)
-        if amount < 100:
-            return False
-        shares = amount * (1 - HALF) / p[0]
-        batches.append({"id": "%s-%03d" % (today, len(batches) + 1),
-                        "signal_date": today, "code": c["code"],
-                        "name": names.get(c["code"], ""), "ivol20": c["ivol20"],
-                        "entry_px": round(p[0], 4), "entry_px_raw": round(p[1], 3),
-                        "shares": round(shares, 4), "cost": round(amount, 2),
-                        "hold_days": int(hd or P["hold_days"]), "status": "holding",
-                        "exit_date": None, "exit_px": None, "ret_pct": None})
-        cash -= amount
-        n_buy += 1
-        return True
-
-    if not batches and not today_done:
-        # 首次上线: 一次性建满 hold_days 只, 之后每日 1 只滚动
-        from src.satellite import rank_lowvol
-        rk = rank_lowvol(day, cfg)
-        k = 0
-        for _, row in rk.iterrows():
-            if k >= P["hold_days"]:
-                break
-            # 到期日错开: 第 1 只 1 日后到期 ... 第 40 只 40 日后, 之后每天到期 1 只
-            if _buy({"code": str(row["ts_code"]), "ivol20": round(float(row["_ivol"]), 2)},
-                    P["hold_days"], hd=k + 1):
-                k += 1
-        note = "首次上线，一次性建满 %d 只（每只 %.1f%%，到期日 1~%d 日错开）" % (
-            n_buy, 100.0 / P["hold_days"], P["hold_days"])
-        print("  " + note, flush=True)
-    elif action == "buy" and not today_done:
-        _buy(cand, P["hold_days"])
-        print("  买入 %s %s  ivol %.2f" % (cand["code"], names.get(cand["code"], ""), cand["ivol20"]), flush=True)
-
-    # ---- 4) 推荐留痕 ----
-    if not today_done:
-        daily.append({"date": today, "code": cand["code"] if cand else "",
-                      "name": names.get(cand["code"], "") if cand else "",
-                      "ivol20": cand["ivol20"] if cand else None,
-                      "action": action, "note": note,
-                      "bought": bool(n_buy)})
-        daily = daily[-120:]
-
-    # ---- 5) 重估 ----
-    hold_val = 0.0
-    for b in batches:
-        if b.get("status") != "holding":
-            continue
-        p = px.get(b["code"])
-        if not p:
-            continue
-        b["px"] = round(p[1], 3)
-        b["ret_pct"] = round((p[0] / float(b["entry_px"]) - 1) * 100, 2)
-        b["held_days"] = _held_days(dates, b.get("signal_date"), today)
-        hold_val += float(b["shares"]) * p[0]
-
-    nav = (cash + hold_val) / INIT_CAP
+    # ---------- 4) 净值 ----------
+    pos = tape.get("position")
+    mv = 0.0
+    if pos:
+        p = _px(day, pos["code"])
+        if p:
+            mv = float(pos["shares"]) * p[0]
+            pos["held_days"] = dates.index(today) - dates.index(pos["entry_date"]) \
+                if pos["entry_date"] in dates else 0
+            pos["px"] = round(p[1], 3)
+            pos["ret_pct"] = round((p[0] / float(pos["entry_px"]) - 1) * 100, 2)
+        else:
+            mv = float(pos.get("cost") or 0)
+    nav = (cash + mv) / float(tape["init_capital"])
     tape["cash"] = round(cash, 2)
-    tape["nav"] = round(nav, 6)
-    tape["capital"] = round(INIT_CAP * nav, 2)
-    tape["batches"] = batches
-    tape["daily"] = daily
+    tape["nav"] = round(nav, 4)
+    tape["capital"] = round(cash + mv, 2)
+    tape["trades"] = trades
+    daily.append({"date": today, "nav": round(nav, 4), "action": action,
+                  "code": code_today, "note": note})
+    tape["daily"] = daily[-500:]
     tape["updated"] = today
 
-    n_hold = len([b for b in batches if b.get("status") == "holding"])
-    print("  持仓 %d 只, 现金 %.0f, 净值 %.4f (%+.2f%%)"
-          % (n_hold, cash, nav, (nav / nav_before - 1) * 100), flush=True)
-
-    TAPE.parent.mkdir(parents=True, exist_ok=True)
-    TAPE.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
-    print("已写 %s | %d 批 / %d 条推荐" % (TAPE, len(batches), len(daily)), flush=True)
-
-
-def _idx(dates, d):
-    try:
-        return dates.index(d)
-    except ValueError:
-        return -1
-
-
-def _held_days(dates, d0, d1):
-    i0, i1 = _idx(dates, d0), _idx(dates, d1)
-    if i0 < 0 or i1 < 0:
-        return None
-    return i1 - i0
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("  净值 %.4f · 现金 %.2f · 持仓 %s · %s"
+          % (nav, cash, (pos or {}).get("code", "空"), note), flush=True)
+    print("  写出 %s" % OUT, flush=True)
 
 
 if __name__ == "__main__":
