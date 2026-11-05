@@ -216,7 +216,9 @@ def main():
     print("  %-11s %8s %8s %8s %8s %7s %7s | %8s %7s | %8s %8s" % (
         "因子", "多头年化", "基准年化", "超额年化", "超额t", "IC", "ICIR", "回撤", "卡玛", "多空均值", "多空t"))
     out = {"days": args.days, "n_months": len(monthly), "top_n": TOP_N, "cost_pct": COST * 100,
-           "factors": {}}
+           "factors": {}, "series_base": [round(x * 100, 3) for x in
+                                          [r["base"] / 100 for r in monthly]],
+           "series_months": [r["exe"][:6] for r in monthly]}
 
     # 基准序列
     base_rets = [r["base"] / 100 for r in monthly]
@@ -258,6 +260,8 @@ def main():
               "ls_mean": round(float(np.mean(ls)) * 100, 3), "ls_t": round(_tstat(ls) or 0, 2),
               "turnover": round(turn_sum / len(rows), 3), "n_months": len(rows)}
         out["factors"][name] = st
+        out.setdefault("series", {})[name] = [round(x * 100, 3) for x in port]
+        out.setdefault("series_ls", {})[name] = [round(x * 100, 3) for x in ls]
         print("  %-11s %+7.1f%% %+7.1f%% %+7.1f%% %+7.2f %7.3f %7.2f | %+7.1f%% %7.2f | %+7.2f%% %6.2f" % (
             name, ps["ann"] or 0, bs["ann"] or 0, ex_ann, st["excess_t"], icm, icir,
             ps["mdd"] or 0, ps["calmar"] or 0, st["ls_mean"], st["ls_t"]), flush=True)
