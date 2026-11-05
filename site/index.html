@@ -416,7 +416,8 @@ async function loadLatest() {
       tag: x.strategy_cn || "-", code: x.code, name: x.name, close: x.close, pct: x.pct,
       volRatio: x.vol_ratio, turnover: x.turnover_rate, amountYi: x.amount_yi,
       mom20: x.mom20, metric: x.score, reason: x.reasons,
-    })), "评分");
+    })), "评分") +
+      `<div class="legend">池深 ${td.pool_n ?? d.picks.length} 只（通过全部筛选并完成评分，盘后即知）· 风控 ${ok ? "通过" : "触发"}${d.picks[0] ? ` · 今日主选 <b>${esc(d.picks[0].code)}</b>` : ""}</div>`;
   }
   document.getElementById("disclaimer").textContent = d.disclaimer || "";
 }
@@ -441,7 +442,7 @@ function poolTable(rows, metricLabel) {
       <td data-label="量比">${x.volRatio}</td><td data-label="换手率">${x.turnover}%</td>
       <td data-label="成交额(亿)">${x.amountYi}</td><td class="${pctCls(x.mom20)}" data-label="20日动量">${pctStr(x.mom20)}</td>
       <td data-label="${esc(metricLabel)}"><b>${x.metric}</b></td>
-      <td class="muted full" data-label="入选理由">${esc(x.reason)}</td></tr>`;
+      <td class="muted full" data-label="入选理由" style="white-space:normal;min-width:240px;max-width:420px">${esc(x.reason)}</td></tr>`;
   });
   return html + "</table></div>";
 }
@@ -826,11 +827,11 @@ async function loadSatellite() {
       turnover: x.turnover_rate ?? "-", amountYi: x.amount_yi, mom20: x.mom20,
       metric: x.ivol20,
       reason: x.rank === 1
-        ? `全池 ivol 最低（${p.n} 只达标）${p.gate_ok ? " · 明日计划" : " · 闸门关闭，明日不买"}`
+        ? `全池 ${p.n} 只中 ivol 最低${p.gate_ok ? " · 明日计划" : " · 闸门关闭，明日不买"}`
         : `ivol 第 ${x.rank} 名 · 仅供核对，单吊只买第 1 名`,
     }));
     poolBox.innerHTML = poolTable(prows, "ivol20") +
-      `<div class="legend">池深 ${p.n} 只（通过全部筛选并完成 ivol 排序，盘后即知）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+      `<div class="legend">候选 ${p.n} 只（通过基础筛选，盘后即知）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
   }
 
   /* --- 模块二: 单吊执行记录 --- */
