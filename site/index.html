@@ -968,7 +968,7 @@ function planMain(d) {
     rows.push(`<b>池深：</b>当日达标 <b>${td.pool_n}</b> 只（实际只买评分第 1 名 1 只）→ ${td.pool_n >= 21
       ? `<span class="up">满仓</span>`
       : td.pool_n >= 11 ? `<span class="down">半仓（11~20 只档）</span>`
-        : `<span class="down">三成仓（≤10 只档）</span>`}　池子越窄＝越可能是孤立回调（缺板块共振），<b>只降仓位、不弃单</b>`);
+        : `<span class="down">三成仓（≤10 只档）</span>`}${allow ? "" : `　<span class="muted">（今日空仓，档位不生效）</span>`}　池子越窄＝越可能是孤立回调（缺板块共振），<b>只降仓位、不弃单</b>`);
   }
   if (td.pool_n != null && td.pool_n >= 11 && td.pool_n <= 20) {
     rows.push(`<b>深低开：</b>若竞价缺口 <b>≤-1%</b> → <b>撤销池深折价、回满仓</b>（深低开＝错杀的直接证据，池深只是共振的间接代理）`);
@@ -1063,7 +1063,7 @@ function poolMain(d) {
     volRatio: x.vol_ratio, turnover: x.turnover_rate, amountYi: x.amount_yi,
     mom20: x.mom20, metric: x.score, reason: x.reasons,
   })), "评分") +
-    `<div class="legend">当日达标（池深）<b>${n}</b> 只 · 只发布其中评分第 1 名 <b>1</b> 笔，第 2 名以后只在备用漏斗里补位${d.regime ? ` · 风控 ${d.regime.ok ? "通过" : "触发"}` : ""}${picks[0] ? ` · 今日主选 <b>${esc(picks[0].code)}</b>` : ""}</div>`;
+    `<div class="legend">当日达标 <b>${n}</b> 只（策略按这个数字做仓位分档，<b>不是买入只数</b>）· 页面只发布评分第 1 名 <b>${picks.length}</b> 笔，第 2 名以后只在备用漏斗里补位${d.regime ? ` · 风控 ${d.regime.ok ? "通过" : "触发"}` : ""}${picks[0] ? ` · 今日主选 <b>${esc(picks[0].code)}</b>` : ""}</div>`;
 }
 
 function poolSat(d) {
