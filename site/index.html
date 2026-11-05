@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>A股次日候选池系统 · 单吊执行记录</title>
+<title>A股次日候选池系统 · 主策略 + 副策略双引擎</title>
 <style>
   :root {
     --bg: #0b0e14; --panel: #12161f; --panel2: #171c26; --border: #232a36;
@@ -91,54 +91,82 @@
     table.rtable td.skip { display: none; }
     table.rtable tr:hover td { background: transparent; }
   }
+
+  /* ---- 标签页(第一百三十九轮): 首页只放两个策略的明日计划, 其余内容点按钮切换 ---- */
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px;
+          border-bottom: 1px solid var(--border); }
+  .tab { background: transparent; border: 1px solid transparent; border-bottom: none;
+         color: var(--muted); padding: 9px 16px; font-size: 14px; cursor: pointer;
+         border-radius: 8px 8px 0 0; font-family: inherit; transition: background .12s, color .12s; }
+  .tab:hover { color: var(--text); background: var(--panel2); }
+  .tab.active { color: var(--gold); background: var(--panel); border-color: var(--border);
+                border-bottom: 2px solid var(--gold); margin-bottom: -1px; font-weight: 600; }
+  [data-pane] { display: none; }
+  [data-pane].on { display: block; }
+  div[data-pane].on.cards { display: grid; }
+  @media (max-width: 640px) {
+    .tabs { gap: 4px; }
+    .tab { padding: 8px 10px; font-size: 13px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>A股次日候选池系统 <small>沪深主板单只 · 趋势缩量回调 · 次日观察入场 · 单吊执行</small></h1>
+    <h1>A股次日候选池系统 <small>主策略：深低开承接 · 副策略：上涨趋势 · 各自单吊</small></h1>
     <div class="meta" id="meta">加载中...</div>
     <div class="badges" id="badges"></div>
   </header>
 
-  <h2>一、明日单吊计划 <span class="sub">每日仅执行评分第 1 名 1 笔</span></h2>
-  <div id="plan"><div class="loading">加载中...</div></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="home">首页 · 明日计划</button>
+    <button class="tab" data-tab="main">主策略</button>
+    <button class="tab" data-tab="sat">副策略</button>
+    <button class="tab" data-tab="tape">台账 · 回放</button>
+    <button class="tab" data-tab="more">体检 · 规则</button>
+  </nav>
 
-  <h2>二、当日计划（1只主选 + 备用漏斗） <span class="sub">仅沪深主板 · 主力有信号日只发1只；主力无信号日按备选顺序补位（至多3只），买入端每日仍只买第一只达标票（第九十一轮）</span></h2>
-  <div id="pool"><div class="loading">加载中...</div></div>
+  <h2 data-pane="home">主策略 · 明日计划 <span class="sub">深低开承接 · 每日仅执行评分第 1 名 1 笔</span></h2>
+  <div data-pane="home" id="plan"><div class="loading">加载中...</div></div>
 
-  <h2>三、单吊执行记录 <span class="sub">逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）</span></h2>
-  <div class="cards" id="exec-cards"></div>
-  <div style="margin-top:12px" id="exec-table"></div>
+  <h2 data-pane="home" id="sat-plan-h">副策略 · 明日计划 <span class="sub" id="sat-plan-sub">上涨趋势单吊 · 每日 1 只 · 与主策略共用同一份数据</span></h2>
+  <div data-pane="home" id="sat-plan"><div class="loading">加载中...</div></div>
 
-  <h2>四、回测绩效 <span class="sub">1500 交易日（2020-08~2026-11）· 实盘口径复利（样本内，前瞻预期见披露）</span></h2>
-  <div class="cards" id="bt-cards"></div>
-  <div class="panel" style="margin-top:12px" id="bt-chart"></div>
+  <h2 data-pane="main">当日候选池（1只主选 + 备用漏斗） <span class="sub">仅沪深主板 · 主力有信号日只发1只；主力无信号日按备选顺序补位（至多3只），买入端每日仍只买第一只达标票（第九十一轮）</span></h2>
+  <div data-pane="main" id="pool"><div class="loading">加载中...</div></div>
+
+  <h2 data-pane="main">单吊执行记录 <span class="sub">逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）</span></h2>
+  <div data-pane="main" class="cards" id="exec-cards"></div>
+  <div data-pane="main" style="margin-top:12px" id="exec-table"></div>
+
+  <h2 data-pane="main">主策略回测绩效 <span class="sub">1500 交易日（2020-08~2026-11）· 实盘口径复利（样本内，前瞻预期见披露）</span></h2>
+  <div data-pane="main" class="cards" id="bt-cards"></div>
+  <div data-pane="main" class="panel" style="margin-top:12px" id="bt-chart"></div>
   <div class="legend"><span class="dot" style="background:var(--gold)"></span>策略净值（复利，含费用）<span class="dot" style="background:#6e7681;margin-left:16px"></span>全市场等权基准</div>
 
-  <h2 id="paper">五、向前台账 <span class="sub" id="paper-sub">自 2026-11-02 起冻结每日信号，T+1 回填真实成交、T+2 回填结果（只增不改）</span></h2>
-  <div class="cards" id="paper-cards"><div class="card"><div class="k">向前台账</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
-  <div style="margin-top:12px" id="paper-table"></div>
-  <div class="panel note" style="margin-top:12px" id="paper-note"></div>
+  <h2 data-pane="tape" id="paper">向前台账 <span class="sub" id="paper-sub">自 2026-11-02 起冻结每日信号，T+1 回填真实成交、T+2 回填结果（只增不改）</span></h2>
+  <div data-pane="tape" class="cards" id="paper-cards"><div class="card"><div class="k">向前台账</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+  <div data-pane="tape" style="margin-top:12px" id="paper-table"></div>
+  <div data-pane="tape" class="panel note" style="margin-top:12px" id="paper-note"></div>
 
-  <h2 id="sat">六、独立副策略 <span class="sub" id="sat-sub">每日 1 只低波票 · 持有 40 个交易日 · 与主策略零耦合</span></h2>
-  <div class="cards" id="sat-cards"><div class="card"><div class="k">独立副策略</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
-  <div style="margin-top:12px" id="sat-table"></div>
-  <div class="panel note" style="margin-top:12px" id="sat-note"></div>
+  <h2 data-pane="sat" id="sat">副策略 · 独立账本 <span class="sub" id="sat-sub">每日 1 只低波票 · 持有 40 个交易日 · 与主策略零耦合</span></h2>
+  <div data-pane="sat" class="cards" id="sat-cards"><div class="card"><div class="k">独立副策略</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+  <div data-pane="sat" style="margin-top:12px" id="sat-table"></div>
+  <div data-pane="sat" class="panel note" style="margin-top:12px" id="sat-note"></div>
 
-  <h2 id="replay">七、历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
-  <div class="cards" id="rp-cards"><div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
-  <div class="cards" id="rp-months" style="margin-top:12px"></div>
-  <div class="panel" style="margin-top:12px" id="rp-chart"></div>
-  <div style="margin-top:12px" id="rp-trades"></div>
-  <div style="margin-top:12px" id="rp-daily"></div>
-  <div class="panel note" style="margin-top:12px" id="rp-note"></div>
+  <h2 data-pane="tape" id="replay">历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
+  <div data-pane="tape" class="cards" id="rp-cards"><div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+  <div data-pane="tape" class="cards" id="rp-months" style="margin-top:12px"></div>
+  <div data-pane="tape" class="panel" style="margin-top:12px" id="rp-chart"></div>
+  <div data-pane="tape" style="margin-top:12px" id="rp-trades"></div>
+  <div data-pane="tape" style="margin-top:12px" id="rp-daily"></div>
+  <div data-pane="tape" class="panel note" style="margin-top:12px" id="rp-note"></div>
 
-  <h2>八、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
-  <div id="health"><div class="loading">加载中...</div></div>
+  <h2 data-pane="more">策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
+  <div data-pane="more" id="health"><div class="loading">加载中...</div></div>
 
-  <h2>九、策略规则与披露</h2>
-  <div class="panel">
+  <h2 data-pane="more">策略规则与披露</h2>
+  <div data-pane="more" class="panel">
     <b>执行时点</b>
     <ul class="rules">
       <li>T日收盘后：系统在沪深主板中选股，主力(dip)有候选时固定只发布「次日计划」1只；主力当日无任何候选时，按备用策略顺序（隔夜动量→深跌阳线反转→趋势回踩5日线）补位，网页最多列3只</li>
@@ -186,7 +214,7 @@
     </ul>
   </div>
 
-  <div class="disclaimer" id="disclaimer"></div>
+  <div data-pane="more" class="disclaimer" id="disclaimer"></div>
 
   <footer>
     数据来源：<a href="https://github.com/zzquant/zzshare" target="_blank">zzshare（免费公开数据接口）</a>
@@ -196,6 +224,31 @@
 </div>
 
 <script>
+/* ---------- 标签页切换(第一百三十九轮) ----------
+   首页只放两个策略的明日计划, 其余内容按需切换; 深链 #main/#sat/#tape/#more 可直达。 */
+const TABS = ["home", "main", "sat", "tape", "more"];
+function showTab(name, push) {
+  if (!TABS.includes(name)) name = "home";
+  document.querySelectorAll("#tabs .tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll("[data-pane]").forEach(el =>
+    el.classList.toggle("on", el.dataset.pane === name));
+  if (push) history.replaceState(null, "", name === "home" ? " " : "#" + name);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+document.getElementById("tabs").addEventListener("click", e => {
+  const b = e.target.closest(".tab");
+  if (b) showTab(b.dataset.tab, true);
+});
+/* 章节内锚点(如 badges 里的 #replay)跳到对应标签页 */
+document.addEventListener("click", e => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  const id = a.getAttribute("href").slice(1);
+  const el = document.getElementById(id);
+  if (el && el.dataset.pane) { e.preventDefault(); showTab(el.dataset.pane, true); }
+});
+
 const fmtDate = s => s || "-";
 const pctCls = v => v > 0 ? "up" : (v < 0 ? "down" : "");
 const pctStr = v => (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
@@ -900,6 +953,8 @@ function drawReplayChart(curve, base, baseDate) {
     ${ticks}
   </svg><div class="legend">起点 ${(base / 1e4).toFixed(2)} 万（${rpDate(baseDate)} 收盘）· 纵轴为相对起点的百分比 · 每日收盘估值</div>`;
 }
+
+showTab((location.hash || "").replace("#", ""), false);
 
 loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class="loading">候选池加载失败: ${esc(e.message)}</div>`);
 loadExecHistory();
