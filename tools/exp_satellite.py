@@ -184,7 +184,7 @@ def main():
         fwd = np.where(buyable, (x_px / o_buy - 1) * 100, np.nan)
 
         # 基准: 全池等权
-        b = np.nanmean(fwd)
+        b = float(np.nanmean(fwd))
         base_rets.append(b / 100)
         months.append(exe_d[:6])
         on = bool(risk_on.get(sig_d, False)) if sig_d in risk_on.index else True
@@ -290,7 +290,7 @@ def main():
             st["avg_hold"], st["turnover"], rho if rho is not None else 0), flush=True)
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=1, default=float), encoding="utf-8")
     print("\n结果已写 %s" % args.out, flush=True)
 
 
