@@ -636,7 +636,7 @@ async function loadSatellite() {
       `已投入 ${(posAmt / 1e4).toFixed(2)} 万 · 仓位 ${posPct.toFixed(0)}%`),
     c("副策略净值", nav.toFixed(4), `虚拟本金 10 万 → ${(Number(d.capital || 0) / 1e4).toFixed(2)} 万`,
       nav > 1 ? "up" : (nav < 1 ? "down" : "")),
-    c("已结算", closed.length, closed.length ? `胜 ${win} / ${closed.length}` : `每只持有 ${holdN} 个交易日`),
+    c("已结算", closed.length, closed.length ? `胜 ${win} / ${closed.length}` : "首批 1 个交易日后开始逐日结算"),
     c("全史回测", "+8.8%/年", "2013-01~2026-11 · 3279 日 · 日频回撤 -52.9%", "up"),
     c("与主策略相关", "+0.08", "月收益相关（<0.3 视为独立）"),
   ].join("");
@@ -680,7 +680,9 @@ async function loadSatellite() {
     <b>选股：</b>非ST、上市满250日、成交额≥1亿的主板/创业板股票中，按 20 日特质波动（ivol20）升序取最低的
     <b>一只未持有</b>的票；已在持仓则顺延到下一只，避免重复加仓变成单票满仓。<br>
     <b>口径：</b>信号日收盘价建仓、持有满 ${holdN} 个交易日按收盘价结算，单边成本 0.15%；实盘按次日开盘执行，
-    与收盘口径偏差约 ±0.3%。账本与 <code>paper.json</code> 并列且互不读写（只增不改、同日幂等）。`;
+    与收盘口径偏差约 ±0.3%。账本与 <code>paper.json</code> 并列且互不读写（只增不改、同日幂等）。<br>
+    <b>与 v1 的关系：</b>原「月度 20 只 + 缓冲带」账本已于 2026-11-04 按收盘价归档到
+    <code>legacy_records</code>，净值连续计入本账本，不是两套并行。`;
 }
 
 async function loadReplay() {
