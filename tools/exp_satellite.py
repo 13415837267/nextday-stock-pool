@@ -146,7 +146,8 @@ def main():
     triples = _month_pairs(main_dates)
     print("[3/4] 月度调仓 %d 期, 6 个候选 ..." % len(triples), flush=True)
 
-    NAMES = ["tsmom_12_1", "tsmom_abs", "tsmom_ma", "lowvol_ma", "hi52w", "dualma"]
+    NAMES = ["tsmom_12_1", "tsmom_abs", "tsmom_ma", "lowvol_ma", "hi52w", "dualma",
+             "lowvol", "lowvol_rp", "lowvol_rev"]
     rets = {n: [] for n in NAMES}
     hold = {n: [] for n in NAMES}
     months, base_rets, mkt_state = [], [], []
@@ -191,36 +192,62 @@ def main():
         mkt_state.append(1 if on else 0)
 
         # ---- 六个候选的持仓 ----
+        amap_pre = {str(c): k for k, c in enumerate(cc)}
         picks = {}
         valid = np.isfinite(fwd)
 
         m = np.where(valid, mom12_1, np.nan)
-        picks["tsmom_12_1"] = _top(cc, m, TOP_N)
+        picks["tsmom_12_1"] = (_top(cc, m, TOP_N), None)
 
         m_abs = np.where(valid & (mom12_1 > 0), mom12_1, np.nan)
-        picks["tsmom_abs"] = _top(cc, m_abs, TOP_N)
+        picks["tsmom_abs"] = (_top(cc, m_abs, TOP_N), None)
 
-        picks["tsmom_ma"] = _top(cc, m, TOP_N) if on else []
+        picks["tsmom_ma"] = ((_top(cc, m, TOP_N) if on else []), None)
 
         lv = np.where(valid, -ivol, np.nan)
-        picks["lowvol_ma"] = _top(cc, lv, TOP_N) if on else []
+        picks["lowvol_ma"] = ((_top(cc, lv, TOP_N) if on else []), None)
 
-        picks["hi52w"] = _top(cc, np.where(valid, dist_hi250, np.nan), TOP_N)
+        picks["hi52w"] = (_top(cc, np.where(valid, dist_hi250, np.nan), TOP_N), None)
 
         ma_ok = (px_now > ma60) & (ma60 > ma200)
-        picks["dualma"] = _top(cc, np.where(valid & ma_ok, mom12_1, np.nan), TOP_N)
+        picks["dualma"] = (_top(cc, np.where(valid & ma_ok, mom12_1, np.nan), TOP_N), None)
+
+        # --- 低波三个变体: 纯等权 / 风险平价 / 低波池内做反转 ---
+        lv_codes = _top(cc, lv, TOP_N)
+        picks["lowvol"] = (lv_codes, None)
+        # 风险平价: 权重 ∝ 1/ivol(低波票给更高权重), 仍在低波池内
+        w_rp = {}
+        for c in lv_codes:
+            kk = amap_pre.get(c)
+            if kk is not None and np.isfinite(ivol[kk]) and ivol[kk] > 0:
+                w_rp[c] = 1.0 / ivol[kk]
+        picks["lowvol_rp"] = (lv_codes, [w_rp.get(c, 0.0) for c in lv_codes])
+        # 低波池内做反转: 先取 ivol 最低 40%, 再按 -mom20 排序取 20
+        n_wide = max(TOP_N * 4, int(len(day) * 0.4))
+        wide = _top(cc, lv, n_wide)
+        wide_set = set(wide)
+        mom20_arr = np.asarray(day["mom20"], dtype=float)
+        rev_in_lv = np.where(valid & np.array([str(c) in wide_set for c in cc]), -mom20_arr, np.nan)
+        picks["lowvol_rev"] = (_top(cc, rev_in_lv, TOP_N), None)
 
         amap = {str(c): k for k, c in enumerate(cc)}
         for nm in NAMES:
-            cs = picks[nm]
+            cs, ws = picks[nm]
             if not cs:
                 rets[nm].append(0.0)
                 hold[nm].append(0)
                 continue
-            ks = [amap[c] for c in cs if c in amap]
-            v = fwd[ks]
-            v = v[np.isfinite(v)]
-            if len(v) == 0:
+            pairs_k = [(amap[c], ws[i] if ws is not None else 1.0)
+                       for i, c in enumerate(cs) if c in amap]
+            if not pairs_k:
+                rets[nm].append(0.0)
+                hold[nm].append(0)
+                continue
+            kk = [x[0] for x in pairs_k]
+            ww = np.asarray([x[1] for x in pairs_k], dtype=float)
+            v = fwd[kk]
+            ok = np.isfinite(v) & np.isfinite(ww) & (ww > 0)
+            if ok.sum() == 0:
                 rets[nm].append(0.0)
                 hold[nm].append(0)
                 continue
@@ -231,8 +258,9 @@ def main():
                 turn = 1.0 - len(cur & prev[nm]) / max(1, len(cur))
             prev[nm] = cur
             turn_acc[nm] += turn
-            rets[nm].append(float(v.mean()) / 100 - turn * COST)
-            hold[nm].append(len(v))
+            r = float(np.sum(v[ok] * ww[ok]) / np.sum(ww[ok]))
+            rets[nm].append(r / 100 - turn * COST)
+            hold[nm].append(int(ok.sum()))
         if (si + 1) % 24 == 0:
             print("      %d/%d 期, %.0fs" % (si + 1, len(triples), time.time() - t1), flush=True)
 
