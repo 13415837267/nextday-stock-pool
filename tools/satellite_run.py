@@ -61,6 +61,32 @@ def _px(day, code):
             float(r["low_limit"]))
 
 
+def _f(v, nd=2, default=None):
+    try:
+        x = float(v)
+    except Exception:
+        return default
+    return None if x != x else round(x, nd)       # NaN -> default
+
+
+def _pool_snapshot(day, cfg, names: dict, topn: int = 8) -> dict:
+    """当日候选池快照(第一百四十轮) —— 与主策略 pool 表同列, 供页面共用一套渲染。
+
+    池深 n 是"通过全部筛选并完成 ivol 排序"的只数(盘后即知, 无未来函数);
+    页面只展示前 8 名, 但 n 是全部。picked = 今日实际发出信号的票(空仓/闸门关时为空)。
+    """
+    rk = rank_pool(day, cfg)
+    rows = []
+    for i, (_, r) in enumerate(rk.head(topn).iterrows(), 1):
+        code = str(r["ts_code"])
+        rows.append({"rank": i, "code": code, "name": names.get(code, ""),
+                     "ivol20": _f(r["ivol20"], 3), "pct": _f(r["pct"]),
+                     "close": _f(r["close"]), "amount_yi": _f(float(r["amount"]) / 1e8),
+                     "vol_ratio": _f(r["vol_ratio"]), "turnover_rate": _f(r["turnover_rate"]),
+                     "mom20": _f(r["mom20"], 1)})
+    return {"n": int(len(rk)), "rows": rows}
+
+
 def _migrate(tape: dict, day, today: str) -> float:
     """v2(40 只低波批次) -> v3(单吊): 按今日收盘价全部清仓, 净值结转。"""
     batches = tape.get("batches") or []
@@ -224,6 +250,17 @@ def main():
             note = note or "候选池不足/无合格票, 明日空仓"
     else:
         tape["signal"] = None
+
+    # ---------- 3.5) 候选池快照(页面用; 与是否成交无关) ----------
+    snap = _pool_snapshot(day, cfg, names)
+    snap["date"] = today
+    snap["n"] = int(snap["n"]) if snap else 0
+    held_code = (tape.get("position") or {}).get("code")
+    sig_code = (tape.get("signal") or {}).get("code")
+    snap["picked"] = sig_code or held_code or ""
+    snap["gate_ok"] = bool(gate_ok)
+    snap["pick_note"] = note
+    tape["pool"] = snap
 
     # ---------- 4) 净值 ----------
     pos = tape.get("position")
