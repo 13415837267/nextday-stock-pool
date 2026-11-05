@@ -1,0 +1,227 @@
+{
+ "days": 1500,
+ "cost_pct": 0.3,
+ "h_fine": [
+  25,
+  30,
+  35,
+  40,
+  45,
+  50,
+  60,
+  80,
+  100,
+  120
+ ],
+ "filters": {
+  "base": "无过滤",
+  "amt2": "成交额≥2亿",
+  "amt3": "成交额≥3亿",
+  "bars500": "上市≥500日",
+  "mom_gt_-10": "20日涨幅>-10%",
+  "mom_gt_0": "20日涨幅>0",
+  "above_ma20": "站上20日线",
+  "amp_lt5": "当日振幅<5%",
+  "amt2_mom": "≥2亿 且 20日>-10%"
+ },
+ "strategies": {
+  "base_H25": {
+   "ann": 5.07,
+   "mdd": -32.07,
+   "calmar": 0.16,
+   "sharpe": 0.34,
+   "days": 1409,
+   "nav": 1.3215,
+   "win": 52.7,
+   "turnover_yr": 11.04,
+   "H": 25
+  },
+  "base_H30": {
+   "ann": 6.39,
+   "mdd": -29.0,
+   "calmar": 0.22,
+   "sharpe": 0.4,
+   "days": 1409,
+   "nav": 1.4178,
+   "win": 52.4,
+   "turnover_yr": 9.87,
+   "H": 30
+  },
+  "base_H35": {
+   "ann": 9.63,
+   "mdd": -27.5,
+   "calmar": 0.35,
+   "sharpe": 0.54,
+   "days": 1409,
+   "nav": 1.6791,
+   "win": 53.3,
+   "turnover_yr": 9.28,
+   "H": 35
+  },
+  "base_H40": {
+   "ann": 7.71,
+   "mdd": -27.38,
+   "calmar": 0.28,
+   "sharpe": 0.46,
+   "days": 1409,
+   "nav": 1.5201,
+   "win": 53.2,
+   "turnover_yr": 7.74,
+   "H": 40
+  },
+  "base_H45": {
+   "ann": 5.75,
+   "mdd": -28.61,
+   "calmar": 0.2,
+   "sharpe": 0.37,
+   "days": 1409,
+   "nav": 1.3702,
+   "win": 53.4,
+   "turnover_yr": 6.42,
+   "H": 45
+  },
+  "base_H50": {
+   "ann": 6.56,
+   "mdd": -27.52,
+   "calmar": 0.24,
+   "sharpe": 0.41,
+   "days": 1409,
+   "nav": 1.4303,
+   "win": 53.8,
+   "turnover_yr": 5.85,
+   "H": 50
+  },
+  "base_H60": {
+   "ann": 5.79,
+   "mdd": -27.75,
+   "calmar": 0.21,
+   "sharpe": 0.38,
+   "days": 1409,
+   "nav": 1.3731,
+   "win": 53.2,
+   "turnover_yr": 4.74,
+   "H": 60
+  },
+  "base_H80": {
+   "ann": 6.71,
+   "mdd": -27.3,
+   "calmar": 0.25,
+   "sharpe": 0.42,
+   "days": 1409,
+   "nav": 1.4422,
+   "win": 52.9,
+   "turnover_yr": 3.59,
+   "H": 80
+  },
+  "base_H100": {
+   "ann": 6.14,
+   "mdd": -26.02,
+   "calmar": 0.24,
+   "sharpe": 0.4,
+   "days": 1409,
+   "nav": 1.3993,
+   "win": 52.0,
+   "turnover_yr": 2.85,
+   "H": 100
+  },
+  "base_H120": {
+   "ann": 7.28,
+   "mdd": -27.46,
+   "calmar": 0.27,
+   "sharpe": 0.45,
+   "days": 1409,
+   "nav": 1.4858,
+   "win": 53.3,
+   "turnover_yr": 2.41,
+   "H": 120
+  },
+  "amt2": {
+   "ann": 2.48,
+   "mdd": -27.39,
+   "calmar": 0.09,
+   "sharpe": 0.22,
+   "days": 1409,
+   "nav": 1.1479,
+   "win": 50.4,
+   "turnover_yr": 6.8,
+   "H": 40
+  },
+  "amt3": {
+   "ann": 4.73,
+   "mdd": -29.55,
+   "calmar": 0.16,
+   "sharpe": 0.33,
+   "days": 1409,
+   "nav": 1.2976,
+   "win": 50.6,
+   "turnover_yr": 7.02,
+   "H": 40
+  },
+  "bars500": {
+   "ann": 6.21,
+   "mdd": -26.41,
+   "calmar": 0.24,
+   "sharpe": 0.4,
+   "days": 1409,
+   "nav": 1.4046,
+   "win": 44.0,
+   "turnover_yr": 6.09,
+   "H": 40
+  },
+  "mom_gt_-10": {
+   "ann": 6.48,
+   "mdd": -26.06,
+   "calmar": 0.25,
+   "sharpe": 0.41,
+   "days": 1409,
+   "nav": 1.4248,
+   "win": 52.3,
+   "turnover_yr": 7.49,
+   "H": 40
+  },
+  "mom_gt_0": {
+   "ann": 8.07,
+   "mdd": -24.98,
+   "calmar": 0.32,
+   "sharpe": 0.5,
+   "days": 1409,
+   "nav": 1.5484,
+   "win": 52.7,
+   "turnover_yr": 8.07,
+   "H": 40
+  },
+  "above_ma20": {
+   "ann": 9.51,
+   "mdd": -23.82,
+   "calmar": 0.4,
+   "sharpe": 0.56,
+   "days": 1409,
+   "nav": 1.6685,
+   "win": 53.7,
+   "turnover_yr": 8.56,
+   "H": 40
+  },
+  "amp_lt5": {
+   "ann": 6.83,
+   "mdd": -27.92,
+   "calmar": 0.24,
+   "sharpe": 0.42,
+   "days": 1409,
+   "nav": 1.4511,
+   "win": 52.2,
+   "turnover_yr": 7.48,
+   "H": 40
+  },
+  "amt2_mom": {
+   "ann": 3.14,
+   "mdd": -28.4,
+   "calmar": 0.11,
+   "sharpe": 0.26,
+   "days": 1409,
+   "nav": 1.1902,
+   "win": 51.7,
+   "turnover_yr": 6.84,
+   "H": 40
+  }
+ }
+}
