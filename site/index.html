@@ -121,7 +121,12 @@
   <div style="margin-top:12px" id="paper-table"></div>
   <div class="panel note" style="margin-top:12px" id="paper-note"></div>
 
-  <h2 id="replay">六、历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
+  <h2 id="sat">六、独立副策略 <span class="sub" id="sat-sub">低波+缓冲带 · 月度调仓 · 等权 20 只 · 与主策略零耦合</span></h2>
+  <div class="cards" id="sat-cards"><div class="card"><div class="k">独立副策略</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+  <div style="margin-top:12px" id="sat-table"></div>
+  <div class="panel note" style="margin-top:12px" id="sat-note"></div>
+
+  <h2 id="replay">七、历史回放 <span class="sub" id="rp-sub">加载中...</span></h2>
   <div class="cards" id="rp-cards"><div class="card"><div class="k">历史回放</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
   <div class="cards" id="rp-months" style="margin-top:12px"></div>
   <div class="panel" style="margin-top:12px" id="rp-chart"></div>
@@ -129,10 +134,10 @@
   <div style="margin-top:12px" id="rp-daily"></div>
   <div class="panel note" style="margin-top:12px" id="rp-note"></div>
 
-  <h2>七、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
+  <h2>八、策略体检 <span class="sub">失效探针 · era判定 · 观察级苗头（第43~46轮事前注册诊断）</span></h2>
   <div id="health"><div class="loading">加载中...</div></div>
 
-  <h2>八、策略规则与披露</h2>
+  <h2>九、策略规则与披露</h2>
   <div class="panel">
     <b>执行时点</b>
     <ul class="rules">
@@ -597,6 +602,68 @@ async function loadPaper() {
   note.innerHTML = n;
 }
 
+async function loadSatellite() {
+  const box = document.getElementById("sat-cards");
+  const tbl = document.getElementById("sat-table");
+  const note = document.getElementById("sat-note");
+  let d;
+  try { d = await jget("./data/satellite.json"); }
+  catch (e) {
+    box.innerHTML = `<div class="card"><div class="k">独立副策略</div>
+      <div class="v" style="font-size:13px;color:var(--muted)">尚未生成（首次运行后出现）</div></div>`;
+    tbl.innerHTML = ""; note.innerHTML = ""; return;
+  }
+  const recs = d.records || [];
+  const cur = recs.length ? recs[recs.length - 1] : null;
+  const closed = recs.filter(r => r.status === "closed");
+  const nav = Number(d.nav ?? 1);
+  const wins = closed.filter(r => (r.exit_ret_pct ?? 0) > 0).length;
+  const c = (k, v, sub, cls) => `<div class="card"><div class="k">${k}</div>
+    <div class="v ${cls || ""}">${v}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45">${sub || ""}</div></div>`;
+  box.innerHTML = [
+    c("副策略净值", nav.toFixed(4), `虚拟本金 10 万 → ${(Number(d.capital || 0) / 1e4).toFixed(2)} 万`,
+      nav > 1 ? "up" : (nav < 1 ? "down" : "")),
+    c("已结算", closed.length, closed.length ? `胜 ${wins} / ${closed.length}` : "月初换仓后结算"),
+    c("全史回测", "+9.6%/年", "2012-11~2026-11 · 161 期 · 回撤 -29.4% · 卡玛 0.32", "up"),
+    c("与主策略相关", "+0.082", "月收益相关系数（<0.3 即视为独立）"),
+  ].join("");
+
+  let html = "";
+  if (cur) {
+    const rows = (cur.holdings || []).map(h => `<tr>
+      <td>${esc(h.code)}</td><td>${esc(h.name || "")}</td>
+      <td>${h.ivol20 != null ? Number(h.ivol20).toFixed(2) : "-"}</td>
+      <td>${h.weight != null ? (h.weight * 100).toFixed(1) + "%" : "-"}</td>
+      <td>${h.entry_px || "-"}</td><td>${h.px || "-"}</td>
+      <td class="${pctCls(h.ret_pct)}">${h.ret_pct != null ? pctStr(h.ret_pct) : "-"}</td></tr>`).join("");
+    html += `<div style="font-size:13px;color:var(--muted);margin:0 0 8px">
+      本月持仓 · ${cur.month}（信号日 ${fmtDate(cur.signal_date)} · 换手 ${((cur.turnover || 0) * 100).toFixed(0)}%）</div>
+      <table><thead><tr><th>代码</th><th>名称</th><th>20日波动</th><th>权重</th>
+      <th>建仓价</th><th>现价</th><th>浮动</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  if (closed.length) {
+    const tr = closed.slice().reverse().slice(0, 8).map(r => `<tr>
+      <td>${r.month}</td><td>${r.exit_date ? fmtDate(r.exit_date) : "-"}</td>
+      <td>${(r.holdings || []).length}</td>
+      <td>${((r.turnover || 0) * 100).toFixed(0)}%</td>
+      <td class="${pctCls(r.exit_ret_pct)}">${r.exit_ret_pct != null ? pctStr(r.exit_ret_pct) : "-"}</td>
+      <td>${(r.exit_nav != null ? Number(r.exit_nav) : Number(r.nav || 0)).toFixed(4)}</td></tr>`).join("");
+    html += `<div style="font-size:13px;color:var(--muted);margin:16px 0 8px">已结算期数</div>
+      <table><thead><tr><th>月份</th><th>换仓日</th><th>持仓</th><th>换手</th><th>期收益</th><th>期末净值</th>
+      </tr></thead><tbody>${tr}</tbody></table>`;
+  }
+  tbl.innerHTML = html;
+
+  note.innerHTML = `<b>这本书和主策略完全独立：</b>低特质波动（20 日 ivol 最低 20 只，等权、月度调仓、带 3 倍缓冲带）
+    与 dip 的"日内恐慌错杀"不是同一个 alpha —— 持有期 1 个月 vs 2 天、分散 20 只 vs 单票满仓、
+    月更 vs 日更，月收益相关仅 <b>+0.082</b>。<br>
+    <b>它不并入主策略的原因：</b>年化 9.6% 与主策略（1500 日 106%）不在一个量级，任何非零权重都会拉低组合卡玛；
+    它的价值不是提高收益，是<b>主策略失效时还有一条腿在跑</b>。<br>
+    <b>口径：</b>信号日收盘价建仓、换仓日收盘价结算，成本 0.30%/换手；实盘按次日开盘执行，
+    与收盘口径偏差约 ±0.3%。账本与 <code>paper.json</code> 并列且互不读写（只增不改、同月幂等）。`;
+}
+
 async function loadReplay() {
   const cEl = document.getElementById("rp-cards"), moEl = document.getElementById("rp-months");
   const chEl = document.getElementById("rp-chart"), trEl = document.getElementById("rp-trades");
@@ -817,6 +884,7 @@ loadLatest().catch(e => document.getElementById("pool").innerHTML = `<div class=
 loadExecHistory();
 loadBacktest();
 loadPaper();
+loadSatellite();
 loadHealth();
 loadReplay();
 </script>
