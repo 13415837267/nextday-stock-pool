@@ -206,8 +206,9 @@ def main():
             if _buy({"code": str(row["ts_code"]), "ivol20": round(float(row["_ivol"]), 2)},
                     P["hold_days"], hd=k + 1):
                 k += 1
-        print("  初始化建仓 %d 只 (每只 %.1f%%, 到期日 1~%d 日错开)"
-              % (n_buy, 100.0 / P["hold_days"], P["hold_days"]), flush=True)
+        note = "首次上线，一次性建满 %d 只（每只 %.1f%%，到期日 1~%d 日错开）" % (
+            n_buy, 100.0 / P["hold_days"], P["hold_days"])
+        print("  " + note, flush=True)
     elif action == "buy" and not today_done:
         _buy(cand, P["hold_days"])
         print("  买入 %s %s  ivol %.2f" % (cand["code"], names.get(cand["code"], ""), cand["ivol20"]), flush=True)
