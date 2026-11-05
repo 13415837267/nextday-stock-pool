@@ -158,6 +158,10 @@ def main():
 
     ics = {name: {k: [] for k in KS} for name, _, _ in FACTORS}
     navs = {k: [] for k in KS}      # 全池等权前瞻收益(诊断基准)
+    # 因子间截面相关性: 判断"低波/低换手/低振幅/反转"是同一个因子还是四条独立的路
+    nf = len(FACTORS)
+    corr_sum = np.zeros((nf, nf))
+    corr_n = 0
     done = 0
     t2 = time.time()
     for j in spots:
@@ -196,6 +200,18 @@ def main():
                 ic = _spearman(fv, rets[k])
                 if ic is not None:
                     ics[name][k].append(ic)
+
+        # 因子间相关(截面平均): 用 rank 后算 Pearson = Spearman
+        try:
+            FM = np.column_stack([np.asarray(fn(day), dtype=float) * dr
+                                  for _, fn, dr in FACTORS])
+            okr = np.isfinite(FM).all(axis=1)
+            if okr.sum() >= MIN_POOL:
+                RM = np.column_stack([_rank(FM[okr, i]) for i in range(nf)])
+                corr_sum += np.corrcoef(RM, rowvar=False)
+                corr_n += 1
+        except Exception:  # noqa: BLE001
+            pass
         done += 1
         if done % 50 == 0:
             print("      %d/%d 个截面, %.0fs" % (done, len(spots), time.time() - t2), flush=True)
@@ -235,6 +251,28 @@ def main():
     print("\n=== 短(k=1~3) vs 长(k=20~120) ===", flush=True)
     for name, v in out["verdict"].items():
         print("  %-11s 短 %+.4f -> 长 %+.4f   %s" % (name, v["short_ic"], v["long_ic"], v["type"]), flush=True)
+
+    # 因子间平均相关矩阵
+    if corr_n:
+        C = corr_sum / corr_n
+        names = [n for n, _, _ in FACTORS]
+        out["corr"] = {"n_spot": corr_n,
+                       "matrix": {names[i]: {names[j]: round(float(C[i, j]), 3) for j in range(nf)}
+                                  for i in range(nf)}}
+        print("\n=== 因子间截面秩相关(均值, n=%d 截面) ===" % corr_n, flush=True)
+        print("%-11s %s" % ("", " ".join("%6s" % n[:6] for n in names)), flush=True)
+        for i, n in enumerate(names):
+            print("%-11s %s" % (n, " ".join("%6.2f" % C[i, j] for j in range(nf))), flush=True)
+        # 同向正 IC 因子之间的平均相关(剔除对角)
+        pos = [i for i, n in enumerate(names)
+               if out["verdict"].get(n, {}).get("short_ic", 0) > 0
+               and out["verdict"].get(n, {}).get("long_ic", 0) > 0]
+        if len(pos) > 1:
+            vals = [C[i, j] for i in pos for j in pos if i < j]
+            out["corr"]["pos_group"] = [names[i] for i in pos]
+            out["corr"]["pos_avg"] = round(float(np.mean(vals)), 3)
+            print("  同向正 IC 因子的组内平均相关: %.2f  (%s)"
+                  % (np.mean(vals), ", ".join(names[i] for i in pos)), flush=True)
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
