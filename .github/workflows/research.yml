@@ -90,5 +90,16 @@ jobs:
             echo "产物无变化, 跳过提交"
           else
             git commit -m "研究: $(TZ=Asia/Shanghai date +%F) ${{ inputs.script }} 诊断产物 [skip ci]"
-            git push || (git pull --rebase --autostash && git push)
+            # 与 daily 并发时 output/*.json 会内容冲突(整份重生成的产物, 无合并语义):
+            # 冲突一律取本次运行的版本, 否则研究产物提交失败会连带中断后续流程。
+            if ! git push; then
+              git fetch origin main
+              git merge --no-edit origin/main || true
+              if git ls-files -u | grep -q .; then
+                git checkout --ours -- output
+                git add -A output
+                git commit --no-edit || true
+              fi
+              git push
+            fi
           fi
