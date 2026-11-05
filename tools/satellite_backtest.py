@@ -39,6 +39,7 @@ from src.satellite import (STRATEGY_CN, daily_params, entry_gate,  # noqa: E402
                            pick_one, should_exit)
 
 HALF = 0.0015          # 单边成本, 与 tools/satellite_run.py 同一常数
+REPLAY_DAYS = 250      # 回放区间: 最近约 12 个月交易日(与主策略 replay 的区间长度一致)
 
 
 def _row(day, code):
@@ -52,6 +53,10 @@ def _fmt(d: str) -> str:
     return f"{d[:4]}-{d[4:6]}-{d[6:]}"
 
 
+def _d8(s) -> str:
+    return str(s).replace("-", "")[:8]
+
+
 def _monthly(nav: pd.Series) -> list[dict]:
     """与 src.backtest._monthly 同口径: 每月收益 = 月末净值 / 上月末净值 - 1。"""
     m = nav.copy()
@@ -63,6 +68,74 @@ def _monthly(nav: pd.Series) -> list[dict]:
         out.append({"month": idx, "ret_pct": round((row["last"] / base - 1) * 100, 2)})
         prev = row["last"]
     return out
+
+
+def _monthly_from(base_nav: float, curve: list[dict]) -> list[dict]:
+    """区间月度收益(与 tools/replay.py 同一口径): 首月基准取 base_nav, 之后取上月末净值。"""
+    out, prev, i, n = [], float(base_nav), 0, len(curve)
+    while i < n:
+        ym = _d8(curve[i]["d"])[:6]
+        j = i
+        while j + 1 < n and _d8(curve[j + 1]["d"])[:6] == ym:
+            j += 1
+        last = float(curve[j]["nav"])
+        out.append({"month": ym, "ret_pct": round((last / prev - 1) * 100, 2)})
+        prev, i = last, j + 1
+    return out
+
+
+def _build_replay(dates: list, nav: pd.Series, trades: list[dict],
+                  daily: list[dict], init: float, P: dict) -> dict:
+    """把 1500 日回测切出「近 12 个月逐日回放」, 结构对齐 output/replay.json。
+
+    回放与回测同一引擎、同一次模拟 —— 只切片不重跑, 所以两者永远不会打架。
+    """
+    span = dates[-REPLAY_DAYS:] if len(dates) > REPLAY_DAYS else dates
+    start = span[0]
+    pre = [x for x in dates if x < start]
+    base_date = pre[-1] if pre else start
+    base_nav = float(nav.loc[base_date]) if pre else float(init)
+    curve = [{"d": _fmt(x), "nav": round(float(nav.loc[x]), 0)} for x in span]
+    end_nav = float(curve[-1]["nav"])
+
+    navs = [float(nav.loc[x]) for x in span]
+    peak, mdd = navs[0], 0.0
+    for v in navs:
+        peak = max(peak, v)
+        mdd = min(mdd, v / peak - 1)
+
+    # 区间内平仓的交易(卖出日落在区间), 这样逐笔之和能解释区间收益
+    rtr = [t for t in trades if _d8(t["exit_date"]) >= start]
+    rets = [float(t["ret_pct"]) for t in rtr]
+    n, win = len(rets), sum(1 for r in rets if r > 0)
+    summary = {
+        "n_trades": n, "n_win": win,
+        "win_rate": round(win / n * 100, 1) if n else None,
+        "avg_ret_pct": round(sum(rets) / n, 2) if n else None,
+        "sum_ret_pct": round(sum(rets), 2) if n else None,
+        "best": round(max(rets), 2) if n else None,
+        "worst": round(min(rets), 2) if n else None,
+        "range_ret_pct": round((end_nav / base_nav - 1) * 100, 2),
+        "range_mdd_pct": round(mdd * 100, 2),
+        "base_date": _fmt(base_date), "base_nav": round(base_nav, 0),
+        "end_nav": round(end_nav, 0),
+    }
+    r_trades = []
+    for t in rtr:                      # 日期统一成 8 位, 与主策略 replay 同格式
+        r_trades.append({**t,
+                         "signal_date": _d8(t["signal_date"]),
+                         "entry_date": _d8(t["entry_date"]),
+                         "exit_date": _d8(t["exit_date"])})
+    return {
+        "meta": {"start": start, "end": span[-1], "days": len(span),
+                 "base_date": _fmt(base_date),
+                 "strategy": "低波单吊", "window": f"近 {len(span)} 个交易日"},
+        "summary": summary,
+        "monthly": _monthly_from(base_nav, curve),
+        "curve": curve,
+        "trades": r_trades,
+        "daily": [x for x in daily if x["date"] >= start],
+    }
 
 
 def run(ctx: dict, cfg: dict) -> dict:
@@ -80,35 +153,55 @@ def run(ctx: dict, cfg: dict) -> dict:
 
     cash, units, pos = init, 0.0, None
     sig = None
-    navs, trades = [], []
+    navs, trades, daily = [], [], []
     blocked = skipped = 0
     last_px = {}
+    buy_rec = None          # 当日买入对应的 daily 记录, 卖出时回填该笔收益
 
     for j, d in enumerate(dates):
         day = by_date.get(d)
         if day is None:
             navs.append((d, cash + units * last_px.get(pos["code"], 0) if pos else cash))
+            daily.append({"date": d, "trade_ok": None, "alloc": None, "pool_n": None,
+                          "holding": pos is not None, "fills": [], "skipped": [],
+                          "note": "面板缺该日行情"})
             continue
+
+        # 当日收盘的闸门(只用当日可知信息): 决定明日能否开新仓
+        gate_today = True
+        if P["gate"] and reg is not None and d in reg.index:
+            gate_today = bool(reg.loc[d, "trade_ok"])
+        rec = {"date": d, "trade_ok": gate_today,
+               "alloc": 100.0 if gate_today else 0.0,
+               "pool_n": None, "holding": False,
+               "fills": [], "skipped": [], "note": ""}
+        ev = []
 
         # ---------- 1) T+1 开盘: 执行昨日信号 ----------
         if sig and pos is None:
             r = _row(day, sig["code"])
+            nm = names.get(sig["code"], sig.get("name", ""))
             if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
                 skipped += 1
+                rec["skipped"].append({"code": sig["code"], "name": nm, "note": "停牌或无行情，买不到"})
             elif float(r["open"]) >= float(r["high_limit"]) - 1e-9:
                 skipped += 1          # 一字涨停买不到
+                rec["skipped"].append({"code": sig["code"], "name": nm, "note": "一字涨停，买不到"})
             else:
                 gap = (float(r["open"]) / float(r["pre_close"]) - 1) * 100 if float(r["pre_close"]) else 0.0
-                ok, _why = entry_gate(gap, cfg)
+                ok, why = entry_gate(gap, cfg)
                 if not ok:
                     skipped += 1
+                    rec["skipped"].append({"code": sig["code"], "name": nm, "note": why})
                 else:
                     px = float(r["open_adj"]) * (1 + HALF)
                     units, cash = cash / px, 0.0
-                    pos = {"code": sig["code"], "name": names.get(sig["code"], sig.get("name", "")),
+                    pos = {"code": sig["code"], "name": nm,
                            "signal_date": sig["date"], "entry_date": d, "entry_j": j,
                            "entry_px": px, "entry_px_raw": float(r["open"]),
                            "gap_pct": round(gap, 2), "shares": units}
+                    rec["fills"].append({"code": sig["code"], "name": nm, "ret_pct": None})
+                    buy_rec = rec
             sig = None
 
         # ---------- 2) 收盘: 卖出判定 ----------
@@ -129,21 +222,28 @@ def run(ctx: dict, cfg: dict) -> dict:
                                    "hold_days": j - pos["entry_j"],
                                    "ret_pct": round(ret, 2),
                                    "note": why})
+                    ev.append(f"卖出 {pos['name']}（{why}）")
+                    if buy_rec is not None:
+                        buy_rec["fills"][0]["ret_pct"] = round(ret, 2)
+                        buy_rec = None
                     pos, units = None, 0.0
 
         # ---------- 3) 收盘: 出明日信号(先过大盘闸门) ----------
         if pos is None:
-            gate_ok = True
-            if P["gate"] and reg is not None and d in reg.index:
-                gate_ok = bool(reg.loc[d, "trade_ok"])
-            if not gate_ok:
+            if not gate_today:
                 blocked += 1
+                ev.append("大盘闸门关闭（指数在 MA20 下方），不开新仓")
             else:
                 cand = pick_one(day, cfg)
                 if cand:
                     cand["date"] = d
                     cand["name"] = names.get(cand["code"], "")
                     sig = cand
+                    rec["pool_n"] = cand.get("pool_n")
+                else:
+                    ev.append("候选池不足或空池，不出票")
+        else:
+            rec["alloc"] = 100.0          # 满仓持有, 与闸门无关
 
         # ---------- 4) 收盘估值 ----------
         if pos is not None:
@@ -155,9 +255,13 @@ def run(ctx: dict, cfg: dict) -> dict:
                 pos["held_days"] = j - pos["entry_j"]
                 pos["unrealized_pct"] = round((mv / (units * pos["entry_px"]) - 1) * 100, 2) \
                     if units else None
+            rec["holding"] = True
+            ev.append(f"持仓 {pos['name']}（{pos['held_days']}/{P['hold_days']} 日）")
         else:
             mv = 0.0
+        rec["note"] = "；".join(ev)
         navs.append((d, cash + mv))
+        daily.append(rec)
 
     nav = pd.Series({d: v for d, v in navs}, dtype=float)
     ret = nav.pct_change().dropna()
@@ -215,6 +319,8 @@ def run(ctx: dict, cfg: dict) -> dict:
         if len(bench_norm) else [],
         "monthly": _monthly(nav),
         "trades": trades,
+        # 回放: 从同一次模拟里切出近 12 个月, 不重跑 -- 回测与回放不可能对不上
+        "replay": _build_replay(dates, nav, trades, daily, init, P),
         **({"open_positions": open_positions} if open_positions else {}),
     }
 
