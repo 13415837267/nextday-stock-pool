@@ -108,7 +108,10 @@ def pick_one(day, cfg: dict) -> dict | None:
             "pct": round(float(r["pct"]), 2),
             "mom20": round(float(r["mom20"]), 1),
             "close": round(float(r["close"]), 2),
-            "amount_yi": round(float(r["amount"]) / 1e8, 2)}
+            "amount_yi": round(float(r["amount"]) / 1e8, 2),
+            # 池深随候选一起带出: 回放要解释"这天为什么没买", 需要知道是全池排序的结果,
+            # 不是再算一遍 rank_pool(重复排序 1500 次)
+            "pool_n": int(len(rk))}
 
 
 def entry_gate(gap_pct: float, cfg: dict) -> tuple[bool, str]:
