@@ -126,6 +126,18 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python tools/satellite_backtest.py
 
+      # 第一百四十一轮: 主策略回放原先只在手工跑 tools/replay.py 时更新(区间还是写死的
+      # 20251101~20261031), 与每天刷新的副策略回放并排看就是"一条腿走、一条腿钉住"。
+      # 现在每日刷新, 区间取"最新交易日前推 12 个月"。
+      # continue-on-error: 回放只是展示层, 失败不该阻断 Pages 部署与告警。
+      - name: 刷新历史回放(近12个月逐日重放)
+        if: steps.guard.outputs.skip != 'true'
+        continue-on-error: true
+        env:
+          TZ: Asia/Shanghai
+          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
+        run: python tools/replay.py
+
       - name: 刷新策略体检数据(探针/季度剖面随每日回测日更, 第48轮)
         if: steps.guard.outputs.skip != 'true'
         env:
