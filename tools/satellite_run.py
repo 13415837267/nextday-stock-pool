@@ -69,32 +69,38 @@ def _f(v, nd=2, default=None):
     return None if x != x else round(x, nd)       # NaN -> default
 
 
-def _pool_snapshot(day, cfg, names: dict, topn: int = None) -> dict:
-    """当日候选池快照(第一百四十二轮) —— 与主策略 pool 表同列, 供页面共用一套渲染。
+def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
+    """当日候选池快照(第一百四十三轮) —— 与主策略 pool 表同列, 供页面共用一套渲染。
 
     口径(与页面 legend / 漏斗逐字对应, 不各算各的):
       base   = 基础票池: 通过上市/流动性/板块等硬性条件的只数(rank_pool 的池子)
-      show   = 展示深度(默认 20): base 按 ivol 升序取前 show 只
-      rows   = 这 show 只的全部明细, 页面<b>全部列出</b> —— 表有几行, 池深就是几
-      n      = 实际列出的只数(= len(rows)); 基础票池不足 min_pool 时为 0(不出票)
+      rows   = 候选池: base 按 ivol 升序的第 1 名, 恒 1 行 —— 单吊只有一个执行标的
+      n      = 候选池只数(= len(rows), 0 或 1); 基础票池不足 min_pool 时为 0(不出票)
+      alt    = 备选排序: 第 2 ~ altn 名(默认到第 20), 折叠展示, <b>不参与执行</b>
       funnel = 全市场 → 上市状态 → 成交额 → 板块 的逐道剩余只数
 
-    第 1 名仍是全体 ivol 最低的那只 —— 取前 20 不改变选股结果, 只决定"展示多少"。
+    池深 20 只而只买第 1 只, 那 19 只既不参与执行也不影响仓位, 它不是候选而是排序结果;
+    摆进"候选池"标题下会让人以为要在这 20 只里挑, 与单吊的实际行为相反。
     """
     P = daily_params(cfg)
-    topn = int(topn or P["pool_show"])
+    altn = int(altn or P["pool_alt"])
     fun = pool_funnel(day, cfg)
     base = int(fun[-1]["n"])
     rk = rank_pool(day, cfg)          # 不足 min_pool 时返回空表
-    rows = []
-    for i, (_, r) in enumerate(rk.head(topn).iterrows(), 1):
+
+    def _row(i, r):
         code = str(r["ts_code"])
-        rows.append({"rank": i, "code": code, "name": names.get(code, ""),
-                     "ivol20": _f(r["ivol20"], 3), "pct": _f(r["pct"]),
-                     "close": _f(r["close"]), "amount_yi": _f(float(r["amount"]) / 1e8),
-                     "vol_ratio": _f(r["vol_ratio"]), "turnover_rate": _f(r["turnover_rate"]),
-                     "mom20": _f(r["mom20"], 1)})
-    return {"n": len(rows), "base": base, "show": topn, "funnel": fun, "rows": rows}
+        return {"rank": i, "code": code, "name": names.get(code, ""),
+                "ivol20": _f(r["ivol20"], 3), "pct": _f(r["pct"]),
+                "close": _f(r["close"]), "amount_yi": _f(float(r["amount"]) / 1e8),
+                "vol_ratio": _f(r["vol_ratio"]), "turnover_rate": _f(r["turnover_rate"]),
+                "mom20": _f(r["mom20"], 1)}
+
+    rows, alt = [], []
+    for i, (_, r) in enumerate(rk.head(max(altn, 1)).iterrows(), 1):
+        (rows if i <= P["pool_show"] else alt).append(_row(i, r))
+    return {"n": len(rows), "base": base, "show": P["pool_show"],
+            "alt": alt, "funnel": fun, "rows": rows}
 
 
 def _migrate(tape: dict, day, today: str) -> float:
@@ -160,7 +166,10 @@ def main():
         # 第一百四十二轮改成 base/show/funnel + 20 行)。旧快照缺字段时重算一次 ——
         # 只补写展示字段, 状态机一律不动(重跑状态机会重复记账)。
         _snap = tape.get("pool") or {}
-        if _snap.get("date") != today or "funnel" not in _snap:
+        # 展示格式升级(第一百四十三轮): 老快照可能是 20 行候选池 / 缺 alt 字段。
+        # 只在格式对不上时重算展示层, 状态机一律不动 —— 重跑状态机会重复记账。
+        if (_snap.get("date") != today or "funnel" not in _snap
+                or "alt" not in _snap or _snap.get("show") != P["pool_show"]):
             same_day = _snap.get("date") == today
             snap = _pool_snapshot(day, cfg, names)
             snap["date"] = today
@@ -176,7 +185,8 @@ def main():
             snap["pick_note"] = _snap.get("pick_note", "") if same_day else ""
             tape["pool"] = snap
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
-            print("  补写候选池快照(候选池 %d 只 / 基础票池 %d), 状态机未动" % (snap["n"], snap["base"]), flush=True)
+            print("  升级候选池快照(候选池 %d 只 / 备选 %d 只 / 基础票池 %d 只), 状态机未动"
+                  % (snap["n"], len(snap.get("alt") or []), snap["base"]), flush=True)
         print("  今日(%s)已更新, 跳过" % today, flush=True)
         return
 
@@ -190,7 +200,10 @@ def main():
               "amount_min_yi": round(P["amt_min"] / 1e8, 2),
               "gap_min": P["gap_min"], "gap_max": P["gap_max"],
               "stop_pct": round(P["stop"] * 100, 2), "market_gate": P["gate"],
-              "cost_pct": round(P["cost"] * 100, 3)}
+              "cost_pct": round(P["cost"] * 100, 3),
+              # 池口径随参数一起发布: 页面 legend 的"候选池 N 只 / 样本下限 M 只"必须
+              # 跟配置一致, 不能在页面里写死 20 —— 改了 config 页面不跟着变就成了假披露。
+              "min_pool": P["min_pool"], "pool_show": P["pool_show"], "pool_alt": P["pool_alt"]}
     tape["params"] = params
 
     action, note, code_today = "none", "", ""

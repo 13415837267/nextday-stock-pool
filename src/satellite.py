@@ -16,17 +16,22 @@
   在其中取 20 日特质波动(ivol) 最低的一只 —— "上涨趋势里最稳的票"。
 · lowvol:       不要求趋势, 直接取全池 ivol 最低的一只(对照组)。
 
-候选池 ≠ 全市场(第一百四十二轮)
---------------------------------
-选股是"排序"不是"筛选": 硬性条件(主板/非ST/非停牌/上市满250日/成交额≥1亿)
-之后仍有 1800 只左右, 把 1800 叫"池深"既没有信息量、也和主策略的池深(几十只)
-对不上。所以把池子拆成两层:
+候选池 = 1 只(第一百四十三轮)
+------------------------------
+单吊只有一个执行标的, 所以"候选池"必须只有 1 只 —— 池深 20 只而只买第 1 只,
+那 19 只既不参与执行、也不影响仓位, 它不是候选, 是排序结果。硬把 20 行摆在
+"候选池"标题下, 读者会以为要在这 20 只里挑, 和单吊的实际行为相反。
 
-  base(基础票池) = 通过硬性条件的全部只数 —— 只用于画漏斗;
-  pool(候选池)   = base 按 ivol 升序取前 pool_show 只(默认 20),
-                   页面把 20 只全部列出, 表有几行、池深就是几。
+三层口径(页面 legend / 漏斗 / 账本逐字对应):
 
-第 1 名仍是全体 ivol 最低的那只 —— **取前 20 不改变选股结果**, 只改变"展示多少"。
+  base(基础票池) = 通过硬性条件(主板/非ST/非停牌/上市满250日/成交额≥1亿)的全部只数,
+                   约 1800 只 —— 只用来画漏斗, 以及检查样本量是否够格;
+  pool(候选池)   = base 按 ivol 升序的**第 1 名**, pool_show 固定 1, 页面只列这 1 行;
+  alt(备选排序)  = 第 2 ~ pool_alt 名(默认到第 20), 折叠展示、明确标注"不参与执行",
+                   只用于回答"第 2 名是谁、比第 1 名差多少", 不产生任何委托。
+
+min_pool(20) 是**样本下限**不是池深: 基础票池不足 20 只说明当日可选面太窄
+(极端行情/大面积停牌), 单吊不下注, 当日空仓 —— 与"候选池 1 只"不矛盾。
 页面 legend 与漏斗都由 pool_funnel() 给出, 与 rank_pool() 同一套掩码, 不各算各的。
 
 为什么"上涨趋势"只当过滤器、不当排序器
@@ -51,7 +56,8 @@
 from __future__ import annotations
 
 MIN_BARS = 250
-POOL_SHOW = 20            # 候选池展示深度: 基础票池按 ivol 升序取前 N 只, 页面全部列出
+POOL_SHOW = 1             # 候选池 = 1 只: 单吊只有一个执行标的, 池深就是 1
+POOL_ALT = 20             # 备选排序保留到第 20 名(折叠展示, 不参与执行)
 
 DEFAULT = {
     "mode": "lowvol",         # lowvol | trend_lowvol
@@ -63,8 +69,9 @@ DEFAULT = {
     "gap_max": 5.0,           # 上限: 高开过多不追
     "stop_pct": 0.0,          # 止损(%): 0=关闭; 收盘相对买入价跌破即卖
     "market_gate": False,     # 大盘闸门: 指数在 MA20 上方才开新仓
-    "min_pool": 20,           # 基础票池最少只数, 不足则不出票
-    "pool_show": POOL_SHOW,   # 候选池展示深度(页面把这几只全部列出)
+    "min_pool": 20,           # 基础票池样本下限, 不足则不出票(与池深无关)
+    "pool_show": POOL_SHOW,   # 候选池只数(固定 1, 页面只列这一行)
+    "pool_alt": POOL_ALT,     # 备选排序保留深度(仅折叠展示, 不参与执行)
 }
 
 STRATEGY_CN = {"trend_lowvol": "趋势低波单吊", "lowvol": "低波单吊"}
@@ -82,7 +89,8 @@ def daily_params(cfg: dict) -> dict:
             "stop": float(s["stop_pct"]) / 100.0,
             "gate": bool(s["market_gate"]),
             "min_pool": int(s["min_pool"]),
-            "pool_show": int(s["pool_show"] or POOL_SHOW)}
+            "pool_show": int(s["pool_show"] or POOL_SHOW),
+            "pool_alt": max(int(s["pool_alt"] or POOL_ALT), int(s["pool_show"] or POOL_SHOW))}
 
 
 def apply_cost(nav_before: float, turn: float, cost: float = 0.0030) -> float:
@@ -153,10 +161,10 @@ def pick_one(day, cfg: dict) -> dict | None:
             "mom20": round(float(r["mom20"]), 1),
             "close": round(float(r["close"]), 2),
             "amount_yi": round(float(r["amount"]) / 1e8, 2),
-            # 池深随候选一起带出: 回放要解释"这天为什么没买", 需要知道是全池排序的结果,
+            # 池深随候选一起带出: 回放要解释"这天为什么没买", 需要知道全池排序的结果,
             # 不是再算一遍 rank_pool(重复排序 1500 次)。
-            # pool_n = 候选池只数(受展示深度限制, 页面表有几行就是几);
-            # pool_base = 基础票池只数(硬性条件之后的全部, 只用于漏斗第二格)。
+            # pool_n = 候选池只数(单吊恒为 1, 受 pool_show 约束);
+            # pool_base = 基础票池只数(硬性条件之后的全部), 回放用它判断样本量是否够格。
             "pool_n": min(base, P["pool_show"]),
             "pool_base": base}
 

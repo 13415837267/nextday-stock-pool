@@ -260,8 +260,8 @@
   <div data-pane="more" class="panel">
     <b>执行时点（与主策略完全一致）</b>
     <ul class="rules">
-      <li>T日收盘后：基础票池（通过硬性条件的全部只数）按 20 日特质波动（ivol20）升序，取第 1 名作为次日计划；<b>候选池 = 升序前 20 只</b>，页面上表有几行、池深就是几</li>
-      <li><b>基础票池不足 20 只则当日不出票</b>（宁缺勿滥）。"取前 20"只是展示深度，第 1 名始终是全体 ivol 最低的那只 —— 不改变选股结果</li>
+      <li>T日收盘后：基础票池（通过硬性条件的全部只数）按 20 日特质波动（ivol20）升序，<b>只取第 1 名进候选池</b> —— 单吊只有一个执行标的，候选池恒为 <b>1 只</b>，页面表里就 1 行</li>
+      <li><b>基础票池不足 20 只则当日不出票</b>（宁缺勿滥）。这 20 只是<b>样本下限</b>、不是池深：可选面太窄说明市场极端（大面积停牌 / 流动性枯竭），单吊不下注</li>
       <li>T+1日开盘集合竞价：<b>按开盘价买入 100% 仓位</b>，一日最多 1 只；竞价缺口在 -3%~+5% 之外不成交（深低开破位不接、高开过多不追），一字涨停/停牌买不到</li>
       <li>持满 <b>40 个交易日</b>收盘卖出；收盘相对买入价跌破 <b>-12%</b> 止损，止损当日收盘成交</li>
       <li>卖出资金当日收盘后即可再出信号、次日照常买入；空仓期<b>不降标准</b>，与主策略同一条规矩</li>
@@ -270,7 +270,7 @@
     <ul class="rules">
       <li>范围：与主策略<b>同一份股票池</b>（沪深主板白名单、非ST、非停牌、上市满 250 个交易日）</li>
       <li>成交额 ≥ 1.0 亿；20 日特质波动 ivol20 &gt; 0</li>
-      <li>按 ivol20 升序取第 1 名 —— <b>不评分、不看动量、不追趋势</b>；候选池（前 20 只）在「策略」页全部列出，第 2 名以后只备查、不参与执行</li>
+      <li>按 ivol20 升序取第 1 名 —— <b>不评分、不看动量、不追趋势</b>。第 2~20 名在候选池下方<b>折叠为"备选排序"</b>，标注不参与执行：不进候选池、不影响仓位、不参与回测</li>
       <li>大盘闸门：等权指数在 MA20 上方（且宽度达标）才开新仓；持仓不受闸门影响，照常持满</li>
     </ul>
     <b>为什么"上涨趋势"不用在个股上（第一百三十九轮四组实测，均为年化/回撤）</b>
@@ -303,9 +303,10 @@
    一、布局：只剩 3 个页签（策略 / 台账·回放 / 体检·规则），主副策略用顶部按钮切换。
       原先"主策略""副策略"是两个页签、首页又单独堆两张计划卡 —— 同一个策略被拆在
       两处：看计划在首页、看池子和回测要换页签，手机上来回滚三屏。
-   二、候选池：副策略不再显示"全市场 1799 只"这种假池深。候选池 = 基础票池按 ivol
-      升序取前 20 只，页面把 20 只全部列出，池深 = 表内行数，漏斗写清是怎么筛出来的。
-      主策略同理：漏斗两格 = 全池达标 N 只 → 发布（评分第 1 名）1 只。
+   二、候选池：副策略不再显示"全市场 1799 只"这种假池深，也不再列 20 行。单吊只有
+      一个执行标的 —— 候选池恒 1 只(= 表内行数)，第 2~20 名降级为"备选排序"，默认
+      折叠并标注不参与执行。漏斗写清 1799 → 1 是怎么来的。主策略同理：全池达标 N
+      只 → 发布（评分第 1 名）1 只。
    三、多端：桌面与手机是同一份 DOM、同一套渲染器，手机沿用既有 .rtable 卡片规则，
       没有第二套页面、也没有"手机版隐藏某几列"。
 */
@@ -1029,11 +1030,14 @@ function planSat(d) {
   }
   rows.push(`<b>卖出：</b>持满 <b>${holdN}</b> 个交易日收盘卖${P.stop_pct ? `；收盘相对买入价跌破 <b>${P.stop_pct}%</b> 止损` : ""}`);
 
-  const ps = (p.rows || []).slice(0, 3);
-  ps.forEach((x, i) => rows.push(
-    `▸ <b>第${i + 1}名 ${esc(x.name)}</b>（${esc(x.code)}，ivol ${x.ivol20}）：${i === 0
-      ? (sig ? "明日计划，9:25 按开盘价买入" : "候选池第 1 名，闸门关闭不执行")
-      : "仅备查，单吊不执行"}`));
+  // 候选池只有 1 只, 备选只报只数 —— 计划卡讲"明天买什么", 不铺开排序表(那在下方折叠里)
+  const top = (p.rows || [])[0];
+  const nAlt = Array.isArray(p.alt) ? p.alt.length : Math.max((p.rows || []).length - 1, 0);
+  if (top) rows.push(
+    `▸ <b>候选池唯一标的 ${esc(top.name)}</b>（${esc(top.code)}，ivol ${top.ivol20}）：${sig
+      ? "明日计划，9:25 按开盘价买入"
+      : (pos ? "持仓中，不重复买入" : "第 1 名，闸门关闭不执行")}`);
+  if (nAlt) rows.push(`<b>备选 ${nAlt} 只：</b>第 2~${nAlt + 1} 名折叠备查，<b>不参与执行、不影响仓位</b>`);
 
   return planCard({
     kicker: `T+1（${rpDate(d.updated)} 的下一交易日）执行判定卡 · ${esc(P.mode_cn || "低波单吊")} · 9:25 竞价结束后照此执行`,
@@ -1047,7 +1051,7 @@ function planSat(d) {
   });
 }
 
-/* ---- 候选池: 池深 = 表内行数, 上面一条漏斗说明怎么筛出来的 ---- */
+/* ---- 候选池: 恒 1 只(单吊只有一个执行标的) = 表内行数; 第 2~20 名折叠为备选排序 ---- */
 function poolMain(d) {
   const td = d.t1_decision || {};
   const picks = d.picks || [];
@@ -1068,25 +1072,44 @@ function poolMain(d) {
 
 function poolSat(d) {
   const P = d.params || {}, p = d.pool || {};
-  const rows = p.rows || [];
-  const base = p.base ?? p.n ?? rows.length;
-  if (!rows.length) {
-    return `<div class="loading">今日无合格候选（基础票池 ${base} 只 / 需 ≥ 20 只）—— 明日空仓。</div>`;
-  }
+  const all = p.rows || [];
+  // 候选池 = 第 1 名, 恒 1 行; 第 2 名以后是"备选排序", 不是候选, 折叠且不参与执行。
+  // 老账本(第一百四十二轮)把 20 名都塞在 rows 里, 这里自动降级: 第 1 行留池里, 其余进备选。
+  const rows = all.slice(0, 1);
+  const alt = Array.isArray(p.alt) ? p.alt : all.slice(1);
+  const base = p.base ?? p.n ?? all.length;
+  const minPool = Number(P.min_pool || 20);
+
   const funnel = (p.funnel && p.funnel.length)
     ? p.funnel.slice()
     : [{ label: "基础票池（主板 · 非ST · 非停牌 · 成交额≥1亿）", n: base }];
-  funnel.push({ label: `候选池（ivol 最低 ${rows.length} 只，全部列在下表）`, n: rows.length, last: true });
-  return funnelBar(funnel) + poolTable(rows.map((x, i) => ({
-    no: x.rank ?? i + 1, tag: P.mode_cn || "低波单吊",
+  funnel.push({ label: rows.length
+    ? `候选池（ivol 最低 ${rows.length} 只）`
+    : `候选池（基础票池不足 ${minPool} 只）`, n: rows.length, last: true });
+
+  if (!rows.length) {
+    return funnelBar(funnel) +
+      `<div class="loading">今日无候选 —— 基础票池 ${base} 只${base < minPool ? `，低于样本下限 ${minPool} 只` : ""}，明日空仓。系统正常运行，非数据缺失。</div>`;
+  }
+
+  const one = rows[0];
+  const row = x => ({ no: x.rank ?? 1, tag: P.mode_cn || "低波单吊",
     code: x.code, name: x.name, close: x.close, pct: x.pct,
     volRatio: x.vol_ratio ?? "-", turnover: x.turnover_rate ?? "-",
-    amountYi: x.amount_yi, mom20: x.mom20, metric: x.ivol20,
-    reason: i === 0
-      ? `全池 ivol 最低${p.gate_ok ? " · 明日计划" : " · 闸门关闭，明日不买"}`
-      : `ivol 第 ${x.rank ?? i + 1} 名 · 仅备查，单吊不执行`,
-  })), "ivol20") +
-    `<div class="legend">候选池 <b>${rows.length}</b> 只（= 上表行数，全部列出）· 单吊只买第 1 名，第 2 名以后不参与执行 · 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+    amountYi: x.amount_yi, mom20: x.mom20, metric: x.ivol20 });
+
+  const altHtml = alt.length ? `<details class="altbox" style="margin-top:10px">
+    <summary>备选排序：第 2 ~ ${alt.length + 1} 名（${alt.length} 只，仅供核对，不参与执行）</summary>
+    <div class="muted" style="font-size:12px;margin:10px 0 2px;line-height:1.7">
+      单吊只买第 1 名，下面这些<b>不产生任何委托</b> —— 列出来只为回答"第 2 名是谁、差多少"，以及复核排序本身有没有问题。<br>
+      它们不进候选池、不影响仓位、不参与回测。</div>
+    ${poolTable(alt.map(x => ({ ...row(x), reason: `第 ${x.rank} 名 · ivol 比第 1 名高 ${(Number(x.ivol20) - Number(one.ivol20)).toFixed(3)}` })), "ivol20")}
+  </details>` : "";
+
+  return funnelBar(funnel) +
+    poolTable([{ ...row(one), reason: `基础票池 ${base} 只里 ivol 最低${p.gate_ok ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}` }], "ivol20") +
+    altHtml +
+    `<div class="legend">候选池 <b>${rows.length}</b> 只（= 上表行数）· 单吊只买这 1 只 · 备选 ${alt.length} 只折叠备查 · 基础票池 ${base} 只（样本下限 ${minPool} 只，低于则不出票）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
 }
 
 /* ---- 单吊执行记录 ---- */
@@ -1242,7 +1265,7 @@ async function renderStrategy() {
   setSub("plan-sub", isMain ? "深低开承接 · 每日仅执行评分第 1 名 1 笔，T+2 收盘清仓"
     : "低波单吊 · 每日最多 1 只 · 与主策略同架构、共用一份数据");
   setSub("pool-sub", isMain ? "仅沪深主板 · 有信号日只发 1 只；无信号日按备用漏斗补位（至多 3 只）"
-    : "基础票池按 20 日特质波动升序，取前 20 只构成候选池；下表全部列出，池深 = 行数");
+    : "基础票池按 20 日特质波动升序取第 1 名 —— 候选池恒 1 只（= 表内行数）；第 2~20 名折叠为备选");
   setSub("exec-sub", isMain ? "逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）"
     : "逐笔明细：买入哪只、什么价、卖出哪只、什么价（v3 自 2026-11-05 起）");
   setSub("bt-sub", "加载中...");
