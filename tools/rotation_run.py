@@ -69,13 +69,20 @@ def main():
     if not tape:
         tape = {"version": 1, "strategy": "lowvol_rotation", "engine": "basket",
                 "init_capital": 100000.0, "cash": 100000.0, "nav": 1.0,
-                "holdings": {}, "pending": {}, "last_rebalance": None, "next_rebalance": None,
+                "holdings": {}, "pending": {}, "basket": [], "last_rebalance": None,
+                "next_rebalance": None,
                 "rounds": [], "daily": [], "updated": None}
-    if tape.get("updated") == today:
+    # 幂等守卫必须覆盖"本版本写出的所有字段": 只看 updated 会让旧账本(无 funnel/无 params.n_hold)
+    # 永远补不上新字段 —— 旧库更新于今天就直接跳过, 页面漏斗便一直只剩最后一步。
+    if (tape.get("updated") == today and tape.get("funnel") and "basket" in tape
+            and "n_hold" in (tape.get("params") or {})):
         print("  今日(%s)已更新, 跳过" % today, flush=True)
         return
 
     holds = tape.get("holdings") or {}
+    # 上一张清单: pending 会在本次执行后被清空, 先把清单本体捞出来, 保证账本里
+    # 永远有一份"当前目标组合"可展示(pending 为空 ≠ 没有目标组合)。
+    last_basket = tape.get("basket") or (tape.get("pending") or {}).get("basket") or []
     cash = float(tape.get("cash") or 0.0)
     init = float(tape.get("init_capital") or 100000.0)
     rounds = tape.get("rounds") or []
@@ -86,6 +93,7 @@ def main():
     pend = tape.get("pending") or {}
     if pend.get("codes") is not None and pend.get("signal_date") and pend["signal_date"] < today:
         target = list(pend["codes"])
+        prev_codes = set(holds)      # 调仓前持仓; "留几只"必须用它算, 买入后再算恒等于 N
         px = {}
         for c in set(list(holds) + target):
             p = _px(day, c)
@@ -117,12 +125,12 @@ def main():
                 bought += budget
                 buy_list.append({"code": c, "name": names.get(c, ""), "px": round(px[c][3], 3)})
         turn = (sold + bought) / equity if equity else 0.0
+        keep_n = len([c for c in target if c in prev_codes])
         rounds.append({"date": today, "sold": sold_list, "bought": buy_list,
-                       "keep": len([c for c in target if c in holds]),
+                       "keep": keep_n,
                        "turn_pct": round(turn * 100, 1),
                        "hold_n": len(holds)})
-        note = "执行调仓: 卖%d 买%d 留%d" % (len(sold_list), len(buy_list),
-                                            len([c for c in target if c in holds]))
+        note = "执行调仓: 卖%d 买%d 留%d" % (len(sold_list), len(buy_list), keep_n)
         tape["pending"] = {}
 
     # ---------- 2) 收盘估值 ----------
@@ -145,6 +153,9 @@ def main():
         if basket:
             codes = [b["code"] for b in basket]
             tape["pending"] = {"signal_date": today, "codes": codes, "basket": basket}
+            # 顶层再存一份"最近一次目标组合": pending 执行完就被清空, 页面若无条件读 pending,
+            # 次日建仓后就会显示"今日无目标组合"——明明手上正拿着这 20 只。
+            tape["basket"] = basket
             tape["last_rebalance"] = today
             nxt = idx.get(today, 0) + P["hold_days"]
             # 只用于展示; 窗口外写 None, 判定一律走 last_rebalance(见上)
@@ -156,6 +167,7 @@ def main():
             note = (note + "；" if note else "") + "候选池不足 %d 只, 不出清单" % P["min_pool"]
 
     tape.update({"holdings": holds, "cash": round(cash, 2), "nav": round(nav, 4),
+                 "basket": tape.get("basket") or last_basket,
                  "updated": today,
                  "rounds": rounds[-60:],
                  "daily": (daily + [{"date": today, "holding_n": len(holds),

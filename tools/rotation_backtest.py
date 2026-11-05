@@ -42,6 +42,7 @@ def simulate(ctx, cfg, days=None):
     init = 100000.0
 
     cash, holds, last_px = init, {}, {}
+    entry = {}          # code -> (买入日, 复权买入价), 期末未平仓表要写"买入日/买入价/浮盈"
     pending = None
     navs, daily, rounds, open_rows = [], [], [], []
     round_start_nav = init
@@ -57,6 +58,7 @@ def simulate(ctx, cfg, days=None):
         # T+1 开盘执行调仓
         if pending and pending[1] == j:
             target = pending[0]
+            prev_codes = set(holds)      # 调仓前的持仓, 用来算"留"几只(买入后再算恒等于 N)
             px = {}
             for c in set(list(holds) + list(target)):
                 r = _row(day, c)
@@ -84,13 +86,14 @@ def simulate(ctx, cfg, days=None):
                     sh = budget / (px[c][0] * (1 + HALF))
                     cash -= budget
                     holds[c] = sh
+                    entry[c] = (d, px[c][0])
                     bought += budget
                     buy_list.append({"code": c, "name": names.get(c, ""), "px": round(px[c][1], 3)})
             turn = (sold + bought) / equity if equity else 0.0
             mv_now = sum(s * px.get(c, (last_px.get(c, 0),))[0] for c, s in holds.items())
             rnd_ret = (cash + mv_now) / round_start_nav - 1
             rounds.append({"date": d, "sold": sold_list, "bought": buy_list,
-                           "keep": len([c for c in target if c in holds]),
+                           "keep": len([c for c in target if c in prev_codes]),
                            "turn_pct": round(turn * 100, 1),
                            "ret_pct": round(rnd_ret * 100, 2),
                            "hold_n": len(holds)})
@@ -146,9 +149,15 @@ def simulate(ctx, cfg, days=None):
         for c, sh in holds.items():
             r = _row(day, c) if day is not None else None
             lp = float(r["close_adj"]) if r is not None else last_px.get(c, 0)
+            # 字段名对齐页面共用渲染器(btBlock): buy_date/buy_px/cost_pct/unrealized_pct,
+            # 否则三列全是 "-", 看着像数据缺失。weight_pct/last_px 保留给别的读者。
+            ed, epx = entry.get(c, (None, None))
             open_rows.append({"code": c, "name": names.get(c, ""), "shares": round(sh, 0),
                               "last_px": round(lp, 3),
-                              "weight_pct": round(sh * lp / nav.iloc[-1] * 100, 2)})
+                              "weight_pct": round(sh * lp / nav.iloc[-1] * 100, 2),
+                              "buy_date": ed, "buy_px": round(epx, 3) if epx else None,
+                              "cost_pct": round(sh * (epx or lp) / nav.iloc[-1] * 100, 2),
+                              "unrealized_pct": round((lp / epx - 1) * 100, 2) if epx else None})
 
     return {
         "meta": {"run_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -179,8 +188,10 @@ def simulate(ctx, cfg, days=None):
             # 回放页按"轮次"展示: 一次调仓一行(买N/卖N/留N/换手), 不是单票逐笔
             "trades": [{"signal_date": r["date"], "entry_date": r["date"], "exit_date": r["date"],
                         "code": "", "name": "%d买/%d卖" % (len(r["bought"]), len(r["sold"])),
+                        "buy_n": len(r["bought"]), "sell_n": len(r["sold"]),
+                        "keep_n": r["keep"], "turn_pct": r["turn_pct"],
                         "entry_px": None, "exit_px": None, "ret_pct": r["ret_pct"],
-                        "note": "留 %d · 换手 %.1f%%" % (r["keep"], r["turn_pct"])}
+                        "note": "换手 %.1f%% · 期末持仓 %d 只" % (r["turn_pct"], r["hold_n"])}
                        for r in rounds],
             "daily": daily[-260:],
         },
