@@ -432,7 +432,10 @@
   "gap_max": 5.0,
   "stop_pct": -12.0,
   "market_gate": true,
-  "cost_pct": 0.3
+  "cost_pct": 0.3,
+  "min_pool": 20,
+  "pool_show": 1,
+  "pool_alt": 20
  },
  "pool": {
   "n": 1,
