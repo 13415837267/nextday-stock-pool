@@ -562,11 +562,6 @@ async function loadHealth() {
 const rpDate = s => (s && String(s).length === 8)
   ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (s || "-");
 
-/* ---------- 共用: 历史回放渲染器 ----------
-   主策略读 replay.json（近 12 个月逐日重放）；副策略读 satellite_bt.json 的 replay 段
-   （从同一次 1500 日回测里切出的同一区间，不重跑）。卡片/月度/曲线/逐笔/逐日列完全相同，
-   只有数据来源与说明文字不同 —— 改一处两边同时生效。 */
-
 function replayCards(el, s, base) {
   const card = (k, v, cls, sub) =>
     `<div class="card"><div class="k">${k}</div><div class="v ${cls || ""}">${v}</div>` +
