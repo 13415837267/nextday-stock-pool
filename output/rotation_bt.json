@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run_time": "2026-11-05 23:53:12",
+  "run_time": "2026-11-06 00:09:00",
   "start": "20200826",
   "end": "20261105",
   "days": 1500,
@@ -12227,7 +12227,7 @@
      "px": 5.1
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 100.0,
    "ret_pct": -0.15,
    "hold_n": 20
@@ -12408,7 +12408,7 @@
      "px": 4.82
     }
    ],
-   "keep": 20,
+   "keep": 3,
    "turn_pct": 170.5,
    "ret_pct": 2.7,
    "hold_n": 20
@@ -12559,7 +12559,7 @@
      "px": 18.76
     }
    ],
-   "keep": 20,
+   "keep": 6,
    "turn_pct": 140.4,
    "ret_pct": 0.27,
    "hold_n": 20
@@ -12710,7 +12710,7 @@
      "px": 8.53
     }
    ],
-   "keep": 20,
+   "keep": 6,
    "turn_pct": 139.6,
    "ret_pct": -3.34,
    "hold_n": 20
@@ -12861,7 +12861,7 @@
      "px": 6.87
     }
    ],
-   "keep": 20,
+   "keep": 6,
    "turn_pct": 140.4,
    "ret_pct": 4.63,
    "hold_n": 20
@@ -12987,7 +12987,7 @@
      "px": 8.15
     }
    ],
-   "keep": 20,
+   "keep": 8,
    "turn_pct": 110.4,
    "ret_pct": -3.89,
    "hold_n": 21
@@ -13173,7 +13173,7 @@
      "px": 15.63
     }
    ],
-   "keep": 20,
+   "keep": 3,
    "turn_pct": 170.0,
    "ret_pct": -2.58,
    "hold_n": 20
@@ -13374,7 +13374,7 @@
      "px": 2.6
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 190.0,
    "ret_pct": -0.01,
    "hold_n": 20
@@ -13555,7 +13555,7 @@
      "px": 7.49
     }
    ],
-   "keep": 20,
+   "keep": 3,
    "turn_pct": 171.8,
    "ret_pct": 13.29,
    "hold_n": 20
@@ -13766,7 +13766,7 @@
      "px": 3.14
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 198.5,
    "ret_pct": -1.61,
    "hold_n": 20
@@ -13907,7 +13907,7 @@
      "px": 4.44
     }
    ],
-   "keep": 20,
+   "keep": 7,
    "turn_pct": 130.3,
    "ret_pct": -0.23,
    "hold_n": 20
@@ -14108,7 +14108,7 @@
      "px": 3.91
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 190.3,
    "ret_pct": 4.38,
    "hold_n": 20
@@ -14289,7 +14289,7 @@
      "px": 12.15
     }
    ],
-   "keep": 20,
+   "keep": 3,
    "turn_pct": 170.2,
    "ret_pct": 1.35,
    "hold_n": 20
@@ -14460,7 +14460,7 @@
      "px": 6.07
     }
    ],
-   "keep": 20,
+   "keep": 4,
    "turn_pct": 159.5,
    "ret_pct": -4.42,
    "hold_n": 20
@@ -14631,7 +14631,7 @@
      "px": 14.02
     }
    ],
-   "keep": 20,
+   "keep": 4,
    "turn_pct": 160.9,
    "ret_pct": -6.31,
    "hold_n": 20
@@ -14792,7 +14792,7 @@
      "px": 19.75
     }
    ],
-   "keep": 20,
+   "keep": 5,
    "turn_pct": 149.1,
    "ret_pct": -11.34,
    "hold_n": 20
@@ -14973,7 +14973,7 @@
      "px": 10.91
     }
    ],
-   "keep": 20,
+   "keep": 3,
    "turn_pct": 171.1,
    "ret_pct": 3.59,
    "hold_n": 20
@@ -15164,7 +15164,7 @@
      "px": 2.22
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 180.3,
    "ret_pct": 7.9,
    "hold_n": 20
@@ -15355,7 +15355,7 @@
      "px": 8.69
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 179.5,
    "ret_pct": 2.75,
    "hold_n": 20
@@ -15551,7 +15551,7 @@
      "px": 4.61
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 180.1,
    "ret_pct": 0.36,
    "hold_n": 21
@@ -15767,7 +15767,7 @@
      "px": 3.94
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 200.2,
    "ret_pct": -5.21,
    "hold_n": 20
@@ -15968,7 +15968,7 @@
      "px": 7.68
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 190.0,
    "ret_pct": 0.05,
    "hold_n": 20
@@ -16159,7 +16159,7 @@
      "px": 1.61
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 180.4,
    "ret_pct": 4.91,
    "hold_n": 20
@@ -16360,7 +16360,7 @@
      "px": 6.81
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 190.0,
    "ret_pct": -0.65,
    "hold_n": 20
@@ -16526,7 +16526,7 @@
      "px": 6.7
     }
    ],
-   "keep": 20,
+   "keep": 4,
    "turn_pct": 150.2,
    "ret_pct": -0.84,
    "hold_n": 21
@@ -16727,7 +16727,7 @@
      "px": 2.73
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 181.9,
    "ret_pct": 8.52,
    "hold_n": 21
@@ -16928,7 +16928,7 @@
      "px": 2.99
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 181.8,
    "ret_pct": -0.48,
    "hold_n": 21
@@ -17099,7 +17099,7 @@
      "px": 5.55
     }
    ],
-   "keep": 20,
+   "keep": 4,
    "turn_pct": 152.0,
    "ret_pct": 2.63,
    "hold_n": 21
@@ -17270,7 +17270,7 @@
      "px": 11.13
     }
    ],
-   "keep": 20,
+   "keep": 4,
    "turn_pct": 151.9,
    "ret_pct": -2.84,
    "hold_n": 21
@@ -17471,7 +17471,7 @@
      "px": 7.79
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 181.2,
    "ret_pct": -1.55,
    "hold_n": 21
@@ -17622,7 +17622,7 @@
      "px": 5.55
     }
    ],
-   "keep": 20,
+   "keep": 6,
    "turn_pct": 131.4,
    "ret_pct": -0.66,
    "hold_n": 21
@@ -17803,7 +17803,7 @@
      "px": 5.73
     }
    ],
-   "keep": 20,
+   "keep": 3,
    "turn_pct": 163.9,
    "ret_pct": 5.34,
    "hold_n": 21
@@ -17984,7 +17984,7 @@
      "px": 21.34
     }
    ],
-   "keep": 20,
+   "keep": 3,
    "turn_pct": 161.9,
    "ret_pct": -1.35,
    "hold_n": 21
@@ -18175,7 +18175,7 @@
      "px": 7.63
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 172.0,
    "ret_pct": -5.0,
    "hold_n": 21
@@ -18346,7 +18346,7 @@
      "px": 7.96
     }
    ],
-   "keep": 20,
+   "keep": 4,
    "turn_pct": 151.2,
    "ret_pct": 2.22,
    "hold_n": 21
@@ -18547,7 +18547,7 @@
      "px": 4.48
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 181.3,
    "ret_pct": -1.98,
    "hold_n": 21
@@ -18738,7 +18738,7 @@
      "px": 9.81
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 171.2,
    "ret_pct": -3.92,
    "hold_n": 21
@@ -18949,7 +18949,7 @@
      "px": 5.74
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 190.3,
    "ret_pct": -4.38,
    "hold_n": 21
@@ -19150,7 +19150,7 @@
      "px": 6.56
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 181.6,
    "ret_pct": 11.53,
    "hold_n": 21
@@ -19341,7 +19341,7 @@
      "px": 4.48
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 178.9,
    "ret_pct": -11.06,
    "hold_n": 21
@@ -19552,7 +19552,7 @@
      "px": 8.97
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 190.7,
    "ret_pct": 5.76,
    "hold_n": 21
@@ -19743,7 +19743,7 @@
      "px": 12.05
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 170.2,
    "ret_pct": -5.15,
    "hold_n": 21
@@ -19919,7 +19919,7 @@
      "px": 8.88
     }
    ],
-   "keep": 19,
+   "keep": 3,
    "turn_pct": 159.0,
    "ret_pct": -5.65,
    "hold_n": 20
@@ -20105,7 +20105,7 @@
      "px": 28.63
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 171.1,
    "ret_pct": 0.02,
    "hold_n": 21
@@ -20246,7 +20246,7 @@
      "px": 10.03
     }
    ],
-   "keep": 19,
+   "keep": 6,
    "turn_pct": 120.9,
    "ret_pct": 0.26,
    "hold_n": 21
@@ -20447,7 +20447,7 @@
      "px": 11.34
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 180.9,
    "ret_pct": 18.88,
    "hold_n": 21
@@ -20648,7 +20648,7 @@
      "px": 23.73
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 182.6,
    "ret_pct": 17.9,
    "hold_n": 21
@@ -20849,7 +20849,7 @@
      "px": 11.31
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 183.4,
    "ret_pct": 6.56,
    "hold_n": 21
@@ -21040,7 +21040,7 @@
      "px": 20.68
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 173.5,
    "ret_pct": -10.22,
    "hold_n": 21
@@ -21231,7 +21231,7 @@
      "px": 12.4
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 174.1,
    "ret_pct": 12.91,
    "hold_n": 21
@@ -21432,7 +21432,7 @@
      "px": 6.34
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 183.8,
    "ret_pct": 1.64,
    "hold_n": 21
@@ -21623,7 +21623,7 @@
      "px": 8.32
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 172.6,
    "ret_pct": -7.12,
    "hold_n": 21
@@ -21814,7 +21814,7 @@
      "px": 17.91
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 172.6,
    "ret_pct": 1.05,
    "hold_n": 21
@@ -22015,7 +22015,7 @@
      "px": 11.67
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 183.0,
    "ret_pct": -0.21,
    "hold_n": 21
@@ -22226,7 +22226,7 @@
      "px": 25.04
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 193.4,
    "ret_pct": 7.64,
    "hold_n": 21
@@ -22437,7 +22437,7 @@
      "px": 11.79
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 193.7,
    "ret_pct": 4.13,
    "hold_n": 21
@@ -22638,7 +22638,7 @@
      "px": 5.78
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.1,
    "ret_pct": 3.64,
    "hold_n": 21
@@ -22849,7 +22849,7 @@
      "px": 19.1
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 194.0,
    "ret_pct": 2.72,
    "hold_n": 21
@@ -23050,7 +23050,7 @@
      "px": 6.96
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.2,
    "ret_pct": 1.57,
    "hold_n": 21
@@ -23241,7 +23241,7 @@
      "px": 6.93
     }
    ],
-   "keep": 20,
+   "keep": 2,
    "turn_pct": 174.3,
    "ret_pct": -3.84,
    "hold_n": 21
@@ -23442,7 +23442,7 @@
      "px": 11.11
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.3,
    "ret_pct": 3.52,
    "hold_n": 21
@@ -23653,7 +23653,7 @@
      "px": 5.96
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 194.2,
    "ret_pct": 2.02,
    "hold_n": 21
@@ -23864,7 +23864,7 @@
      "px": 6.35
     }
    ],
-   "keep": 20,
+   "keep": 0,
    "turn_pct": 194.4,
    "ret_pct": 2.75,
    "hold_n": 21
@@ -24065,7 +24065,7 @@
      "px": 13.55
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.1,
    "ret_pct": -6.59,
    "hold_n": 21
@@ -24266,7 +24266,7 @@
      "px": 3.75
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.6,
    "ret_pct": 4.15,
    "hold_n": 21
@@ -24467,7 +24467,7 @@
      "px": 12.22
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.7,
    "ret_pct": -13.4,
    "hold_n": 21
@@ -24668,7 +24668,7 @@
      "px": 2.84
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 185.4,
    "ret_pct": -2.33,
    "hold_n": 21
@@ -24869,7 +24869,7 @@
      "px": 3.06
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.0,
    "ret_pct": 9.01,
    "hold_n": 21
@@ -25070,7 +25070,7 @@
      "px": 10.06
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 190.2,
    "ret_pct": 6.63,
    "hold_n": 21
@@ -25271,7 +25271,7 @@
      "px": 5.77
     }
    ],
-   "keep": 20,
+   "keep": 1,
    "turn_pct": 184.2,
    "ret_pct": -2.71,
    "hold_n": 21
@@ -25283,147 +25283,231 @@
    "name": "",
    "shares": 484.0,
    "last_px": 10.05,
-   "weight_pct": 3.22
+   "weight_pct": 3.22,
+   "buy_date": "20221219",
+   "buy_px": 10.71,
+   "cost_pct": 3.43,
+   "unrealized_pct": -6.16
   },
   {
    "code": "000050.SZ",
    "name": "深天马Ａ",
    "shares": 1223.0,
    "last_px": 5.73,
-   "weight_pct": 4.64
+   "weight_pct": 4.64,
+   "buy_date": "20260904",
+   "buy_px": 6.6,
+   "cost_pct": 5.35,
+   "unrealized_pct": -13.18
   },
   {
    "code": "600839.SH",
    "name": "四川长虹",
    "shares": 1227.0,
    "last_px": 5.18,
-   "weight_pct": 4.21
+   "weight_pct": 4.21,
+   "buy_date": "20261012",
+   "buy_px": 6.4,
+   "cost_pct": 5.2,
+   "unrealized_pct": -19.06
   },
   {
    "code": "002456.SZ",
    "name": "欧菲光",
    "shares": 1219.0,
    "last_px": 5.78,
-   "weight_pct": 4.67
+   "weight_pct": 4.67,
+   "buy_date": "20261012",
+   "buy_px": 6.44,
+   "cost_pct": 5.2,
+   "unrealized_pct": -10.25
   },
   {
    "code": "002057.SZ",
    "name": "中钢天源",
    "shares": 890.0,
    "last_px": 7.62,
-   "weight_pct": 4.49
+   "weight_pct": 4.49,
+   "buy_date": "20261012",
+   "buy_px": 8.82,
+   "cost_pct": 5.2,
+   "unrealized_pct": -13.61
   },
   {
    "code": "002195.SZ",
    "name": "岩山科技",
    "shares": 1326.0,
    "last_px": 5.83,
-   "weight_pct": 5.12
+   "weight_pct": 5.12,
+   "buy_date": "20261012",
+   "buy_px": 5.92,
+   "cost_pct": 5.2,
+   "unrealized_pct": -1.52
   },
   {
    "code": "601888.SH",
    "name": "中国中免",
    "shares": 154.0,
    "last_px": 54.47,
-   "weight_pct": 5.57
+   "weight_pct": 5.57,
+   "buy_date": "20261012",
+   "buy_px": 50.85,
+   "cost_pct": 5.2,
+   "unrealized_pct": 7.12
   },
   {
    "code": "000970.SZ",
    "name": "中科三环",
    "shares": 708.0,
    "last_px": 10.43,
-   "weight_pct": 4.89
+   "weight_pct": 4.89,
+   "buy_date": "20261012",
+   "buy_px": 11.09,
+   "cost_pct": 5.2,
+   "unrealized_pct": -5.95
   },
   {
    "code": "002009.SZ",
    "name": "天奇股份",
    "shares": 503.0,
    "last_px": 17.62,
-   "weight_pct": 5.87
+   "weight_pct": 5.87,
+   "buy_date": "20261012",
+   "buy_px": 15.6,
+   "cost_pct": 5.2,
+   "unrealized_pct": 12.95
   },
   {
    "code": "601311.SH",
    "name": "骆驼股份",
    "shares": 1054.0,
    "last_px": 7.42,
-   "weight_pct": 5.18
+   "weight_pct": 5.18,
+   "buy_date": "20261012",
+   "buy_px": 7.45,
+   "cost_pct": 5.2,
+   "unrealized_pct": -0.4
   },
   {
    "code": "600602.SH",
    "name": "云赛智联",
    "shares": 495.0,
    "last_px": 15.62,
-   "weight_pct": 5.12
+   "weight_pct": 5.12,
+   "buy_date": "20261012",
+   "buy_px": 15.878,
+   "cost_pct": 5.2,
+   "unrealized_pct": -1.63
   },
   {
    "code": "000009.SZ",
    "name": "中国宝安",
    "shares": 1122.0,
    "last_px": 6.79,
-   "weight_pct": 5.05
+   "weight_pct": 5.05,
+   "buy_date": "20261012",
+   "buy_px": 7.0,
+   "cost_pct": 5.2,
+   "unrealized_pct": -3.0
   },
   {
    "code": "002067.SZ",
    "name": "景兴纸业",
    "shares": 1993.0,
    "last_px": 3.63,
-   "weight_pct": 4.79
+   "weight_pct": 4.79,
+   "buy_date": "20261012",
+   "buy_px": 3.94,
+   "cost_pct": 5.2,
+   "unrealized_pct": -7.87
   },
   {
    "code": "002673.SZ",
    "name": "西部证券",
    "shares": 1190.0,
    "last_px": 6.25,
-   "weight_pct": 4.93
+   "weight_pct": 4.93,
+   "buy_date": "20261012",
+   "buy_px": 6.6,
+   "cost_pct": 5.2,
+   "unrealized_pct": -5.3
   },
   {
    "code": "002049.SZ",
    "name": "紫光国微",
    "shares": 139.0,
    "last_px": 51.33,
-   "weight_pct": 4.72
+   "weight_pct": 4.72,
+   "buy_date": "20261012",
+   "buy_px": 56.55,
+   "cost_pct": 5.2,
+   "unrealized_pct": -9.23
   },
   {
    "code": "601878.SH",
    "name": "浙商证券",
    "shares": 887.0,
    "last_px": 8.94,
-   "weight_pct": 5.25
+   "weight_pct": 5.25,
+   "buy_date": "20261012",
+   "buy_px": 8.857,
+   "cost_pct": 5.2,
+   "unrealized_pct": 0.93
   },
   {
    "code": "000629.SZ",
    "name": "钒钛股份",
    "shares": 2746.0,
    "last_px": 2.74,
-   "weight_pct": 4.98
+   "weight_pct": 4.98,
+   "buy_date": "20261012",
+   "buy_px": 2.86,
+   "cost_pct": 5.2,
+   "unrealized_pct": -4.2
   },
   {
    "code": "000728.SZ",
    "name": "国元证券",
    "shares": 1093.0,
    "last_px": 7.0,
-   "weight_pct": 5.07
+   "weight_pct": 5.07,
+   "buy_date": "20261012",
+   "buy_px": 7.182,
+   "cost_pct": 5.2,
+   "unrealized_pct": -2.54
   },
   {
    "code": "002939.SZ",
    "name": "长城证券",
    "shares": 1033.0,
    "last_px": 7.54,
-   "weight_pct": 5.16
+   "weight_pct": 5.16,
+   "buy_date": "20261012",
+   "buy_px": 7.6,
+   "cost_pct": 5.2,
+   "unrealized_pct": -0.79
   },
   {
    "code": "000049.SZ",
    "name": "德赛电池",
    "shares": 350.0,
    "last_px": 21.42,
-   "weight_pct": 4.97
+   "weight_pct": 4.97,
+   "buy_date": "20261012",
+   "buy_px": 22.43,
+   "cost_pct": 5.2,
+   "unrealized_pct": -4.5
   },
   {
    "code": "601377.SH",
    "name": "兴业证券",
    "shares": 571.0,
    "last_px": 5.53,
-   "weight_pct": 2.09
+   "weight_pct": 2.09,
+   "buy_date": "20261012",
+   "buy_px": 5.72,
+   "cost_pct": 2.16,
+   "unrealized_pct": -3.32
   }
  ],
  "replay": {
@@ -31503,10 +31587,14 @@
     "exit_date": "20210125",
     "code": "",
     "name": "20买/0卖",
+    "buy_n": 20,
+    "sell_n": 0,
+    "keep_n": 0,
+    "turn_pct": 100.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.15,
-    "note": "留 20 · 换手 100.0%"
+    "note": "换手 100.0% · 期末持仓 20 只"
    },
    {
     "signal_date": "20210301",
@@ -31514,10 +31602,14 @@
     "exit_date": "20210301",
     "code": "",
     "name": "17买/17卖",
+    "buy_n": 17,
+    "sell_n": 17,
+    "keep_n": 3,
+    "turn_pct": 170.5,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 2.7,
-    "note": "留 20 · 换手 170.5%"
+    "note": "换手 170.5% · 期末持仓 20 只"
    },
    {
     "signal_date": "20210329",
@@ -31525,10 +31617,14 @@
     "exit_date": "20210329",
     "code": "",
     "name": "14买/14卖",
+    "buy_n": 14,
+    "sell_n": 14,
+    "keep_n": 6,
+    "turn_pct": 140.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 0.27,
-    "note": "留 20 · 换手 140.4%"
+    "note": "换手 140.4% · 期末持仓 20 只"
    },
    {
     "signal_date": "20210427",
@@ -31536,10 +31632,14 @@
     "exit_date": "20210427",
     "code": "",
     "name": "14买/14卖",
+    "buy_n": 14,
+    "sell_n": 14,
+    "keep_n": 6,
+    "turn_pct": 139.6,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -3.34,
-    "note": "留 20 · 换手 139.6%"
+    "note": "换手 139.6% · 期末持仓 20 只"
    },
    {
     "signal_date": "20210528",
@@ -31547,10 +31647,14 @@
     "exit_date": "20210528",
     "code": "",
     "name": "14买/14卖",
+    "buy_n": 14,
+    "sell_n": 14,
+    "keep_n": 6,
+    "turn_pct": 140.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 4.63,
-    "note": "留 20 · 换手 140.4%"
+    "note": "换手 140.4% · 期末持仓 20 只"
    },
    {
     "signal_date": "20210628",
@@ -31558,10 +31662,14 @@
     "exit_date": "20210628",
     "code": "",
     "name": "12买/11卖",
+    "buy_n": 12,
+    "sell_n": 11,
+    "keep_n": 8,
+    "turn_pct": 110.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -3.89,
-    "note": "留 20 · 换手 110.4%"
+    "note": "换手 110.4% · 期末持仓 21 只"
    },
    {
     "signal_date": "20210726",
@@ -31569,10 +31677,14 @@
     "exit_date": "20210726",
     "code": "",
     "name": "17买/18卖",
+    "buy_n": 17,
+    "sell_n": 18,
+    "keep_n": 3,
+    "turn_pct": 170.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -2.58,
-    "note": "留 20 · 换手 170.0%"
+    "note": "换手 170.0% · 期末持仓 20 只"
    },
    {
     "signal_date": "20210823",
@@ -31580,10 +31692,14 @@
     "exit_date": "20210823",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 190.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.01,
-    "note": "留 20 · 换手 190.0%"
+    "note": "换手 190.0% · 期末持仓 20 只"
    },
    {
     "signal_date": "20210922",
@@ -31591,10 +31707,14 @@
     "exit_date": "20210922",
     "code": "",
     "name": "17买/17卖",
+    "buy_n": 17,
+    "sell_n": 17,
+    "keep_n": 3,
+    "turn_pct": 171.8,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 13.29,
-    "note": "留 20 · 换手 171.8%"
+    "note": "换手 171.8% · 期末持仓 20 只"
    },
    {
     "signal_date": "20211027",
@@ -31602,10 +31722,14 @@
     "exit_date": "20211027",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 198.5,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -1.61,
-    "note": "留 20 · 换手 198.5%"
+    "note": "换手 198.5% · 期末持仓 20 只"
    },
    {
     "signal_date": "20211124",
@@ -31613,10 +31737,14 @@
     "exit_date": "20211124",
     "code": "",
     "name": "13买/13卖",
+    "buy_n": 13,
+    "sell_n": 13,
+    "keep_n": 7,
+    "turn_pct": 130.3,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.23,
-    "note": "留 20 · 换手 130.3%"
+    "note": "换手 130.3% · 期末持仓 20 只"
    },
    {
     "signal_date": "20211222",
@@ -31624,10 +31752,14 @@
     "exit_date": "20211222",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 190.3,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 4.38,
-    "note": "留 20 · 换手 190.3%"
+    "note": "换手 190.3% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220120",
@@ -31635,10 +31767,14 @@
     "exit_date": "20220120",
     "code": "",
     "name": "17买/17卖",
+    "buy_n": 17,
+    "sell_n": 17,
+    "keep_n": 3,
+    "turn_pct": 170.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 1.35,
-    "note": "留 20 · 换手 170.2%"
+    "note": "换手 170.2% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220224",
@@ -31646,10 +31782,14 @@
     "exit_date": "20220224",
     "code": "",
     "name": "16买/16卖",
+    "buy_n": 16,
+    "sell_n": 16,
+    "keep_n": 4,
+    "turn_pct": 159.5,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -4.42,
-    "note": "留 20 · 换手 159.5%"
+    "note": "换手 159.5% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220324",
@@ -31657,10 +31797,14 @@
     "exit_date": "20220324",
     "code": "",
     "name": "16买/16卖",
+    "buy_n": 16,
+    "sell_n": 16,
+    "keep_n": 4,
+    "turn_pct": 160.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -6.31,
-    "note": "留 20 · 换手 160.9%"
+    "note": "换手 160.9% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220425",
@@ -31668,10 +31812,14 @@
     "exit_date": "20220425",
     "code": "",
     "name": "15买/15卖",
+    "buy_n": 15,
+    "sell_n": 15,
+    "keep_n": 5,
+    "turn_pct": 149.1,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -11.34,
-    "note": "留 20 · 换手 149.1%"
+    "note": "换手 149.1% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220526",
@@ -31679,10 +31827,14 @@
     "exit_date": "20220526",
     "code": "",
     "name": "17买/17卖",
+    "buy_n": 17,
+    "sell_n": 17,
+    "keep_n": 3,
+    "turn_pct": 171.1,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 3.59,
-    "note": "留 20 · 换手 171.1%"
+    "note": "换手 171.1% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220624",
@@ -31690,10 +31842,14 @@
     "exit_date": "20220624",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 180.3,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 7.9,
-    "note": "留 20 · 换手 180.3%"
+    "note": "换手 180.3% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220722",
@@ -31701,10 +31857,14 @@
     "exit_date": "20220722",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 179.5,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 2.75,
-    "note": "留 20 · 换手 179.5%"
+    "note": "换手 179.5% · 期末持仓 20 只"
    },
    {
     "signal_date": "20220819",
@@ -31712,10 +31872,14 @@
     "exit_date": "20220819",
     "code": "",
     "name": "19买/18卖",
+    "buy_n": 19,
+    "sell_n": 18,
+    "keep_n": 1,
+    "turn_pct": 180.1,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 0.36,
-    "note": "留 20 · 换手 180.1%"
+    "note": "换手 180.1% · 期末持仓 21 只"
    },
    {
     "signal_date": "20220919",
@@ -31723,10 +31887,14 @@
     "exit_date": "20220919",
     "code": "",
     "name": "20买/21卖",
+    "buy_n": 20,
+    "sell_n": 21,
+    "keep_n": 0,
+    "turn_pct": 200.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -5.21,
-    "note": "留 20 · 换手 200.2%"
+    "note": "换手 200.2% · 期末持仓 20 只"
    },
    {
     "signal_date": "20221024",
@@ -31734,10 +31902,14 @@
     "exit_date": "20221024",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 190.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 0.05,
-    "note": "留 20 · 换手 190.0%"
+    "note": "换手 190.0% · 期末持仓 20 只"
    },
    {
     "signal_date": "20221121",
@@ -31745,10 +31917,14 @@
     "exit_date": "20221121",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 180.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 4.91,
-    "note": "留 20 · 换手 180.4%"
+    "note": "换手 180.4% · 期末持仓 20 只"
    },
    {
     "signal_date": "20221219",
@@ -31756,10 +31932,14 @@
     "exit_date": "20221219",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 190.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.65,
-    "note": "留 20 · 换手 190.0%"
+    "note": "换手 190.0% · 期末持仓 20 只"
    },
    {
     "signal_date": "20230117",
@@ -31767,10 +31947,14 @@
     "exit_date": "20230117",
     "code": "",
     "name": "16买/15卖",
+    "buy_n": 16,
+    "sell_n": 15,
+    "keep_n": 4,
+    "turn_pct": 150.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.84,
-    "note": "留 20 · 换手 150.2%"
+    "note": "换手 150.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230221",
@@ -31778,10 +31962,14 @@
     "exit_date": "20230221",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 181.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 8.52,
-    "note": "留 20 · 换手 181.9%"
+    "note": "换手 181.9% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230321",
@@ -31789,10 +31977,14 @@
     "exit_date": "20230321",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 181.8,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.48,
-    "note": "留 20 · 换手 181.8%"
+    "note": "换手 181.8% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230419",
@@ -31800,10 +31992,14 @@
     "exit_date": "20230419",
     "code": "",
     "name": "16买/16卖",
+    "buy_n": 16,
+    "sell_n": 16,
+    "keep_n": 4,
+    "turn_pct": 152.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 2.63,
-    "note": "留 20 · 换手 152.0%"
+    "note": "换手 152.0% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230522",
@@ -31811,10 +32007,14 @@
     "exit_date": "20230522",
     "code": "",
     "name": "16买/16卖",
+    "buy_n": 16,
+    "sell_n": 16,
+    "keep_n": 4,
+    "turn_pct": 151.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -2.84,
-    "note": "留 20 · 换手 151.9%"
+    "note": "换手 151.9% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230619",
@@ -31822,10 +32022,14 @@
     "exit_date": "20230619",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 181.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -1.55,
-    "note": "留 20 · 换手 181.2%"
+    "note": "换手 181.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230719",
@@ -31833,10 +32037,14 @@
     "exit_date": "20230719",
     "code": "",
     "name": "14买/14卖",
+    "buy_n": 14,
+    "sell_n": 14,
+    "keep_n": 6,
+    "turn_pct": 131.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.66,
-    "note": "留 20 · 换手 131.4%"
+    "note": "换手 131.4% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230816",
@@ -31844,10 +32052,14 @@
     "exit_date": "20230816",
     "code": "",
     "name": "17买/17卖",
+    "buy_n": 17,
+    "sell_n": 17,
+    "keep_n": 3,
+    "turn_pct": 163.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 5.34,
-    "note": "留 20 · 换手 163.9%"
+    "note": "换手 163.9% · 期末持仓 21 只"
    },
    {
     "signal_date": "20230913",
@@ -31855,10 +32067,14 @@
     "exit_date": "20230913",
     "code": "",
     "name": "17买/17卖",
+    "buy_n": 17,
+    "sell_n": 17,
+    "keep_n": 3,
+    "turn_pct": 161.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -1.35,
-    "note": "留 20 · 换手 161.9%"
+    "note": "换手 161.9% · 期末持仓 21 只"
    },
    {
     "signal_date": "20231019",
@@ -31866,10 +32082,14 @@
     "exit_date": "20231019",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 172.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -5.0,
-    "note": "留 20 · 换手 172.0%"
+    "note": "换手 172.0% · 期末持仓 21 只"
    },
    {
     "signal_date": "20231116",
@@ -31877,10 +32097,14 @@
     "exit_date": "20231116",
     "code": "",
     "name": "16买/16卖",
+    "buy_n": 16,
+    "sell_n": 16,
+    "keep_n": 4,
+    "turn_pct": 151.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 2.22,
-    "note": "留 20 · 换手 151.2%"
+    "note": "换手 151.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20231214",
@@ -31888,10 +32112,14 @@
     "exit_date": "20231214",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 181.3,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -1.98,
-    "note": "留 20 · 换手 181.3%"
+    "note": "换手 181.3% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240112",
@@ -31899,10 +32127,14 @@
     "exit_date": "20240112",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 171.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -3.92,
-    "note": "留 20 · 换手 171.2%"
+    "note": "换手 171.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240219",
@@ -31910,10 +32142,14 @@
     "exit_date": "20240219",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 190.3,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -4.38,
-    "note": "留 20 · 换手 190.3%"
+    "note": "换手 190.3% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240318",
@@ -31921,10 +32157,14 @@
     "exit_date": "20240318",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 181.6,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 11.53,
-    "note": "留 20 · 换手 181.6%"
+    "note": "换手 181.6% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240417",
@@ -31932,10 +32172,14 @@
     "exit_date": "20240417",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 178.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -11.06,
-    "note": "留 20 · 换手 178.9%"
+    "note": "换手 178.9% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240520",
@@ -31943,10 +32187,14 @@
     "exit_date": "20240520",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 190.7,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 5.76,
-    "note": "留 20 · 换手 190.7%"
+    "note": "换手 190.7% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240618",
@@ -31954,10 +32202,14 @@
     "exit_date": "20240618",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 170.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -5.15,
-    "note": "留 20 · 换手 170.2%"
+    "note": "换手 170.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240716",
@@ -31965,10 +32217,14 @@
     "exit_date": "20240716",
     "code": "",
     "name": "16买/17卖",
+    "buy_n": 16,
+    "sell_n": 17,
+    "keep_n": 3,
+    "turn_pct": 159.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -5.65,
-    "note": "留 19 · 换手 159.0%"
+    "note": "换手 159.0% · 期末持仓 20 只"
    },
    {
     "signal_date": "20240813",
@@ -31976,10 +32232,14 @@
     "exit_date": "20240813",
     "code": "",
     "name": "18买/17卖",
+    "buy_n": 18,
+    "sell_n": 17,
+    "keep_n": 2,
+    "turn_pct": 171.1,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 0.02,
-    "note": "留 20 · 换手 171.1%"
+    "note": "换手 171.1% · 期末持仓 21 只"
    },
    {
     "signal_date": "20240910",
@@ -31987,10 +32247,14 @@
     "exit_date": "20240910",
     "code": "",
     "name": "13买/13卖",
+    "buy_n": 13,
+    "sell_n": 13,
+    "keep_n": 6,
+    "turn_pct": 120.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 0.26,
-    "note": "留 19 · 换手 120.9%"
+    "note": "换手 120.9% · 期末持仓 21 只"
    },
    {
     "signal_date": "20241017",
@@ -31998,10 +32262,14 @@
     "exit_date": "20241017",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 180.9,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 18.88,
-    "note": "留 20 · 换手 180.9%"
+    "note": "换手 180.9% · 期末持仓 21 只"
    },
    {
     "signal_date": "20241114",
@@ -32009,10 +32277,14 @@
     "exit_date": "20241114",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 182.6,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 17.9,
-    "note": "留 20 · 换手 182.6%"
+    "note": "换手 182.6% · 期末持仓 21 只"
    },
    {
     "signal_date": "20241212",
@@ -32020,10 +32292,14 @@
     "exit_date": "20241212",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 183.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 6.56,
-    "note": "留 20 · 换手 183.4%"
+    "note": "换手 183.4% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250110",
@@ -32031,10 +32307,14 @@
     "exit_date": "20250110",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 173.5,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -10.22,
-    "note": "留 20 · 换手 173.5%"
+    "note": "换手 173.5% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250217",
@@ -32042,10 +32322,14 @@
     "exit_date": "20250217",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 174.1,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 12.91,
-    "note": "留 20 · 换手 174.1%"
+    "note": "换手 174.1% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250317",
@@ -32053,10 +32337,14 @@
     "exit_date": "20250317",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 183.8,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 1.64,
-    "note": "留 20 · 换手 183.8%"
+    "note": "换手 183.8% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250415",
@@ -32064,10 +32352,14 @@
     "exit_date": "20250415",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 172.6,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -7.12,
-    "note": "留 20 · 换手 172.6%"
+    "note": "换手 172.6% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250516",
@@ -32075,10 +32367,14 @@
     "exit_date": "20250516",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 172.6,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 1.05,
-    "note": "留 20 · 换手 172.6%"
+    "note": "换手 172.6% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250616",
@@ -32086,10 +32382,14 @@
     "exit_date": "20250616",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 183.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -0.21,
-    "note": "留 20 · 换手 183.0%"
+    "note": "换手 183.0% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250714",
@@ -32097,10 +32397,14 @@
     "exit_date": "20250714",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 193.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 7.64,
-    "note": "留 20 · 换手 193.4%"
+    "note": "换手 193.4% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250811",
@@ -32108,10 +32412,14 @@
     "exit_date": "20250811",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 193.7,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 4.13,
-    "note": "留 20 · 换手 193.7%"
+    "note": "换手 193.7% · 期末持仓 21 只"
    },
    {
     "signal_date": "20250908",
@@ -32119,10 +32427,14 @@
     "exit_date": "20250908",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.1,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 3.64,
-    "note": "留 20 · 换手 184.1%"
+    "note": "换手 184.1% · 期末持仓 21 只"
    },
    {
     "signal_date": "20251014",
@@ -32130,10 +32442,14 @@
     "exit_date": "20251014",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 194.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 2.72,
-    "note": "留 20 · 换手 194.0%"
+    "note": "换手 194.0% · 期末持仓 21 只"
    },
    {
     "signal_date": "20251111",
@@ -32141,10 +32457,14 @@
     "exit_date": "20251111",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 1.57,
-    "note": "留 20 · 换手 184.2%"
+    "note": "换手 184.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20251209",
@@ -32152,10 +32472,14 @@
     "exit_date": "20251209",
     "code": "",
     "name": "18买/18卖",
+    "buy_n": 18,
+    "sell_n": 18,
+    "keep_n": 2,
+    "turn_pct": 174.3,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -3.84,
-    "note": "留 20 · 换手 174.3%"
+    "note": "换手 174.3% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260108",
@@ -32163,10 +32487,14 @@
     "exit_date": "20260108",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.3,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 3.52,
-    "note": "留 20 · 换手 184.3%"
+    "note": "换手 184.3% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260205",
@@ -32174,10 +32502,14 @@
     "exit_date": "20260205",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 194.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 2.02,
-    "note": "留 20 · 换手 194.2%"
+    "note": "换手 194.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260313",
@@ -32185,10 +32517,14 @@
     "exit_date": "20260313",
     "code": "",
     "name": "20买/20卖",
+    "buy_n": 20,
+    "sell_n": 20,
+    "keep_n": 0,
+    "turn_pct": 194.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 2.75,
-    "note": "留 20 · 换手 194.4%"
+    "note": "换手 194.4% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260413",
@@ -32196,10 +32532,14 @@
     "exit_date": "20260413",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.1,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -6.59,
-    "note": "留 20 · 换手 184.1%"
+    "note": "换手 184.1% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260514",
@@ -32207,10 +32547,14 @@
     "exit_date": "20260514",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.6,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 4.15,
-    "note": "留 20 · 换手 184.6%"
+    "note": "换手 184.6% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260611",
@@ -32218,10 +32562,14 @@
     "exit_date": "20260611",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.7,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -13.4,
-    "note": "留 20 · 换手 184.7%"
+    "note": "换手 184.7% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260710",
@@ -32229,10 +32577,14 @@
     "exit_date": "20260710",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 185.4,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -2.33,
-    "note": "留 20 · 换手 185.4%"
+    "note": "换手 185.4% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260807",
@@ -32240,10 +32592,14 @@
     "exit_date": "20260807",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.0,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 9.01,
-    "note": "留 20 · 换手 184.0%"
+    "note": "换手 184.0% · 期末持仓 21 只"
    },
    {
     "signal_date": "20260904",
@@ -32251,10 +32607,14 @@
     "exit_date": "20260904",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 190.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": 6.63,
-    "note": "留 20 · 换手 190.2%"
+    "note": "换手 190.2% · 期末持仓 21 只"
    },
    {
     "signal_date": "20261012",
@@ -32262,10 +32622,14 @@
     "exit_date": "20261012",
     "code": "",
     "name": "19买/19卖",
+    "buy_n": 19,
+    "sell_n": 19,
+    "keep_n": 1,
+    "turn_pct": 184.2,
     "entry_px": null,
     "exit_px": null,
     "ret_pct": -2.71,
-    "note": "留 20 · 换手 184.2%"
+    "note": "换手 184.2% · 期末持仓 21 只"
    }
   ],
   "daily": [
