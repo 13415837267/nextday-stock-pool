@@ -68,9 +68,19 @@ IVOL_REF = 1.5            # 评分基准(百分点): ivol=0 -> 100 分, ivol>=1.
 
 DEFAULT = {
     "mode": "lowvol",         # lowvol | trend_lowvol
-    "hold_days": 20,          # 持有交易日数
+    "hold_days": 10,          # 持有交易日数(第一百五十轮 40->10, 见 config.yaml 注释)
     "min_score": 20.0,        # 评分阈值(0=不设): 评分 < 阈值不进候选池, 一个都不达标则空仓
     "max_ivol": 0,            # 兼容旧口径: 直接给 ivol 上限(0=不用); min_score>0 时以评分为准
+    # 第一百五十轮新增: 深度回调门槛(距20日最高点的跌幅, 负值%)
+    #   训练结论: 低波池里再要求"距20日最高 <= -8%", H20 胜率 47.0% -> 52.8%,
+    #   中位 -0.30% -> +0.56%, 且 -5/-8/-10/-12/-15 是单调平台而非尖峰。
+    #   None = 不启用(保持旧行为)。
+    "dist_high20_max": None,
+    # 第一百五十轮新增: 基础池内 ivol 分位上限(0=不启用)。
+    #   0.10 = 只在当日 ivol 最低的 10% 里选, 比绝对阈值 ivol<=1.2 更适应波动率环境变化。
+    "ivol_pct_max": 0.0,
+    # 第一百五十轮新增: 排序键(从低波池里挑哪一只), 默认 ivol=现行行为。
+    "sort_by": "ivol",
     "amount_min_yi": 1.0,     # 成交额下限(亿)
     "cost_pct": 0.3,          # 往返成本(%)
     "gap_min": -3.0,          # T+1 竞价缺口下限(%): 深低开破位不接
@@ -107,6 +117,10 @@ def daily_params(cfg: dict) -> dict:
             "min_score": ms,
             "ivol_cap": cap,
             "max_ivol": cap,
+            "dist_high20_max": (None if s.get("dist_high20_max") is None
+                                else float(s["dist_high20_max"])),
+            "ivol_pct": float(s.get("ivol_pct_max") or 0.0),
+            "sort_by": str(s.get("sort_by") or "ivol"),
             "amt_min": float(s["amount_min_yi"]) * 1e8,
             "cost": float(s["cost_pct"]) / 100.0,
             "gap_min": float(s["gap_min"]),
@@ -149,21 +163,53 @@ def _masks(day, cfg: dict):
 
 
 def rank_pool(day, cfg: dict):
-    """当日基础票池, 已按 ivol 升序。池子不足 min_pool 返回空表。"""
+    """当日基础票池, 已按 sort_by 指定的键升序。池子不足 min_pool 返回空表。
+
+    sort_by 决定"从低波池里挑哪一只"(第一百五十轮参数化, 默认 ivol 与旧行为一致):
+      ivol       —— 20日特质波动最低(现行)
+      amount     —— 成交额最小(小市值/冷门)
+      dist_high20—— 距20日最高点跌幅最深(超跌)
+      mom20_asc  —— 20日动量最弱(超跌反转)
+      mom20_desc —— 20日动量最强(追动量, 对照组)
+    """
     P = daily_params(cfg)
     df = day.loc[_masks(day, cfg)[2]]
     if len(df) < P["min_pool"]:
         return df.iloc[0:0]
-    return df.assign(_ivol=df["ivol20"].astype(float)).sort_values("_ivol")
+    key = P["sort_by"]
+    if key == "amount":
+        s = df["amount"].astype(float)
+    elif key == "dist_high20":
+        s = df["dist_high20"].astype(float)
+    elif key == "mom20_asc":
+        s = df["mom20"].astype(float)
+    elif key == "mom20_desc":
+        s = -df["mom20"].astype(float)
+    else:
+        s = df["ivol20"].astype(float)
+    return df.assign(_ivol=df["ivol20"].astype(float), _key=s).sort_values("_key")
 
 
 def rank_qualified(day, cfg: dict, rk=None):
-    """评分达标的票池: rank_pool 之后按评分阈值(ivol_cap)过滤, 仍按 ivol 升序。"""
+    """评分达标的票池: rank_pool 之后按「评分阈值 + ivol 分位 + 深回调」过滤, 仍按 ivol 升序。
+
+    三道门槛都在这里(而不是 _masks), 因为它们是"候选资格"而非"票池边界":
+      · ivol_cap      —— 绝对阈值, 对应页面上的评分线;
+      · ivol_pct      —— 当日横截面分位, 适应波动率环境变化(绝对阈值在低波动年份会失效);
+      · dist_high20_max —— 距 20 日最高点跌幅, 剔除"还在高位"的票(训练见第一百五十轮)。
+    rk 已按 ivol 升序, 所以取前 n 名即当日最低分位。
+    """
     P = daily_params(cfg)
     rk = rank_pool(day, cfg) if rk is None else rk
-    if not len(rk) or P["ivol_cap"] <= 0:
-        return rk
-    return rk[rk["_ivol"] <= P["ivol_cap"]]
+    q = rk
+    if len(q) and P["ivol_cap"] > 0:
+        q = q[q["_ivol"] <= P["ivol_cap"]]
+    if len(q) and P["ivol_pct"] > 0:
+        n = max(int(round(len(rk) * P["ivol_pct"])), 1)   # 分位以"基础票池"为分母
+        q = q.head(n)
+    if len(q) and P["dist_high20_max"] is not None:
+        q = q[q["dist_high20"] <= P["dist_high20_max"]]
+    return q
 
 
 def pool_funnel(day, cfg: dict) -> list:

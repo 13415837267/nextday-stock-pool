@@ -31,7 +31,11 @@ from src.satellite import (daily_params, entry_gate, pick_one,  # noqa: E402
                            pool_funnel, rank_pool, rank_qualified, score_of,
                            should_exit, STRATEGY_CN)
 
-DAYS = 90
+# 面板窗口: 主窗口 100 日 + 预热 160 日 = 260 日。
+# 必须是 251 日以上: build_indicators 的 bars 是**窗口内**累计行号, 不是真实上市天数,
+# 而 MIN_BARS=250 —— 窗口恰好 250 日时最后一行的 bars 只有 249, 全市场会被判成"上市不足",
+# 票池归零(2026-11-06 实测: 90+160=250 日窗口下 base=0、候选池 0 只)。留 10 日余量。
+DAYS = 100
 OUT = ROOT / "output" / "satellite.json"
 HALF = 0.0015          # 单边成本 0.15%（佣金万2.5 + 印花税万5 的一半 + 千1滑点）
 
@@ -172,6 +176,7 @@ def main():
         if (_snap.get("date") != today or "funnel" not in _snap
                 or "alt" not in _snap or _snap.get("show") != P["pool_show"]
                 or _snap.get("score_gate") != round(P["min_score"], 1)
+                or (tape.get("params") or {}).get("hold_days") != P["hold_days"]
                 or "min_score" not in (tape.get("params") or {})
                 or "min_pool" not in (tape.get("params") or {})):
             same_day = _snap.get("date") == today
@@ -193,7 +198,7 @@ def main():
             _pr = dict(tape.get("params") or {})
             _pr.update({"min_pool": P["min_pool"], "pool_show": P["pool_show"],
                         "pool_alt": P["pool_alt"], "min_score": round(P["min_score"], 1),
-                        "ivol_cap": round(P["ivol_cap"], 3)})
+                        "ivol_cap": round(P["ivol_cap"], 3), "hold_days": P["hold_days"]})
             tape["params"] = _pr
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
             print("  升级候选池快照(候选池 %d 只 / 评分阈值 %g / 基础票池 %d 只), 状态机未动"
