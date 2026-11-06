@@ -75,12 +75,12 @@ def _f(v, nd=2, default=None):
 
 
 def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
-    """当日候选池快照(第一百五十三轮) —— 低波池里 20 日动量最强的票, 最多 3 只。
+    """当日候选池快照(第一百五十四轮) —— 低波池里风险调整动量最强的票, 最多 3 只。
 
     口径(与页面 legend / 漏斗逐字对应, 不各算各的):
       base   = 基础票池: 通过上市/流动性/板块等硬性条件的只数(rank_pool 的池子)
-      rows   = 候选池: 基础池里 ivol 最低 10%(池边界) → 按 20 日动量最强排序,
-               不设涨幅上限(追高只追在低波池里), 最多 pool_show 只
+      rows   = 候选池: 基础池里 ivol 最低 10%(池边界) → 按 mom20/ivol(风险调整动量)
+               最强排序, 不设涨幅上限(追高只追在低波池里), 最多 pool_show 只
       n      = 候选池只数(= len(rows)); 基础票池不足 min_pool 或全部不合格时为 0
       alt    = 已废弃, 恒空数组
       funnel = 全市场 → 上市状态 → 成交额 → 板块 的逐道剩余只数
@@ -102,7 +102,9 @@ def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
                 "pct": _f(r["pct"]),
                 "close": _f(r["close"]), "amount_yi": _f(float(r["amount"]) / 1e8),
                 "vol_ratio": _f(r["vol_ratio"]), "turnover_rate": _f(r["turnover_rate"]),
-                "mom20": _f(r["mom20"], 1)}
+                "mom20": _f(r["mom20"], 1),
+                # 风险调整动量(第一百五十四轮排序键): 页面直接展示这个数, 与后端排序同源
+                "ra": _f(float(r["mom20"]) / float(r["_ivol"]) if float(r["_ivol"]) else None, 2)}
 
     rows = [_row(i, r) for i, (_, r) in enumerate(q.head(P["pool_show"]).iterrows(), 1)]
     return {"n": len(rows), "base": base, "show": P["pool_show"],
@@ -336,8 +338,8 @@ def main():
             code_today = code_today or cand["code"]
             if action == "none":
                 action = "signal"
-                note = note or "低波池内动量最强(20日 %+.1f%% / 距MA5 %+.2f%%), 明日开盘买入" % (
-                    cand["mom20"], cand["dist_ma5"])
+                note = note or "低波池内风险调整动量最强(20日 %+.1f%% / 波动 %.2f / 距MA5 %+.2f%%), 明日开盘买入" % (
+                    cand["mom20"], cand["ivol20"], cand["dist_ma5"])
             print("  信号 %s %s (mom20 %+.1f%%, dist_ma5 %+.2f%%, ivol %.2f)"
                   % (cand["code"], cand["name"], cand["mom20"], cand["dist_ma5"],
                      cand["ivol20"]), flush=True)

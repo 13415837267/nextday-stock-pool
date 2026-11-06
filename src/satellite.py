@@ -98,10 +98,17 @@ DEFAULT = {
     #   3 只 9.4%/-19.95%/6 年全正 —— 用 3.3pp 年化换 6.4pp 回撤与 85 笔交易。
     #   (第151轮抄底方向下 3 只是负贡献, 那是因为"同日 3 个深跌信号 = 普跌"; 换了方向不适用。)
     "max_pos": 3,
-    # 排序键(从低波池里挑哪一只)。第一百五十二轮定为 mom20_desc:
-    #   唯一稳定的横截面 alpha 是低波(见 config.yaml 注释), 池内再用"20日动量最强"
-    #   取上涨样本的形态; 同时用 dist_ma5_max=+6 剔除已冲高的票(不追高, 不是抄底)。
-    "sort_by": "mom20_desc",
+    "min_cands": 1,           # 信号宽度门槛: 当日候选少于该只数就不买(1=不启用)
+    "buys_per_day": 1,        # 每日最多买入笔数: 1=沿用旧口径(每日最多 1 只)
+    "exit_ma": 0,             # 收盘跌破该均线即卖(0=关闭; 5/10/20 为可用值)
+    "budget_slots": 0,        # 单笔预算分母: 0=用 max_pos(旧口径); >0=按该槽位数分钱
+                              #   (允许 max_pos > budget_slots, 即"按 2 份钱分, 最多持 3 只")
+    # 排序键(从低波池里挑哪一只)。第一百五十四轮改成 mom20_ivol(风险调整动量):
+    #   同样 20 日涨 10%, 波动 1.0 的票是"稳稳走强", 波动 2.0 的票是"上蹿下跳",
+    #   后者更容易在 10 日持有期内反向。1400 日横截面检验: mom20/ivol 前 3 名
+    #   相对池均值的 10 日超额 +0.28%(t=2.27), 高于原始 mom20 的 +0.24%(t=1.95),
+    #   而"挑波动最低"是 -0.14%(t=-1.61) —— 池内挑最稳的那只是负超额。
+    "sort_by": "mom20_ivol",
     "amount_min_yi": 1.0,     # 成交额下限(亿)
     "cost_pct": 0.3,          # 往返成本(%)
     "gap_min": -3.0,          # T+1 竞价缺口下限(%): 深低开破位不接
@@ -147,6 +154,11 @@ def daily_params(cfg: dict) -> dict:
             "dist_ma5_min": (None if s.get("dist_ma5_min") is None
                              else float(s["dist_ma5_min"])),
             "max_pos": max(1, int(s.get("max_pos") or 1)),
+            "buys_per_day": max(1, int(s.get("buys_per_day") or 1)),
+            "min_cands": max(1, int(s.get("min_cands") or 1)),
+            "exit_ma": max(0, int(s.get("exit_ma") or 0)),
+            "budget_slots": (float(s.get("budget_slots") or 0)
+                             if float(s.get("budget_slots") or 0) > 0 else None),
             "ivol_pct": float(s.get("ivol_pct_max") or 0.0),
             "sort_by": str(s.get("sort_by") or "ivol"),
             "amt_min": float(s["amount_min_yi"]) * 1e8,
@@ -156,6 +168,8 @@ def daily_params(cfg: dict) -> dict:
             "stop": float(s["stop_pct"]) / 100.0,
             "trail": float(s.get("trail_pct") or 0.0) / 100.0,
             "gate_exit": bool(s.get("gate_exit")),
+            # 清仓口径: "all"=闸门关闭即全部清仓; "loser"=只清浮亏的(留住仍在走强的)
+            "gate_exit_mode": str(s.get("gate_exit_mode") or "all"),
             "gate": bool(s["market_gate"]),
             "min_pool": int(s["min_pool"]),
             "pool_show": int(s["pool_show"] or POOL_SHOW),
@@ -236,6 +250,8 @@ def _sort_key(df, key: str):
         "amp_desc": -df["amp_pct"].astype(float),             # 振幅最大(有弹性)
         "close_pos_desc": -df["close_pos"].astype(float),     # 收盘在日内最高(尾盘强)
         "dist_high20_desc": -df["dist_high20"].astype(float),  # 距20日高点最近(强势不破位)
+        "mom60_desc": -df["mom60"].astype(float),              # 60日动量最强(中期趋势)
+        "mom20_ivol": -df["mom20"].astype(float) / df["ivol20"].astype(float).replace(0, float("nan")),
     }
     return m.get(key, m["ivol"])
 

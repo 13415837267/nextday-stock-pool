@@ -183,8 +183,11 @@ def run(ctx: dict, cfg: dict) -> dict:
                "fills": [], "skipped": [], "note": ""}
         ev = []
 
-        # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 1 笔, 上限 max_pos) ----------
-        if sig and len(positions) < P["max_pos"]:
+        # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 buys_per_day 笔, 上限 max_pos) ----------
+        for _s in (sig if isinstance(sig, list) else ([sig] if sig else [])):
+            if len(positions) >= P["max_pos"]:
+                break
+            sig = _s
             r = _row(day, sig["code"])
             nm = names.get(sig["code"], sig.get("name", ""))
             if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
@@ -204,7 +207,8 @@ def run(ctx: dict, cfg: dict) -> dict:
                     # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 持仓成本"估算:
                     # 买入发生在开盘, 当日收盘价还不可知, 用成本不引入未来函数。
                     nav_now = cash + sum(p["units"] * p["entry_px"] for p in positions)
-                    budget = min(nav_now / P["max_pos"], cash * 0.995)
+                    _slots = P["budget_slots"] or P["max_pos"]
+                    budget = min(nav_now / _slots, cash * 0.995)
                     if budget < 1000:
                         skipped += 1
                         rec["skipped"].append({"code": sig["code"], "name": nm, "note": "现金不足"})
@@ -217,7 +221,7 @@ def run(ctx: dict, cfg: dict) -> dict:
                                           "gap_pct": round(gap, 2), "units": units,
                                           "hwm": px})
                         rec["fills"].append({"code": sig["code"], "name": nm, "ret_pct": None})
-            sig = None
+        sig = None
 
         # ---------- 2) 收盘: 逐只卖出判定 ----------
         for p in list(positions):
@@ -231,7 +235,13 @@ def run(ctx: dict, cfg: dict) -> dict:
             ex, why = should_exit(j - p["entry_j"], ret, cfg)
             # 持仓层风控(第一百五十二轮): 两个可选旋钮, 都在收盘判定、收盘成交, 与止损同口径。
             if not ex and P["gate_exit"] and not gate_today:
-                ex, why = True, "大盘转弱清仓"
+                # loser 口径: 只砍浮亏的, 留住还在走强的(闸门是"风险偏好下降", 不是"所有票都完蛋")
+                if P["gate_exit_mode"] != "loser" or ret < 0:
+                    ex, why = True, "大盘转弱清仓"
+            if not ex and P["exit_ma"] and j - p["entry_j"] >= 1:
+                _ma = float(r.get("ma%d" % P["exit_ma"]) or 0)
+                if _ma > 0 and cl < _ma:
+                    ex, why = True, "跌破 MA%d" % P["exit_ma"]
             if not ex and P["trail"] > 0 and cl / p["hwm"] - 1 <= -P["trail"]:
                 ex, why = True, "移动止损 %.0f%%" % (P["trail"] * 100)
             if ex:
@@ -240,6 +250,7 @@ def run(ctx: dict, cfg: dict) -> dict:
                                "signal_date": p["signal_date"], "entry_date": p["entry_date"],
                                "exit_date": d, "entry_px": round(p["entry_px_raw"], 3),
                                "exit_px": round(float(r["close"]), 3),
+                               "gap_pct": p.get("gap_pct"),
                                "hold_days": j - p["entry_j"],
                                "ret_pct": round(ret, 2), "note": why})
                 ev.append(f"卖出 {p['name']}（{why}）")
@@ -251,12 +262,17 @@ def run(ctx: dict, cfg: dict) -> dict:
                 blocked += 1
                 ev.append("大盘闸门关闭（指数在 MA20 下方），不开新仓")
             else:
-                cands = pick_list(day, cfg, held=[p["code"] for p in positions], k=1)
-                if cands:
-                    cand = cands[0]
-                    cand["date"] = d
-                    cand["name"] = names.get(cand["code"], "")
-                    sig = cand
+                # 取 max(buys_per_day, min_cands) 只: 既要够买, 也要能判断"信号宽度"
+                cands = pick_list(day, cfg, held=[p["code"] for p in positions],
+                                  k=max(P["buys_per_day"], P["min_cands"]))
+                if len(cands) >= P["min_cands"]:
+                    cands = cands[:P["buys_per_day"]]
+                    for cand in cands:
+                        cand["date"] = d
+                        cand["name"] = names.get(cand["code"], "")
+                    sig = cands if P["buys_per_day"] > 1 else cands[0]
+                elif cands:
+                    ev.append("候选 %d 只 < 宽度门槛 %d，不出票" % (len(cands), P["min_cands"]))
                     rec["pool_n"] = len(rank_qualified(day, cfg))
                 else:
                     ev.append("无票跌破 MA5 或候选池不足，不出票")

@@ -115,6 +115,7 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     panel["vol_ratio"] = panel["vol"] / panel["vol_ma5_prev"]
     put("mom3", ca.transform(lambda s: s.pct_change(3)) * 100)
     put("mom20", ca.transform(lambda s: s.pct_change(20)) * 100)
+    put("mom60", ca.transform(lambda s: s.pct_change(60)) * 100)   # 中期动量(第一百五十四轮)
     panel["bias20"] = (panel["close_adj"] / panel["ma20"] - 1) * 100
     put("bars", g.cumcount() + 1, "int32" if f32 else None)
     panel["above_ma20"] = panel["close_adj"] > panel["ma20"]
