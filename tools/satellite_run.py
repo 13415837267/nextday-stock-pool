@@ -85,7 +85,8 @@ def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
       alt    = 已废弃, 恒空数组
       funnel = 全市场 → 上市状态 → 成交额 → 板块 的逐道剩余只数
 
-    执行: 最多同时持 max_pos 只, 每日最多买 1 只 —— 候选池前 max_pos 名就是执行标的,
+    执行: 最多同时持 max_pos 只, 每日最多买 buys_per_day 只(第一百六十三轮起 =max_pos,
+          即"一次买满") —— 候选池前 buys_per_day 名就是执行标的,
     第 3 名是候补(持仓满员时不买)。
     """
     P = daily_params(cfg)
@@ -189,6 +190,7 @@ def main():
                 or _snap.get("score_gate") != round(P["min_score"], 1)
                 or (tape.get("params") or {}).get("hold_days") != P["hold_days"]
                 or (tape.get("params") or {}).get("max_pos") != P["max_pos"]
+                or (tape.get("params") or {}).get("buys_per_day") != P["buys_per_day"]
                 or (tape.get("params") or {}).get("dist_ma5_max") != P["dist_ma5_max"]
                 or (tape.get("params") or {}).get("sort_by") != P["sort_by"]
                 or "min_score" not in (tape.get("params") or {})
@@ -213,7 +215,8 @@ def main():
             _pr.update({"min_pool": P["min_pool"], "pool_show": P["pool_show"],
                         "pool_alt": P["pool_alt"], "min_score": round(P["min_score"], 1),
                         "ivol_cap": round(P["ivol_cap"], 3), "hold_days": P["hold_days"],
-                        "max_pos": P["max_pos"], "dist_ma5_max": P["dist_ma5_max"],
+                        "max_pos": P["max_pos"], "buys_per_day": P["buys_per_day"],
+                        "dist_ma5_max": P["dist_ma5_max"],
                         "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"]})
             tape["params"] = _pr
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -225,6 +228,11 @@ def main():
     cash = float(tape.get("cash") or 0.0)
     positions = tape.get("positions") or []
     sig = tape.get("signal")
+    # 第一百六十三轮: buys_per_day>1 时, 信号是一个列表(一次买满 max_pos 只)。
+    # tape["signal"] 仍保留第一只 —— 页面/报告/旧账本都按单只读, 不能改动它们的契约。
+    sigs = tape.get("signals")
+    if sigs is None:
+        sigs = [sig] if sig else []
     trades = tape.get("trades") or []
     daily = tape.get("daily") or []
     params = {"mode": P["mode"], "mode_cn": STRATEGY_CN.get(P["mode"], P["mode"]),
@@ -243,57 +251,60 @@ def main():
               "min_pool": P["min_pool"], "pool_show": P["pool_show"], "pool_alt": P["pool_alt"],
               # 第一百五十一轮: 并发上限与形态阈值随参数发布, 页面"最多 N 只""跌破 MA5 X%"
               # 必须跟配置同源 —— 改配置不改页面就是假披露。
-              "max_pos": P["max_pos"], "dist_ma5_max": P["dist_ma5_max"],
+              "max_pos": P["max_pos"], "buys_per_day": P["buys_per_day"],
+              "dist_ma5_max": P["dist_ma5_max"],
               "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"]}
     tape["params"] = params
 
     action, note, code_today = "none", "", ""
 
-    # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 1 笔, 持仓上限 max_pos) ----------
-    if sig and len(positions) < P["max_pos"]:
-        code_today = sig["code"]
+    # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 buys_per_day 笔, 持仓上限 max_pos) ----------
+    bought = 0
+    for _s in sigs:
+        if len(positions) >= P["max_pos"]:
+            break
+        code_today = _s["code"]
         p = _px(day, code_today)
         if p is None:
-            note = "停牌, 未成交"
-            tape["signal"] = None
-        else:
-            _cl, _clr, _op, op_raw, pre, hi_lim, _lo = p
-            gap = (op_raw / pre - 1) * 100 if pre else 0.0
-            if op_raw >= hi_lim - 1e-9:
-                note = "一字涨停, 买不到"
-                tape["signal"] = None
-            else:
-                ok, why = entry_gate(gap, cfg)
-                if not ok:
-                    note = why
-                    tape["signal"] = None
-                else:
-                    px = _op * (1 + HALF)
-                    # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 已有持仓成本"估算:
-                    # 买入发生在开盘, 当日收盘价还不可知, 用成本估值不引入未来函数。
-                    budget = min((cash + sum(float(x.get("cost") or 0) for x in positions))
-                                 / P["max_pos"], cash * 0.995)
-                    if budget < 1000:
-                        note = "现金不足, 不买入"
-                        tape["signal"] = None
-                    else:
-                        shares = budget / px
-                        pos = {"code": code_today, "name": names.get(code_today, sig.get("name", "")),
-                               "signal_date": sig["date"], "entry_date": today,
-                               "entry_px": round(px, 4), "entry_px_raw": round(op_raw, 3),
-                               "gap_pct": round(gap, 2), "shares": round(shares, 4),
-                               "cost": round(budget, 2), "hold_days": P["hold_days"],
-                               # 第一百五十五轮: 移动止损需要"持仓期最高收盘价"(复权口径, 与 entry_px 同源)
-                               "hwm": round(px, 4),
-                               "status": "holding"}
-                        cash -= budget
-                        positions.append(pos)
-                        tape["positions"] = positions
-                        tape["signal"] = None
-                        action = "buy"
-                        note = note or "开盘 %.3f 买入" % op_raw
-                        print("  买入 %s %s @%.3f (缺口 %+.2f%%, 预算 %.0f)"
-                              % (code_today, pos["name"], op_raw, gap, budget), flush=True)
+            note = note or "停牌, 未成交"
+            continue
+        _cl, _clr, _op, op_raw, pre, hi_lim, _lo = p
+        gap = (op_raw / pre - 1) * 100 if pre else 0.0
+        if op_raw >= hi_lim - 1e-9:
+            note = note or "一字涨停, 买不到"
+            continue
+        ok, why = entry_gate(gap, cfg)
+        if not ok:
+            note = note or why
+            continue
+        px = _op * (1 + HALF)
+        # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 已有持仓成本"估算:
+        # 买入发生在开盘, 当日收盘价还不可知, 用成本估值不引入未来函数。
+        budget = min((cash + sum(float(x.get("cost") or 0) for x in positions))
+                     / P["max_pos"], cash * 0.995)
+        if budget < 1000:
+            note = note or "现金不足, 不买入"
+            continue
+        shares = budget / px
+        pos = {"code": code_today, "name": names.get(code_today, _s.get("name", "")),
+               "signal_date": _s["date"], "entry_date": today,
+               "entry_px": round(px, 4), "entry_px_raw": round(op_raw, 3),
+               "gap_pct": round(gap, 2), "shares": round(shares, 4),
+               "cost": round(budget, 2), "hold_days": P["hold_days"],
+               # 第一百五十五轮: 移动止损需要"持仓期最高收盘价"(复权口径, 与 entry_px 同源)
+               "hwm": round(px, 4),
+               "status": "holding"}
+        cash -= budget
+        positions.append(pos)
+        tape["positions"] = positions
+        action = "buy"
+        note = "开盘 %.3f 买入" % op_raw if not note else note
+        print("  买入 %s %s @%.3f (缺口 %+.2f%%, 预算 %.0f)"
+              % (code_today, pos["name"], op_raw, gap, budget), flush=True)
+        bought += 1
+    if bought:
+        tape["signal"] = None
+        tape["signals"] = None
 
     # ---------- 2) 收盘: 逐只卖出判定 ----------
     for pos in list(positions):
@@ -333,9 +344,21 @@ def main():
             gate_note = "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
     if len(positions) < P["max_pos"] and not gate_ok:
         tape["signal"] = None
+        tape["signals"] = None
         action, note = "none", gate_note
     elif len(positions) < P["max_pos"]:
-        cands = pick_list(day, cfg, held=[x["code"] for x in positions], k=1)
+        # 第一百六十三轮: 一次取满 buys_per_day 只。取 max(...) 是为了让"信号宽度门槛"
+        # 仍能判定(候选不足 min_cands 就不出票), 与回测 pick_list(k=max(buys,min_cands)) 同口径。
+        cands = pick_list(day, cfg, held=[x["code"] for x in positions],
+                          k=max(P["buys_per_day"], P["min_cands"]))
+        if len(cands) < P["min_cands"]:
+            cands = []
+        else:
+            cands = cands[:P["buys_per_day"]]
+        for _c in cands:
+            _c["date"] = today
+            _c["name"] = names.get(_c["code"], "")
+        tape["signals"] = cands
         cand = cands[0] if cands else None
         if cand:
             cand["date"] = today
@@ -351,10 +374,12 @@ def main():
                      cand["ivol20"]), flush=True)
         else:
             tape["signal"] = None
+            tape["signals"] = None
             note = note or "候选池不足/无符合条件的票(低波前 %g%%), 明日不买" % (
                 P["ivol_pct"] * 100)
     else:
         tape["signal"] = None
+        tape["signals"] = None
 
     # ---------- 3.5) 候选池快照(页面用; 与是否成交无关) ----------
     snap = _pool_snapshot(day, cfg, names)

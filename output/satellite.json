@@ -41,18 +41,20 @@
   "market_gate": true,
   "cost_pct": 0.3,
   "min_pool": 20,
-  "pool_show": 3,
+  "pool_show": 4,
   "pool_alt": 0,
-  "max_pos": 3,
+  "max_pos": 4,
   "dist_ma5_max": null,
   "sort_by": "mom20_ivol",
-  "ivol_pct_max": 0.1
+  "ivol_pct_max": 0.1,
+  "trail_pct": 8.0,
+  "buys_per_day": 4
  },
  "positions": [],
  "pool": {
-  "n": 3,
+  "n": 4,
   "base": 1613,
-  "show": 3,
+  "show": 4,
   "alt": [],
   "funnel": [
    {
@@ -117,13 +119,28 @@
     "turnover_rate": 1.0,
     "mom20": 2.3,
     "ra": 1.71
+   },
+   {
+    "rank": 4,
+    "code": "000661.SZ",
+    "name": "长春高新",
+    "ivol20": 1.524,
+    "score": 0.0,
+    "dist_ma5": 0.79,
+    "pct": -0.98,
+    "close": 73.77,
+    "amount_yi": 3.25,
+    "vol_ratio": 0.72,
+    "turnover_rate": 1.11,
+    "mom20": 2.6,
+    "ra": 1.71
    }
   ],
   "score_gate": 0.0,
   "ivol_cap": 0.0,
   "date": "20261106",
-  "picked": "",
   "gate_ok": false,
+  "picked": "",
   "pick_note": "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
  }
 }

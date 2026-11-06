@@ -256,7 +256,7 @@
     </ul>
   </div>
 
-  <h2 data-pane="more" data-strat-pane="sat">副策略规则与披露 <span class="sub">低波池内追风险调整动量 · 最多 3 只并发，与主策略（抄底）方向相反</span></h2>
+  <h2 data-pane="more" data-strat-pane="sat">副策略规则与披露 <span class="sub">低波池内追风险调整动量 · 最多 4 只并发（一次买满），与主策略（抄底）方向相反</span></h2>
   <div data-pane="more" data-strat-pane="sat" class="panel">
     <div class="legend" style="margin-bottom:10px">「策略体检」（失效探针 / era 判定 / 观察级苗头）只针对主策略：
     副策略 v3 账本自 2026-11-05 起记，向前样本还不够做失效判定，硬做出来的探针没有意义。</div>
@@ -264,9 +264,9 @@
     <ul class="rules">
       <li>T日收盘后：基础票池 → <b>当日 ivol 最低 10%</b>（池边界）→ 按 <b>20 日动量 ÷ 特质波动</b>（风险调整动量）由强到弱排序，前 3 名进候选池（0~3 只）——<b>不设涨幅上限</b>，涨得多且走得稳的优先</li>
       <li><b>基础票池不足 20 只则当日不出票</b>（宁缺勿滥）。这 20 只是<b>样本下限</b>、不是池深：可选面太窄说明市场极端（大面积停牌 / 流动性枯竭），不下注</li>
-      <li>T+1日开盘集合竞价：<b>按开盘价买入 1/3 仓位</b>（资金分 3 份），<b>每日最多买 1 只</b>；竞价缺口在 -3%~+5% 之外不成交（深低开破位不接、高开过多不追），一字涨停/停牌买不到</li>
+      <li>T+1日开盘集合竞价：<b>按开盘价买入 1/4 仓位</b>（资金分 4 份），<b>每日最多买 4 只、一次买满</b>（第 163 轮改：原先每日只买 1 只，建仓要等 3 天，信号在等待期已衰减）；竞价缺口在 -3%~+5% 之外不成交（深低开破位不接、高开过多不追），一字涨停/停牌买不到</li>
       <li>持满 <b>10 个交易日</b>收盘卖出；收盘相对买入价跌破 <b>-12%</b> 止损；<b>收盘相对持仓期最高收盘回撤 8% 即卖</b>（移动止损，第一百五十五轮）—— 三条都是当日收盘判定、收盘成交</li>
-      <li><b>最多同时持 3 只</b>：满员后即使有信号也不买；某只卖出后，当日收盘再出下一个信号、次日买入。空仓期<b>不降标准</b></li>
+      <li><b>最多同时持 4 只</b>：满员后即使有信号也不买；某只卖出后，当日收盘再出下一个信号、次日买入。空仓期<b>不降标准</b></li>
     </ul>
     <b>选股条件（T日收盘：低波池里挑"风险调整动量最强"的 —— 追高，但只追在低波池里）</b>
     <ul class="rules">
@@ -305,6 +305,18 @@
       <li><b>纠正①：第 160 轮成本弹性写错 10 倍</b>。原文"每 +1 个千分点 = -1.6~1.8pp"，但同节表格是 106.31→87.88→71.57→43.08，相邻档差 <b>-18.43 / -16.31 / -14.24pp</b>。正确表述：<b>每 +0.1% 单边滑点 ≈ -14~-18pp 年化</b></li>
       <li><b>纠正②：第 159 轮把 <code>breadth_min</code> 判为"生效"不准确</b>。本轮单因素扫描里 0.20 / 0.25 / 0.30 三档<b>逐位相同</b>（106.31% / 353 笔）—— 因为 <code>ok = breadth_ok &amp;&amp; trend_ok</code>，指数破 MA20 时宽度通常也已破位，成了冗余条件（config 第 229 行早有记录）。<b>参数接线审计修正为 21/23 生效</b></li>
       <li><b>纠正③：第 155 轮"移动止损把回撤 -23.77→-20.14"的依据不成立</b>（参数已定稿进 config）。bootstrap 5000 次：年化差中位 +0.110pp、<b>P(&gt;0) 50.9%</b>；回撤差 <b>P(&gt;0) 62.4%</b>；卡玛差中位 +0.026、P 55.3%；<b>分段 6 段里 trail=8 只有 2 段更浅</b>，其余 4 段更深（-1.95 / -2.94 / -1.14 / -1.22pp）；终值 2.51x vs 2.51x、配对 t = -0.05。那个改善来自 2025 下半年<b>一次特定回撤</b>被削掉。<b>参数保留 8.0，归因改为"年化无差异 + 逻辑合理"，不再声称它改善回撤</b></li>
+    </ul>
+    <b>第一百六十三轮：把"一次买一只"改成"一次买满" —— 笔数 284→392、年化 15.38→18.99%</b>
+    <ul class="rules">
+      <li><b>起点</b>：主策略 353 笔 / 年化 104%，副策略 284 笔 / 15.38%。目标是把次数对齐、把复利提上来，同时选股逻辑必须与主策略不同</li>
+      <li><b>先钉死"调参"这条路</b>：只动持有期，年化在 hold=7 的 <b>4.0%</b> 与 hold=10 的 <b>27.0%</b> 之间跳（引擎口径·不含跌停顺延）——<b>相邻一天差 23pp</b>，是尖峰不是平台；把候选按名次单独回测（第 1~10 名）年化 9.3 / 23.9 / <b>47.8</b> / -1.9 / 30.2 / 1.4 / -1.9 / 1.1 / 14.8 / 7.5，<b>毫无单调性</b>，说明"第 3 名最好"是噪声</li>
+      <li><b>再钉死"提高换手"这条路</b>：九因子五分组扫描（1500 日、T+1 开盘买、减同日等权基准），持有 1~3 日的最强维度是特质波动 <b>Q5-Q1 = -0.47pp / IC -0.121</b>，低波组 +0.22%、高波组 -0.25%，扣 0.3% 成本即归零；且所有因子都是<b>倒 U</b>（Q3 最好、两头都差）——<b>1~3 天尺度上极端值不是收益是风险</b></li>
+      <li><b>真正的漏洞</b>：副策略一直"每日最多买 1 只"，max_pos=3 时买满要等 <b>3 个交易日</b>，而信号是 T 日收盘算的——第 3 天买的其实是"3 天前的最优候选"。把 <code>buys_per_day</code> 用足后（max_pos=4、持 10 日）：buys=1 → 10.49%／buys=2 → 12.72%／buys=3 → 18.25%／<b>buys=4 → 18.99%</b>，<b>单笔收益同步从 0.952% 升到 1.366%（+44%）</b>——不是多买摊薄，是买到了信号本身</li>
+      <li><b>定稿</b>（官方引擎）：<code>max_pos 3→4</code>、新增 <code>buys_per_day: 4</code>。总收益 <b>+183.89%</b>／年化 <b>18.99%</b>／回撤 <b>-18.67%</b>／卡玛 <b>1.02</b>／夏普 0.91／<b>392 笔</b>／胜率 50.26%／单笔 1.366%（旧：135.88%／15.38%／-20.14%／0.76／0.74／284 笔／47.54%／1.261%）</li>
+      <li><b>分年六年全正</b>：2021 +42.3 / 2022 +27.4 / 2023 +4.8 / 2024 +18.5 / <b>2025 +11.1</b> / 2026 +10.6（旧 2025 是 <b>-4.1%</b>）。代价是 2023 从 32.4% 掉到 4.8%——<b>用一年换掉了一个负年</b></li>
+      <li><b>笔数对齐 + 选股确实不同</b>：392 vs 主策略 353，同量级略多；选股逻辑一个字没改（低波前 10% 内按 <code>mom20/ivol</code> 排序）。实测（主策略可导出近 200 笔，2023-04-24 起）：副策略 <b>3444 个股·日</b>、主策略 <b>501 个</b>，<b>同日同时持有同一只 = 0 次</b>；票池交集只有 4 只（206 vs 188）且从未同日——不是参数不同，是<b>两个信号物理互斥</b></li>
+      <li><b>同时否掉三个方向</b>：① 按名次加权 40/30/20/10 年化 23.21%，但根源是集中度 + 那个噪声名次，反向加权就掉到 17.79% → 保持等权；② 池扩到创业板（20.87%／-21.98%／卡玛 0.95）、科创板（16.59%／-24.22%／0.69）→ 年化不动、回撤全线变差；③ 缩短持有期换笔数（hold=8 有 344 笔但年化 9.86%）→ 笔数上去复利下来</li>
+      <li><b>诚实的边界</b>：主策略每笔 +1.21%／持 1.5 天 = <b>0.8%/天</b>；副策略 +1.37%／持 9.2 天 = <b>0.15%/天</b>。副策略资金利用率反而更高（空仓 32% vs 主策略 76.5%），<b>在 0.15%/天 的 alpha 下，仓位结构优化到极致也只有 20% 量级</b>（1.0137<sup>250/9.2</sup> ≈ 1.45）——它是"与主策略相关性 0.14 的第二条腿"，不是第二台 100% 的机器</li>
     </ul>
     <b>第一百六十二轮：执行摩擦审计 —— 回测里有多少笔"根本成交不了"</b>
     <ul class="rules">
@@ -452,7 +464,7 @@ const HASHMAP = {
 };
 const STRAT_NOTE = {
   main: "每日只买评分第 1 名 1 笔 · T+1 开盘价成交 · T+2 收盘清仓",
-  sat: "低波池内追风险调整动量 · 最多 3 只并发 · 每日最多买 1 只",
+  sat: "低波池内追风险调整动量 · 最多 4 只并发 · 一次买满",
 };
 const U = {
   latest: "./data/latest.json", history: "./data/history.json",
@@ -1063,6 +1075,7 @@ function headSat(d) {
   const P = d.params || {}, p = d.pool || {}, sig = d.signal;
   const poss = d.positions || (d.position ? [d.position] : []);
   const mx = Number(P.max_pos || 1);
+  const by = Number(P.buys_per_day || 1);
   document.getElementById("meta").textContent =
     `信号日 ${rpDate(d.updated)} · 更新于 ${rpDate(d.updated)} 收盘后 · 低波池内追风险调整动量（最多 ${mx} 只 · 虚拟本金 10 万，独立记账）`;
   const b = [replayBadge()];
@@ -1106,6 +1119,7 @@ function planSat(d) {
   const P = d.params || {}, sig = d.signal, p = d.pool || {};
   const poss = d.positions || (d.position ? [d.position] : []);
   const mx = Number(P.max_pos || 1);
+  const by = Number(P.buys_per_day || 1);
   const nav = Number(d.nav ?? 1), cap = Number(d.capital || 0);
   const holdN = Number(P.hold_days || 10);
   const each = mx > 0 ? Math.round(100 / mx) : 100;
@@ -1152,7 +1166,7 @@ function planSat(d) {
       : (poss.length >= mx ? `持仓已满（${mx}/${mx}），不再买入` : "无符合条件的票，不买入"),
     sell: poss.length ? `每只持满 ${holdN} 个交易日收盘卖${P.stop_pct ? `；跌破 ${P.stop_pct}% 止损` : ""}${P.trail_pct ? `；自高点回撤 ${P.trail_pct}% 即卖` : ""}；卖出当日收盘后才出下一个信号`
       : "无持仓需卖出",
-    pos: `资金分 ${mx} 份 · 每日最多买 1 只 · 最多同时持 ${mx} 只 · 卖出资金当日收盘后可再出信号`,
+    pos: `资金分 ${mx} 份 · 每日最多买 ${by} 只 · 最多同时持 ${mx} 只 · 卖出资金当日收盘后可再出信号`,
     foot: `虚拟本金 ${(Number(d.init_capital || 0) / 1e4).toFixed(0)} 万 → <b style="color:${nav >= 1 ? "var(--red)" : "var(--green)"}">${(cap / 1e4).toFixed(2)} 万</b>（净值 ${nav.toFixed(4)}）· 与主策略共用同一份数据 · 独立记账`,
   });
 }
@@ -1187,12 +1201,13 @@ function poolSat(d) {
   const lowPct = Math.round(Number(P.ivol_pct_max || 0) * 100);
   const show = Number(p.show ?? P.pool_show ?? 3);
   const mx = Number(P.max_pos || 1);
+  const by = Number(P.buys_per_day || 1);
 
   const funnel = (p.funnel && p.funnel.length)
     ? p.funnel.slice()
     : [{ label: "基础票池（主板 · 非ST · 非停牌 · 成交额≥1亿）", n: base }];
   funnel.push({ label: rows.length
-    ? `候选池（低波前${lowPct}% · 风险调整动量排序${capped ? ` · 距5日线≤+${line}%` : " · 不设涨幅上限"}，最多 ${show} 只）`
+    ? `候选池（低波前${lowPct}% · 风险调整动量排序${capped ? ` · 距5日线≤+${line}%` : " · 不设涨幅上限"}，展示前 ${show} 只）`
     : `候选池（无符合条件的票，低波前${lowPct}%）`, n: rows.length, last: true });
 
   if (!rows.length) {
@@ -1214,7 +1229,7 @@ function poolSat(d) {
       reason: i === 0
         ? `风险调整动量 ${x.ra ?? "-"}（20日 ${x.mom20}%）最强${p.gate_ok ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}`
         : `候补第 ${i + 1} 名（动量 ${x.mom20}%），最多同时持 ${mx} 只，满员时不买` })), "距5日线%") +
-    `<div class="legend">候选池 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20日动量÷特质波动 排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，最多 ${show} 只）· 最多同时持 <b>${mx}</b> 只、每日最多买 1 只 · 基础票池 ${base} 只（样本下限 ${minPool} 只）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+    `<div class="legend">候选池 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20日动量÷特质波动 排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，展示前 ${show} 只）· 最多同时持 <b>${mx}</b> 只、每日最多买 <b>${by}</b> 只 · 基础票池 ${base} 只（样本下限 ${minPool} 只）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
 }
 
 /* ---- 单吊执行记录 ---- */
@@ -1341,6 +1356,7 @@ function execSat(d) {
   const P = d.params || {}, sig = d.signal;
   const poss = d.positions || (d.position ? [d.position] : []);
   const mx = Number(P.max_pos || 1);
+  const by = Number(P.buys_per_day || 1);
   const each = Math.round(100 / mx * 10) / 10;
   const D8 = v => (v && String(v).length === 8)
     ? `${String(v).slice(0, 4)}-${String(v).slice(4, 6)}-${String(v).slice(6)}` : (v || "");
@@ -1456,11 +1472,11 @@ async function renderStrategy() {
   const seq = ++RENDER_SEQ;
   const key = STRAT, isMain = key === "main";
   setSub("plan-sub", isMain ? "深低开承接 · 每日仅执行评分第 1 名 1 笔，T+2 收盘清仓"
-    : "低波池内追风险调整动量（追高）· 最多 3 只并发 · 每日最多买 1 只 · 持 10 个交易日");
+    : "低波池内追风险调整动量（追高）· 最多 4 只并发 · 一次买满 · 持 10 个交易日");
   document.getElementById("pool-title").textContent = "当日候选池";
   document.getElementById("exec-title").textContent = "逐笔执行记录";
   setSub("pool-sub", isMain ? "仅沪深主板 · 有信号日只发 1 只；无信号日按备用漏斗补位（至多 3 只）"
-    : "低波前 10% 里按 20 日动量由强到弱排序取前 3 名（不设涨幅上限 = 追高，但只追在低波池内）；最多同时持 3 只、每日最多买 1 只");
+    : "低波前 10% 里按 20 日动量由强到弱排序取前 4 名（不设涨幅上限 = 追高，但只追在低波池内）；最多同时持 4 只、每日一次买满");
   setSub("exec-sub", isMain ? "逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）"
     : "逐笔明细：买入哪只、什么价、卖出哪只、什么价（v3 自 2026-11-05 起）");
   setSub("bt-sub", "加载中...");

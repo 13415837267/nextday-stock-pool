@@ -392,7 +392,7 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             "run_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
             "start": dates[0], "end": dates[-1], "days": len(dates),
             "initial_capital": init, "strategy": STRATEGY_CN.get(P["mode"], P["mode"]),
-            "rules": (f"最多 {P['max_pos']} 只并发 · 每日最多买 1 只 · 持 {P['hold_days']} 个交易日收盘卖"
+            "rules": (f"最多 {P['max_pos']} 只并发 · 每日最多买 {P['buys_per_day']} 只 · 持 {P['hold_days']} 个交易日收盘卖"
                       + (f" · 只在跌破 MA5 {abs(P['dist_ma5_max']):g}% 时买" if P["dist_ma5_max"] else "")
                       + (f" · 低波前 {P['ivol_pct'] * 100:g}%" if P["ivol_pct"] else "")
                       + (f" · 候选池≤{P['pool_show']}只(评分≥{P['min_score']:g})"
