@@ -256,7 +256,7 @@
     </ul>
   </div>
 
-  <h2 data-pane="more" data-strat-pane="sat">副策略规则与披露 <span class="sub">低波池内追动量 · 最多 3 只并发，与主策略（抄底）方向相反</span></h2>
+  <h2 data-pane="more" data-strat-pane="sat">副策略规则与披露 <span class="sub">低波池内追风险调整动量 · 最多 3 只并发，与主策略（抄底）方向相反</span></h2>
   <div data-pane="more" data-strat-pane="sat" class="panel">
     <div class="legend" style="margin-bottom:10px">「策略体检」（失效探针 / era 判定 / 观察级苗头）只针对主策略：
     副策略 v3 账本自 2026-11-05 起记，向前样本还不够做失效判定，硬做出来的探针没有意义。</div>
@@ -360,7 +360,7 @@ const HASHMAP = {
 };
 const STRAT_NOTE = {
   main: "每日只买评分第 1 名 1 笔 · T+1 开盘价成交 · T+2 收盘清仓",
-  sat: "低波池内追动量 · 最多 3 只并发 · 每日最多买 1 只",
+  sat: "低波池内追风险调整动量 · 最多 3 只并发 · 每日最多买 1 只",
 };
 const U = {
   latest: "./data/latest.json", history: "./data/history.json",
@@ -972,7 +972,7 @@ function headSat(d) {
   const poss = d.positions || (d.position ? [d.position] : []);
   const mx = Number(P.max_pos || 1);
   document.getElementById("meta").textContent =
-    `信号日 ${rpDate(d.updated)} · 更新于 ${rpDate(d.updated)} 收盘后 · 低波池内追动量（最多 ${mx} 只 · 虚拟本金 10 万，独立记账）`;
+    `信号日 ${rpDate(d.updated)} · 更新于 ${rpDate(d.updated)} 收盘后 · 低波池内追风险调整动量（最多 ${mx} 只 · 虚拟本金 10 万，独立记账）`;
   const b = [replayBadge()];
   b.push(`<span class="badge ${p.gate_ok ? "ok" : "stop"}">大盘闸门 ${p.gate_ok ? "开 · 可开新仓" : "关 · 不开新仓"}</span>`);
   if ((p.rows || []).length) b.push(`<span class="badge gold">候选池 ${p.rows.length}/${p.show || P.pool_show || 3} 只</span>`);
@@ -1054,7 +1054,7 @@ function planSat(d) {
   }
 
   return planCard({
-    kicker: `T+1（${rpDate(d.updated)} 的下一交易日）执行判定卡 · 低波池内追动量 · 9:25 竞价结束后照此执行`,
+    kicker: `T+1（${rpDate(d.updated)} 的下一交易日）执行判定卡 · 低波池内追风险调整动量 · 9:25 竞价结束后照此执行`,
     color, title, rows,
     buy: sig ? `9:25 集合竞价按开盘价买入 ${each}% 仓位（缺口 ${P.gap_min}%~+${P.gap_max}% 之外不成交）`
       : (poss.length >= mx ? `持仓已满（${mx}/${mx}），不再买入` : "无符合条件的票，不买入"),
@@ -1086,7 +1086,7 @@ function poolMain(d) {
 
 function poolSat(d) {
   const P = d.params || {}, p = d.pool || {};
-  // 第一百五十三轮: 候选池 = 低波池里按 20 日动量排序的票(不设涨幅上限), 最多 3 只。
+  // 第一百五十四轮: 候选池 = 低波池里按 mom20/ivol(风险调整动量)排序的票, 最多 3 只。
   const rows = p.rows || [];
   const base = p.base ?? p.n ?? rows.length;
   const minPool = Number(P.min_pool || 20);
@@ -1100,7 +1100,7 @@ function poolSat(d) {
     ? p.funnel.slice()
     : [{ label: "基础票池（主板 · 非ST · 非停牌 · 成交额≥1亿）", n: base }];
   funnel.push({ label: rows.length
-    ? `候选池（低波前${lowPct}% · 动量排序${capped ? ` · 距5日线≤+${line}%` : " · 不设涨幅上限"}，最多 ${show} 只）`
+    ? `候选池（低波前${lowPct}% · 风险调整动量排序${capped ? ` · 距5日线≤+${line}%` : " · 不设涨幅上限"}，最多 ${show} 只）`
     : `候选池（无符合条件的票，低波前${lowPct}%）`, n: rows.length, last: true });
 
   if (!rows.length) {
@@ -1120,9 +1120,9 @@ function poolSat(d) {
   return funnelBar(funnel) +
     poolTable(rows.map((x, i) => ({ ...row(x),
       reason: i === 0
-        ? `20日动量 ${x.mom20}% 最强${p.gate_ok ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}`
+        ? `风险调整动量 ${x.ra ?? "-"}（20日 ${x.mom20}%）最强${p.gate_ok ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}`
         : `候补第 ${i + 1} 名（动量 ${x.mom20}%），最多同时持 ${mx} 只，满员时不买` })), "距5日线%") +
-    `<div class="legend">候选池 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20 日动量排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，最多 ${show} 只）· 最多同时持 <b>${mx}</b> 只、每日最多买 1 只 · 基础票池 ${base} 只（样本下限 ${minPool} 只）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+    `<div class="legend">候选池 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20日动量÷特质波动 排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，最多 ${show} 只）· 最多同时持 <b>${mx}</b> 只、每日最多买 1 只 · 基础票池 ${base} 只（样本下限 ${minPool} 只）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
 }
 
 /* ---- 单吊执行记录 ---- */
@@ -1364,7 +1364,7 @@ async function renderStrategy() {
   const seq = ++RENDER_SEQ;
   const key = STRAT, isMain = key === "main";
   setSub("plan-sub", isMain ? "深低开承接 · 每日仅执行评分第 1 名 1 笔，T+2 收盘清仓"
-    : "低波池内追动量（追高）· 最多 3 只并发 · 每日最多买 1 只 · 持 10 个交易日");
+    : "低波池内追风险调整动量（追高）· 最多 3 只并发 · 每日最多买 1 只 · 持 10 个交易日");
   document.getElementById("pool-title").textContent = "当日候选池";
   document.getElementById("exec-title").textContent = "逐笔执行记录";
   setSub("pool-sub", isMain ? "仅沪深主板 · 有信号日只发 1 只；无信号日按备用漏斗补位（至多 3 只）"
