@@ -79,24 +79,30 @@ DEFAULT = {
     # 第一百五十轮新增: 基础池内 ivol 分位上限(0=不启用)。
     #   0.10 = 只在当日 ivol 最低的 10% 里选, 比绝对阈值 ivol<=1.2 更适应波动率环境变化。
     "ivol_pct_max": 0.0,
-    # 第一百五十一轮: 距 MA5 的距离上限(%), None=不启用。
-    #   训练(178 万样本, 训练/验证分段): "跌破 MA5 越深, 后续 10 日收益越高" 是**连续单调**
-    #   的, 不是某个切点的偶然 —— <=-2% +1.36%、<=-3% +2.60%、<=-4% +4.19%、<=-6% +8.54%、
-    #   <=-7% +10.46%, 训练段与验证段同向且胜率从 49% 单调升到 85%。
-    #   -3% 是"频率 x 质量"的平衡点(日均 0.18 个信号), 更深则样本太少、年化反而被噪声主导。
-    "dist_ma5_max": None,
-    # 第一百五十一轮: 并发持仓上限。单吊 100% 仓位的日波动就是一只票的波动, 回撤压不住;
-    #   资金分 max_pos 份、每日最多买 1 只, 卖出后当日收盘再出信号。
-    #   训练: max_pos=2 年化 18.7% / 回撤 -19.3% / 卡玛 0.97; 3 只降到 11.0%/0.67
-    #   (第 3 只票平均贡献 -0.37%, 是负的 —— 同一天出现 3 个深度回调信号说明是普跌)。
-    "max_pos": 1,
-    # 第一百五十轮新增: 排序键(从低波池里挑哪一只), 默认 ivol=现行行为。
-    "sort_by": "ivol",
+    # 距 MA5 的上限(%)。第一百五十一轮这里写的是 -3.0(只买跌破 3% 的), 第一百五十二轮推翻:
+    #   同日横截面中性化后, "跌最深组"的超额收益 +1.06% 反而低于贴近 MA5 的 +1.34%,
+    #   深跌组的绝对收益全部来自"那几天市场随后反弹"(弱市 -7.01% / 强市 +6.45%)。
+    #   现在 +6.0 是**追高线**: 只剔除已经冲高的票, 不做任何"越跌越买"。
+    "dist_ma5_max": 6.0,
+    # 距 MA5 的下限(%), None=不启用。上线不启用 —— 第一百五十二轮已删除"越跌越买",
+    # 保留该参数只是让"不接飞刀"这个假设可被回测检验, 不进默认路径。
+    "dist_ma5_min": None,
+    # 并发持仓上限: 资金分 max_pos 份、每日最多买 1 只, 卖出后当日收盘再出信号。
+    #   第一百五十二轮定 3: 在"低波+动量+不追高"这个方向上, 2 只 12.7%/-26.4%,
+    #   3 只 9.4%/-19.95%/6 年全正 —— 用 3.3pp 年化换 6.4pp 回撤与 85 笔交易。
+    #   (第151轮抄底方向下 3 只是负贡献, 那是因为"同日 3 个深跌信号 = 普跌"; 换了方向不适用。)
+    "max_pos": 3,
+    # 排序键(从低波池里挑哪一只)。第一百五十二轮定为 mom20_desc:
+    #   唯一稳定的横截面 alpha 是低波(见 config.yaml 注释), 池内再用"20日动量最强"
+    #   取上涨样本的形态; 同时用 dist_ma5_max=+6 剔除已冲高的票(不追高, 不是抄底)。
+    "sort_by": "mom20_desc",
     "amount_min_yi": 1.0,     # 成交额下限(亿)
     "cost_pct": 0.3,          # 往返成本(%)
     "gap_min": -3.0,          # T+1 竞价缺口下限(%): 深低开破位不接
     "gap_max": 5.0,           # 上限: 高开过多不追
     "stop_pct": 0.0,          # 止损(%): 0=关闭; 收盘相对买入价跌破即卖
+    "trail_pct": 0.0,         # 移动止损(%): 0=关闭; 收盘相对持仓期最高收盘回撤超过即卖
+    "gate_exit": False,       # 持仓层闸门: 大盘跌破 MA20 时, 已持仓也当日收盘卖出
     "market_gate": False,     # 大盘闸门: 指数在 MA20 上方才开新仓
     "min_pool": 20,           # 基础票池样本下限, 不足则不出票(与池深无关)
     "pool_show": POOL_SHOW,   # 候选池只数上限(评分达标的前 N 名)
@@ -132,6 +138,8 @@ def daily_params(cfg: dict) -> dict:
                                 else float(s["dist_high20_max"])),
             "dist_ma5_max": (None if s.get("dist_ma5_max") is None
                              else float(s["dist_ma5_max"])),
+            "dist_ma5_min": (None if s.get("dist_ma5_min") is None
+                             else float(s["dist_ma5_min"])),
             "max_pos": max(1, int(s.get("max_pos") or 1)),
             "ivol_pct": float(s.get("ivol_pct_max") or 0.0),
             "sort_by": str(s.get("sort_by") or "ivol"),
@@ -140,6 +148,8 @@ def daily_params(cfg: dict) -> dict:
             "gap_min": float(s["gap_min"]),
             "gap_max": float(s["gap_max"]),
             "stop": float(s["stop_pct"]) / 100.0,
+            "trail": float(s.get("trail_pct") or 0.0) / 100.0,
+            "gate_exit": bool(s.get("gate_exit")),
             "gate": bool(s["market_gate"]),
             "min_pool": int(s["min_pool"]),
             "pool_show": int(s["pool_show"] or POOL_SHOW),
@@ -190,20 +200,29 @@ def rank_pool(day, cfg: dict):
     df = day.loc[_masks(day, cfg)[2]]
     if len(df) < P["min_pool"]:
         return df.iloc[0:0]
-    key = P["sort_by"]
-    if key == "amount":
-        s = df["amount"].astype(float)
-    elif key == "dist_high20":
-        s = df["dist_high20"].astype(float)
-    elif key == "dist_ma5":
-        s = df["dist_ma5"].astype(float)
-    elif key == "mom20_asc":
-        s = df["mom20"].astype(float)
-    elif key == "mom20_desc":
-        s = -df["mom20"].astype(float)
-    else:
-        s = df["ivol20"].astype(float)
+    s = _sort_key(df, P["sort_by"])
     return df.assign(_ivol=df["ivol20"].astype(float), _key=s).sort_values("_key")
+
+
+def _sort_key(df, key: str):
+    """排序键 -> 升序序列(取第 1 名即该键"最"的一只)。
+
+    第一百五十二轮把原来的一串 if/elif 收成映射表: 新增形态键不用再动排序逻辑。
+    desc 后缀表示"数值越大越优先", 用负号统一成升序。
+    """
+    m = {
+        "ivol": df["ivol20"].astype(float),                  # 波动最低
+        "amount": df["amount"].astype(float),                # 成交额最小(冷门)
+        "dist_high20": df["dist_high20"].astype(float),      # 距20日高点跌最深(超跌)
+        "dist_ma5": df["dist_ma5"].astype(float),            # 距5日线跌最深(抄底)
+        "mom20_asc": df["mom20"].astype(float),              # 20日动量最弱
+        "mom20_desc": -df["mom20"].astype(float),            # 20日动量最强(稳步上涨)
+        "turnover_desc": -df["turnover_rate"].astype(float),  # 换手最高(相对活跃)
+        "amp_desc": -df["amp_pct"].astype(float),             # 振幅最大(有弹性)
+        "close_pos_desc": -df["close_pos"].astype(float),     # 收盘在日内最高(尾盘强)
+        "dist_high20_desc": -df["dist_high20"].astype(float),  # 距20日高点最近(强势不破位)
+    }
+    return m.get(key, m["ivol"])
 
 
 def rank_qualified(day, cfg: dict, rk=None):
@@ -228,6 +247,8 @@ def rank_qualified(day, cfg: dict, rk=None):
         q = q[q["_ivol"] <= P["ivol_cap"]]
     if len(q) and P["dist_ma5_max"] is not None:
         q = q[q["dist_ma5"] <= P["dist_ma5_max"]]
+    if len(q) and P["dist_ma5_min"] is not None:
+        q = q[q["dist_ma5"] >= P["dist_ma5_min"]]
     if len(q) and P["dist_high20_max"] is not None:
         q = q[q["dist_high20"] <= P["dist_high20_max"]]
     return q

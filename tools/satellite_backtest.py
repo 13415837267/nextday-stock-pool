@@ -214,7 +214,8 @@ def run(ctx: dict, cfg: dict) -> dict:
                         positions.append({"code": sig["code"], "name": nm,
                                           "signal_date": sig["date"], "entry_date": d, "entry_j": j,
                                           "entry_px": px, "entry_px_raw": float(r["open"]),
-                                          "gap_pct": round(gap, 2), "units": units})
+                                          "gap_pct": round(gap, 2), "units": units,
+                                          "hwm": px})
                         rec["fills"].append({"code": sig["code"], "name": nm, "ret_pct": None})
             sig = None
 
@@ -225,8 +226,14 @@ def run(ctx: dict, cfg: dict) -> dict:
                 continue
             cl = float(r["close_adj"])
             last_px[p["code"]] = cl
+            p["hwm"] = max(float(p.get("hwm") or p["entry_px"]), cl)
             ret = (cl / p["entry_px"] - 1) * 100
             ex, why = should_exit(j - p["entry_j"], ret, cfg)
+            # 持仓层风控(第一百五十二轮): 两个可选旋钮, 都在收盘判定、收盘成交, 与止损同口径。
+            if not ex and P["gate_exit"] and not gate_today:
+                ex, why = True, "大盘转弱清仓"
+            if not ex and P["trail"] > 0 and cl / p["hwm"] - 1 <= -P["trail"]:
+                ex, why = True, "移动止损 %.0f%%" % (P["trail"] * 100)
             if ex:
                 cash += p["units"] * cl * (1 - HALF)
                 trades.append({"code": p["code"], "name": p["name"],

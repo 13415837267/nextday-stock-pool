@@ -75,11 +75,12 @@ def _f(v, nd=2, default=None):
 
 
 def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
-    """当日候选池快照(第一百五十一轮) —— 低波池里跌破 MA5 的票, 最多 3 只。
+    """当日候选池快照(第一百五十二轮) —— 低波池里 20 日动量最强的票, 最多 3 只。
 
     口径(与页面 legend / 漏斗逐字对应, 不各算各的):
       base   = 基础票池: 通过上市/流动性/板块等硬性条件的只数(rank_pool 的池子)
-      rows   = 候选池: 基础池里 ivol 最低 10% → dist_ma5 ≤ -3% 的票, 最多 pool_show 只
+      rows   = 候选池: 基础池里 ivol 最低 10% → 剔除距 MA5 超 +6% 的追高票 → 动量最强,
+               最多 pool_show 只
       n      = 候选池只数(= len(rows)); 基础票池不足 min_pool 或全部不合格时为 0
       alt    = 已废弃, 恒空数组
       funnel = 全市场 → 上市状态 → 成交额 → 板块 的逐道剩余只数
@@ -187,6 +188,7 @@ def main():
                 or (tape.get("params") or {}).get("hold_days") != P["hold_days"]
                 or (tape.get("params") or {}).get("max_pos") != P["max_pos"]
                 or (tape.get("params") or {}).get("dist_ma5_max") != P["dist_ma5_max"]
+                or (tape.get("params") or {}).get("sort_by") != P["sort_by"]
                 or "min_score" not in (tape.get("params") or {})
                 or "min_pool" not in (tape.get("params") or {})):
             same_day = _snap.get("date") == today
@@ -210,7 +212,7 @@ def main():
                         "pool_alt": P["pool_alt"], "min_score": round(P["min_score"], 1),
                         "ivol_cap": round(P["ivol_cap"], 3), "hold_days": P["hold_days"],
                         "max_pos": P["max_pos"], "dist_ma5_max": P["dist_ma5_max"],
-                        "ivol_pct_max": P["ivol_pct"]})
+                        "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"]})
             tape["params"] = _pr
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
             print("  升级候选池快照(候选池 %d 只 / 评分阈值 %g / 基础票池 %d 只), 状态机未动"
@@ -238,7 +240,7 @@ def main():
               # 第一百五十一轮: 并发上限与形态阈值随参数发布, 页面"最多 N 只""跌破 MA5 X%"
               # 必须跟配置同源 —— 改配置不改页面就是假披露。
               "max_pos": P["max_pos"], "dist_ma5_max": P["dist_ma5_max"],
-              "ivol_pct_max": P["ivol_pct"]}
+              "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"]}
     tape["params"] = params
 
     action, note, code_today = "none", "", ""
@@ -334,12 +336,15 @@ def main():
             code_today = code_today or cand["code"]
             if action == "none":
                 action = "signal"
-                note = note or "跌破 MA5 %.2f%%, 明日开盘买入" % cand["dist_ma5"]
-            print("  信号 %s %s (dist_ma5 %.2f%%, ivol %.2f)"
-                  % (cand["code"], cand["name"], cand["dist_ma5"], cand["ivol20"]), flush=True)
+                note = note or "低波池内动量最强(20日 %+.1f%% / 距MA5 %+.2f%%), 明日开盘买入" % (
+                    cand["mom20"], cand["dist_ma5"])
+            print("  信号 %s %s (mom20 %+.1f%%, dist_ma5 %+.2f%%, ivol %.2f)"
+                  % (cand["code"], cand["name"], cand["mom20"], cand["dist_ma5"],
+                     cand["ivol20"]), flush=True)
         else:
             tape["signal"] = None
-            note = note or "候选池不足/无票跌破 MA5 %g%%, 明日不买" % (P["dist_ma5_max"] or 0)
+            note = note or "候选池不足/无符合条件的票(低波前 %g%% + 不追高), 明日不买" % (
+                P["ivol_pct"] * 100)
     else:
         tape["signal"] = None
 

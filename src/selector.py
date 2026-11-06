@@ -67,6 +67,39 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
                               panel["pct"] - panel["mkt_pct"]))
     put("ivol20", g["resid_pct"].transform(lambda s: s.rolling(20, min_periods=15).std()))
 
+    # 复权因子跳变修正(第一百五十二轮): 少数标的的 factor 会出现与当日涨跌幅严重不符的
+    # 跳变 —— 例: 600610 在 2026-10-23 因子 5.146 -> 51.46(x10), 当日仅涨 0.73%。
+    # 真实送转是"因子 x2 / 价格腰斩", 两者方向相反、幅度相抵; 这种"因子暴涨而股价不动"
+    # 是数据源录入错误, 会让 close_adj 出现 10 倍断点, 进而污染 ma5/10/20、mom20、dist_ma5、
+    # ivol 全部跨期指标(实测 600610 的 mom20 被算成 +806%, 直接排到候选池第 1 名)。
+    # 处理: 用"前一日因子 x 当日真实涨跌幅"回推该日应有的因子, 并把修正系数累积到其后所有行。
+    # 只对检测出跳变的标的做循环, 全市场 5000 只里通常只有几十只, 不拖慢指标构建。
+    _gp = panel.groupby("ts_code", sort=False, observed=True)
+    _f_prev = _gp["factor"].shift(1)
+    _f_chg = panel["factor"] / _f_prev - 1
+    _p_chg = panel["close"] / panel["pre_close"] - 1
+    _bad = (_f_prev.notna() & (_f_chg.abs() > 0.35) & ((_f_chg - _p_chg).abs() > 0.5))
+    if bool(_bad.any()):
+        for _code in panel.loc[_bad, "ts_code"].unique():
+            _idx = panel.index[panel["ts_code"] == _code]
+            _f0 = panel.loc[_idx, "factor"].to_numpy(dtype=float).copy()
+            _c = panel.loc[_idx, "close"].to_numpy(dtype=float).copy()
+            _pc = panel.loc[_idx, "pre_close"].to_numpy(dtype=float).copy()
+            _out = _f0.copy()
+            _adj, _hit = 1.0, False
+            for _i in range(1, len(_f0)):
+                _fr = _f0[_i] / _f0[_i - 1] - 1 if _f0[_i - 1] else 0.0
+                _cr = _c[_i] / _pc[_i] - 1 if _pc[_i] else 0.0
+                if abs(_fr) > 0.35 and abs(_fr - _cr) > 0.5:
+                    # 检测必须用**原始**因子: 修正后的序列已经连续, 再用它当基准会把系数
+                    # 反复乘上去, factor 指数级衰减到 0(第一次实现踩过这个坑)。
+                    _adj *= (_f0[_i - 1] * (1 + _cr)) / _f0[_i]
+                    _hit = True
+                _out[_i] = _f0[_i] * _adj
+            if _hit:
+                panel.loc[_idx, "factor"] = _out.astype(panel["factor"].dtype)
+        g = panel.groupby("ts_code", sort=False)   # 修正后重建, 否则 flast 仍取旧值
+
     flast = g["factor"].transform("last")
     k = panel["factor"] / flast.replace(0, np.nan)
     panel["close_adj"] = panel["close"] * k

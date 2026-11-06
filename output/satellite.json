@@ -36,12 +36,14 @@
   "pool_alt": 0,
   "min_score": 0.0,
   "ivol_cap": 0.0,
-  "max_pos": 2,
-  "dist_ma5_max": -3.0,
-  "ivol_pct_max": 0.1
+  "max_pos": 3,
+  "dist_ma5_max": 6.0,
+  "ivol_pct_max": 0.1,
+  "sort_by": "mom20_desc"
  },
+ "positions": [],
  "pool": {
-  "n": 0,
+  "n": 3,
   "base": 1823,
   "show": 3,
   "alt": [],
@@ -63,13 +65,55 @@
     "n": 1823
    }
   ],
-  "rows": [],
+  "rows": [
+   {
+    "rank": 1,
+    "code": "603301.SH",
+    "name": "振德医疗",
+    "ivol20": 1.348,
+    "score": 10.2,
+    "dist_ma5": 3.79,
+    "pct": 1.18,
+    "close": 86.0,
+    "amount_yi": 1.05,
+    "vol_ratio": 1.4,
+    "turnover_rate": 0.47,
+    "mom20": 9.6
+   },
+   {
+    "rank": 2,
+    "code": "600111.SH",
+    "name": "北方稀土",
+    "ivol20": 1.457,
+    "score": 2.9,
+    "dist_ma5": 3.12,
+    "pct": 0.9,
+    "close": 36.83,
+    "amount_yi": 17.85,
+    "vol_ratio": 1.26,
+    "turnover_rate": 1.34,
+    "mom20": 6.8
+   },
+   {
+    "rank": 3,
+    "code": "002230.SZ",
+    "name": "科大讯飞",
+    "ivol20": 1.313,
+    "score": 12.5,
+    "dist_ma5": 3.84,
+    "pct": 2.38,
+    "close": 39.15,
+    "amount_yi": 14.33,
+    "vol_ratio": 1.55,
+    "turnover_rate": 1.61,
+    "mom20": 6.1
+   }
+  ],
   "score_gate": 0.0,
   "ivol_cap": 0.0,
   "date": "20261105",
   "gate_ok": false,
   "picked": "",
-  "pick_note": "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
- },
- "positions": []
+  "pick_note": ""
+ }
 }
