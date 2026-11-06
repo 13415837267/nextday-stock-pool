@@ -24,7 +24,7 @@
  "params": {
   "mode": "lowvol",
   "mode_cn": "低波单吊",
-  "hold_days": 40,
+  "hold_days": 10,
   "max_ivol": 0.0,
   "amount_min_yi": 1.0,
   "gap_min": -3.0,
@@ -40,7 +40,7 @@
  },
  "pool": {
   "n": 3,
-  "base": 1799,
+  "base": 1823,
   "show": 3,
   "alt": [],
   "funnel": [
@@ -50,15 +50,15 @@
    },
    {
     "label": "非ST·非停牌·上市满250日",
-    "n": 5121
+    "n": 5207
    },
    {
     "label": "成交额≥1.0亿",
-    "n": 2932
+    "n": 2972
    },
    {
     "label": "沪深主板白名单",
-    "n": 1799
+    "n": 1823
    }
   ],
   "rows": [
