@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.backtest import prepare_context  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.satellite import (daily_params, entry_gate, pick_one,  # noqa: E402
+from src.satellite import (daily_params, entry_gate, pick_list, pick_one,  # noqa: E402
                            pool_funnel, rank_pool, rank_qualified, score_of,
                            should_exit, STRATEGY_CN)
 
@@ -75,16 +75,17 @@ def _f(v, nd=2, default=None):
 
 
 def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
-    """当日候选池快照(第一百四十九轮) —— 评分达标的前 N 名, 最多 3 只。
+    """当日候选池快照(第一百五十一轮) —— 低波池里跌破 MA5 的票, 最多 3 只。
 
     口径(与页面 legend / 漏斗逐字对应, 不各算各的):
       base   = 基础票池: 通过上市/流动性/板块等硬性条件的只数(rank_pool 的池子)
-      rows   = 候选池: 评分达标的票按 ivol 升序的前 pool_show 名(0~3), 每行带 score
-      n      = 候选池只数(= len(rows)); 基础票池不足 min_pool 或全部不达标时为 0
-      alt    = 已废弃, 恒空数组(达标才进池, 不再列第 2~20 名备选)
+      rows   = 候选池: 基础池里 ivol 最低 10% → dist_ma5 ≤ -3% 的票, 最多 pool_show 只
+      n      = 候选池只数(= len(rows)); 基础票池不足 min_pool 或全部不合格时为 0
+      alt    = 已废弃, 恒空数组
       funnel = 全市场 → 上市状态 → 成交额 → 板块 的逐道剩余只数
 
-    执行仍是单吊: 只买候选池第 1 名(评分最高), 第 2/3 名是候补展示、不参与执行。
+    执行: 最多同时持 max_pos 只, 每日最多买 1 只 —— 候选池前 max_pos 名就是执行标的,
+    第 3 名是候补(持仓满员时不买)。
     """
     P = daily_params(cfg)
     fun = pool_funnel(day, cfg)
@@ -96,6 +97,7 @@ def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
         code = str(r["ts_code"])
         return {"rank": i, "code": code, "name": names.get(code, ""),
                 "ivol20": _f(r["_ivol"], 3), "score": round(score_of(r["_ivol"]), 1),
+                "dist_ma5": _f(r["dist_ma5"]),
                 "pct": _f(r["pct"]),
                 "close": _f(r["close"]), "amount_yi": _f(float(r["amount"]) / 1e8),
                 "vol_ratio": _f(r["vol_ratio"]), "turnover_rate": _f(r["turnover_rate"]),
@@ -160,11 +162,17 @@ def main():
         tape = {"version": 3, "strategy": "trend_single", "engine": "single",
                 "init_capital": init_cap, "capital": init_cap, "cash": cash,
                 "nav": round(cash / init_cap, 4) if init_cap else 1.0,
-                "signal": None, "position": None, "trades": [],
+                "signal": None, "positions": [], "trades": [],
                 "daily": [], "legacy_batches": tape.get("legacy_batches", 0),
                 "legacy_trades": tape.get("legacy_trades") or [],
                 "updated": None}
         print("  v3 初始化: 本金 %.0f, 现金 %.2f" % (init_cap, cash), flush=True)
+
+    # 第一百五十一轮: 单持仓(position) -> 多持仓(positions)。老账本最多只有 1 只,
+    # 直接搬进数组即可; 空仓就是空数组。
+    if "positions" not in tape:
+        _p = tape.pop("position", None)
+        tape["positions"] = [_p] if _p else []
 
     if tape.get("updated") == today:
         # 幂等跳过, 但有一个例外: 候选池快照是"展示层", 口径变过一次(第一百四十轮新增 pool,
@@ -177,6 +185,8 @@ def main():
                 or "alt" not in _snap or _snap.get("show") != P["pool_show"]
                 or _snap.get("score_gate") != round(P["min_score"], 1)
                 or (tape.get("params") or {}).get("hold_days") != P["hold_days"]
+                or (tape.get("params") or {}).get("max_pos") != P["max_pos"]
+                or (tape.get("params") or {}).get("dist_ma5_max") != P["dist_ma5_max"]
                 or "min_score" not in (tape.get("params") or {})
                 or "min_pool" not in (tape.get("params") or {})):
             same_day = _snap.get("date") == today
@@ -190,7 +200,7 @@ def main():
             snap["gate_ok"] = _snap.get("gate_ok", gate_ok) if same_day else gate_ok
             snap["picked"] = (_snap.get("picked") if same_day else "") or (
                 (tape.get("signal") or {}).get("code")
-                or (tape.get("position") or {}).get("code") or "")
+                or ((tape.get("positions") or [{}])[0] or {}).get("code") or "")
             snap["pick_note"] = _snap.get("pick_note", "") if same_day else ""
             tape["pool"] = snap
             # 池口径参数同样补写: 老账本的 params 没有这三个字段, 若只升级 pool 不升级 params,
@@ -198,7 +208,9 @@ def main():
             _pr = dict(tape.get("params") or {})
             _pr.update({"min_pool": P["min_pool"], "pool_show": P["pool_show"],
                         "pool_alt": P["pool_alt"], "min_score": round(P["min_score"], 1),
-                        "ivol_cap": round(P["ivol_cap"], 3), "hold_days": P["hold_days"]})
+                        "ivol_cap": round(P["ivol_cap"], 3), "hold_days": P["hold_days"],
+                        "max_pos": P["max_pos"], "dist_ma5_max": P["dist_ma5_max"],
+                        "ivol_pct_max": P["ivol_pct"]})
             tape["params"] = _pr
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
             print("  升级候选池快照(候选池 %d 只 / 评分阈值 %g / 基础票池 %d 只), 状态机未动"
@@ -207,7 +219,7 @@ def main():
         return
 
     cash = float(tape.get("cash") or 0.0)
-    pos = tape.get("position")
+    positions = tape.get("positions") or []
     sig = tape.get("signal")
     trades = tape.get("trades") or []
     daily = tape.get("daily") or []
@@ -222,13 +234,17 @@ def main():
               "cost_pct": round(P["cost"] * 100, 3),
               # 池口径随参数一起发布: 页面 legend 的"候选池 N 只 / 样本下限 M 只"必须
               # 跟配置一致, 不能在页面里写死 20 —— 改了 config 页面不跟着变就成了假披露。
-              "min_pool": P["min_pool"], "pool_show": P["pool_show"], "pool_alt": P["pool_alt"]}
+              "min_pool": P["min_pool"], "pool_show": P["pool_show"], "pool_alt": P["pool_alt"],
+              # 第一百五十一轮: 并发上限与形态阈值随参数发布, 页面"最多 N 只""跌破 MA5 X%"
+              # 必须跟配置同源 —— 改配置不改页面就是假披露。
+              "max_pos": P["max_pos"], "dist_ma5_max": P["dist_ma5_max"],
+              "ivol_pct_max": P["ivol_pct"]}
     tape["params"] = params
 
     action, note, code_today = "none", "", ""
 
-    # ---------- 1) T+1 开盘: 执行昨日信号 ----------
-    if sig and not pos:
+    # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 1 笔, 持仓上限 max_pos) ----------
+    if sig and len(positions) < P["max_pos"]:
         code_today = sig["code"]
         p = _px(day, code_today)
         if p is None:
@@ -247,27 +263,36 @@ def main():
                     tape["signal"] = None
                 else:
                     px = _op * (1 + HALF)
-                    shares = cash / px
-                    pos = {"code": code_today, "name": names.get(code_today, sig.get("name", "")),
-                           "signal_date": sig["date"], "entry_date": today,
-                           "entry_px": round(px, 4), "entry_px_raw": round(op_raw, 3),
-                           "gap_pct": round(gap, 2), "shares": round(shares, 4),
-                           "cost": round(cash, 2), "hold_days": P["hold_days"],
-                           "status": "holding"}
-                    cash = 0.0
-                    tape["position"] = pos
-                    tape["signal"] = None
-                    action = "buy"
-                    note = note or "开盘 %.3f 买入" % op_raw
-                    print("  买入 %s %s @%.3f (缺口 %+.2f%%)" % (code_today, pos["name"], op_raw, gap), flush=True)
+                    # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 已有持仓成本"估算:
+                    # 买入发生在开盘, 当日收盘价还不可知, 用成本估值不引入未来函数。
+                    budget = min((cash + sum(float(x.get("cost") or 0) for x in positions))
+                                 / P["max_pos"], cash * 0.995)
+                    if budget < 1000:
+                        note = "现金不足, 不买入"
+                        tape["signal"] = None
+                    else:
+                        shares = budget / px
+                        pos = {"code": code_today, "name": names.get(code_today, sig.get("name", "")),
+                               "signal_date": sig["date"], "entry_date": today,
+                               "entry_px": round(px, 4), "entry_px_raw": round(op_raw, 3),
+                               "gap_pct": round(gap, 2), "shares": round(shares, 4),
+                               "cost": round(budget, 2), "hold_days": P["hold_days"],
+                               "status": "holding"}
+                        cash -= budget
+                        positions.append(pos)
+                        tape["positions"] = positions
+                        tape["signal"] = None
+                        action = "buy"
+                        note = note or "开盘 %.3f 买入" % op_raw
+                        print("  买入 %s %s @%.3f (缺口 %+.2f%%, 预算 %.0f)"
+                              % (code_today, pos["name"], op_raw, gap, budget), flush=True)
 
-    # ---------- 2) 收盘: 卖出判定 ----------
-    pos = tape.get("position")
-    if pos:
+    # ---------- 2) 收盘: 逐只卖出判定 ----------
+    for pos in list(positions):
         code_today = pos["code"]
         p = _px(day, code_today)
         if p is None:
-            note = (note + " 持仓停牌").strip()
+            note = (note + " %s 停牌" % pos.get("name", code_today)).strip()
         else:
             cl, clr, *_ = p
             ret = (cl / float(pos["entry_px"]) - 1) * 100
@@ -281,10 +306,12 @@ def main():
                                "entry_date": pos["entry_date"], "exit_date": today,
                                "entry_px": pos.get("entry_px_raw"), "exit_px": round(clr, 3),
                                "hold_days": held, "ret_pct": round(ret, 2), "note": why})
+                positions.remove(pos)
                 action = "sell"
-                note = (note + " " + why).strip()
-                tape["position"] = None
-                print("  卖出 %s %s @%.3f %+.2f%% (%s)" % (code_today, pos.get("name", ""), clr, ret, why), flush=True)
+                note = (note + " %s %s" % (pos.get("name", code_today), why)).strip()
+                print("  卖出 %s %s @%.3f %+.2f%% (%s)"
+                      % (code_today, pos.get("name", ""), clr, ret, why), flush=True)
+    tape["positions"] = positions
 
     # ---------- 3) 收盘: 选明日信号(先过大盘闸门) ----------
     gate_ok, gate_note = True, ""
@@ -294,11 +321,12 @@ def main():
             gate_ok = bool(reg.loc[today, "trade_ok"])
         if not gate_ok:
             gate_note = "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
-    if not tape.get("position") and not gate_ok:
+    if len(positions) < P["max_pos"] and not gate_ok:
         tape["signal"] = None
         action, note = "none", gate_note
-    elif not tape.get("position"):
-        cand = pick_one(day, cfg)
+    elif len(positions) < P["max_pos"]:
+        cands = pick_list(day, cfg, held=[x["code"] for x in positions], k=1)
+        cand = cands[0] if cands else None
         if cand:
             cand["date"] = today
             cand["name"] = names.get(cand["code"], "")
@@ -306,18 +334,19 @@ def main():
             code_today = code_today or cand["code"]
             if action == "none":
                 action = "signal"
-                note = note or "ivol %.2f, 明日开盘买入" % cand["ivol20"]
-            print("  信号 %s %s (ivol %.2f)" % (cand["code"], cand["name"], cand["ivol20"]), flush=True)
+                note = note or "跌破 MA5 %.2f%%, 明日开盘买入" % cand["dist_ma5"]
+            print("  信号 %s %s (dist_ma5 %.2f%%, ivol %.2f)"
+                  % (cand["code"], cand["name"], cand["dist_ma5"], cand["ivol20"]), flush=True)
         else:
             tape["signal"] = None
-            note = note or "候选池不足/无合格票, 明日空仓"
+            note = note or "候选池不足/无票跌破 MA5 %g%%, 明日不买" % (P["dist_ma5_max"] or 0)
     else:
         tape["signal"] = None
 
     # ---------- 3.5) 候选池快照(页面用; 与是否成交无关) ----------
     snap = _pool_snapshot(day, cfg, names)
     snap["date"] = today
-    held_code = (tape.get("position") or {}).get("code")
+    held_code = (positions[0] or {}).get("code") if positions else ""
     sig_code = (tape.get("signal") or {}).get("code")
     snap["picked"] = sig_code or held_code or ""
     snap["gate_ok"] = bool(gate_ok)
@@ -325,18 +354,17 @@ def main():
     tape["pool"] = snap
 
     # ---------- 4) 净值 ----------
-    pos = tape.get("position")
     mv = 0.0
-    if pos:
+    for pos in positions:
         p = _px(day, pos["code"])
         if p:
-            mv = float(pos["shares"]) * p[0]
+            mv += float(pos["shares"]) * p[0]
             pos["held_days"] = dates.index(today) - dates.index(pos["entry_date"]) \
                 if pos["entry_date"] in dates else 0
             pos["px"] = round(p[1], 3)
             pos["ret_pct"] = round((p[0] / float(pos["entry_px"]) - 1) * 100, 2)
         else:
-            mv = float(pos.get("cost") or 0)
+            mv += float(pos.get("cost") or 0)
     nav = (cash + mv) / float(tape["init_capital"])
     tape["cash"] = round(cash, 2)
     tape["nav"] = round(nav, 4)
@@ -350,7 +378,7 @@ def main():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
     print("  净值 %.4f · 现金 %.2f · 持仓 %s · %s"
-          % (nav, cash, (pos or {}).get("code", "空"), note), flush=True)
+          % (nav, cash, ",".join(x["code"] for x in positions) or "空", note), flush=True)
     print("  写出 %s" % OUT, flush=True)
 
 

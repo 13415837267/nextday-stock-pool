@@ -37,8 +37,8 @@ sys.path.insert(0, str(ROOT))
 
 from src.backtest import prepare_context  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.satellite import (STRATEGY_CN, daily_params, entry_gate,  # noqa: E402
-                           pick_one, should_exit)
+from src.satellite import (STRATEGY_CN, daily_params, entry_gate, pick_list,  # noqa: E402
+                           rank_qualified, should_exit)
 
 HALF = 0.0015          # 单边成本, 与 tools/satellite_run.py 同一常数
 REPLAY_DAYS = 250      # 回放区间: 最近约 12 个月交易日(与主策略 replay 的区间长度一致)
@@ -157,19 +157,19 @@ def run(ctx: dict, cfg: dict) -> dict:
         reg = reg.copy()
         reg.index = reg.index.astype(str)
 
-    cash, units, pos = init, 0.0, None
+    cash, positions = init, []
     sig = None
     navs, trades, daily = [], [], []
     blocked = skipped = 0
     last_px = {}
-    buy_rec = None          # 当日买入对应的 daily 记录, 卖出时回填该笔收益
 
     for j, d in enumerate(dates):
         day = by_date.get(d)
         if day is None:
-            navs.append((d, cash + units * last_px.get(pos["code"], 0) if pos else cash))
+            navs.append((d, cash + sum(p["units"] * last_px.get(p["code"], p["entry_px"])
+                                       for p in positions)))
             daily.append({"date": d, "trade_ok": None, "alloc": None, "pool_n": None,
-                          "holding": pos is not None, "fills": [], "skipped": [],
+                          "holding": bool(positions), "fills": [], "skipped": [],
                           "note": "面板缺该日行情"})
             continue
 
@@ -178,13 +178,13 @@ def run(ctx: dict, cfg: dict) -> dict:
         if P["gate"] and reg is not None and d in reg.index:
             gate_today = bool(reg.loc[d, "trade_ok"])
         rec = {"date": d, "trade_ok": gate_today,
-               "alloc": 100.0 if gate_today else 0.0,
-               "pool_n": None, "holding": False,
+               "alloc": round(min(len(positions) / P["max_pos"], 1.0) * 100, 1),
+               "pool_n": None, "holding": bool(positions),
                "fills": [], "skipped": [], "note": ""}
         ev = []
 
-        # ---------- 1) T+1 开盘: 执行昨日信号 ----------
-        if sig and pos is None:
+        # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 1 笔, 上限 max_pos) ----------
+        if sig and len(positions) < P["max_pos"]:
             r = _row(day, sig["code"])
             nm = names.get(sig["code"], sig.get("name", ""))
             if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
@@ -201,71 +201,77 @@ def run(ctx: dict, cfg: dict) -> dict:
                     rec["skipped"].append({"code": sig["code"], "name": nm, "note": why})
                 else:
                     px = float(r["open_adj"]) * (1 + HALF)
-                    units, cash = cash / px, 0.0
-                    pos = {"code": sig["code"], "name": nm,
-                           "signal_date": sig["date"], "entry_date": d, "entry_j": j,
-                           "entry_px": px, "entry_px_raw": float(r["open"]),
-                           "gap_pct": round(gap, 2), "shares": units}
-                    rec["fills"].append({"code": sig["code"], "name": nm, "ret_pct": None})
-                    buy_rec = rec
+                    # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 持仓成本"估算:
+                    # 买入发生在开盘, 当日收盘价还不可知, 用成本不引入未来函数。
+                    nav_now = cash + sum(p["units"] * p["entry_px"] for p in positions)
+                    budget = min(nav_now / P["max_pos"], cash * 0.995)
+                    if budget < 1000:
+                        skipped += 1
+                        rec["skipped"].append({"code": sig["code"], "name": nm, "note": "现金不足"})
+                    else:
+                        units = budget / px
+                        cash -= units * px
+                        positions.append({"code": sig["code"], "name": nm,
+                                          "signal_date": sig["date"], "entry_date": d, "entry_j": j,
+                                          "entry_px": px, "entry_px_raw": float(r["open"]),
+                                          "gap_pct": round(gap, 2), "units": units})
+                        rec["fills"].append({"code": sig["code"], "name": nm, "ret_pct": None})
             sig = None
 
-        # ---------- 2) 收盘: 卖出判定 ----------
-        if pos is not None:
-            r = _row(day, pos["code"])
-            if r is not None and bool(r["is_paused"] == 0) and float(r["vol"]) > 0:
-                cl = float(r["close_adj"])
-                last_px[pos["code"]] = cl
-                ret = (cl / pos["entry_px"] - 1) * 100
-                ex, why = should_exit(j - pos["entry_j"], ret, cfg)
-                if ex:
-                    got = units * cl * (1 - HALF)
-                    cash += got
-                    trades.append({"code": pos["code"], "name": pos["name"],
-                                   "signal_date": pos["signal_date"], "entry_date": pos["entry_date"],
-                                   "exit_date": d, "entry_px": round(pos["entry_px_raw"], 3),
-                                   "exit_px": round(float(r["close"]), 3),
-                                   "hold_days": j - pos["entry_j"],
-                                   "ret_pct": round(ret, 2),
-                                   "note": why})
-                    ev.append(f"卖出 {pos['name']}（{why}）")
-                    if buy_rec is not None:
-                        buy_rec["fills"][0]["ret_pct"] = round(ret, 2)
-                        buy_rec = None
-                    pos, units = None, 0.0
+        # ---------- 2) 收盘: 逐只卖出判定 ----------
+        for p in list(positions):
+            r = _row(day, p["code"])
+            if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
+                continue
+            cl = float(r["close_adj"])
+            last_px[p["code"]] = cl
+            ret = (cl / p["entry_px"] - 1) * 100
+            ex, why = should_exit(j - p["entry_j"], ret, cfg)
+            if ex:
+                cash += p["units"] * cl * (1 - HALF)
+                trades.append({"code": p["code"], "name": p["name"],
+                               "signal_date": p["signal_date"], "entry_date": p["entry_date"],
+                               "exit_date": d, "entry_px": round(p["entry_px_raw"], 3),
+                               "exit_px": round(float(r["close"]), 3),
+                               "hold_days": j - p["entry_j"],
+                               "ret_pct": round(ret, 2), "note": why})
+                ev.append(f"卖出 {p['name']}（{why}）")
+                positions.remove(p)
 
         # ---------- 3) 收盘: 出明日信号(先过大盘闸门) ----------
-        if pos is None:
+        if len(positions) < P["max_pos"]:
             if not gate_today:
                 blocked += 1
                 ev.append("大盘闸门关闭（指数在 MA20 下方），不开新仓")
             else:
-                cand = pick_one(day, cfg)
-                if cand:
+                cands = pick_list(day, cfg, held=[p["code"] for p in positions], k=1)
+                if cands:
+                    cand = cands[0]
                     cand["date"] = d
                     cand["name"] = names.get(cand["code"], "")
                     sig = cand
-                    rec["pool_n"] = cand.get("pool_n")
+                    rec["pool_n"] = len(rank_qualified(day, cfg))
                 else:
-                    ev.append("候选池不足或空池，不出票")
+                    ev.append("无票跌破 MA5 或候选池不足，不出票")
         else:
-            rec["alloc"] = 100.0          # 满仓持有, 与闸门无关
+            ev.append(f"持仓已满 {len(positions)}/{P['max_pos']}")
 
         # ---------- 4) 收盘估值 ----------
-        if pos is not None:
-            r = _row(day, pos["code"])
+        mv = 0.0
+        for p in positions:
+            r = _row(day, p["code"])
             if r is not None and bool(r["is_paused"] == 0) and float(r["vol"]) > 0:
-                last_px[pos["code"]] = float(r["close_adj"])
-            mv = units * last_px.get(pos["code"], pos["entry_px"])
-            if pos.get("entry_j") is not None:
-                pos["held_days"] = j - pos["entry_j"]
-                pos["unrealized_pct"] = round((mv / (units * pos["entry_px"]) - 1) * 100, 2) \
-                    if units else None
-            rec["holding"] = True
-            ev.append(f"持仓 {pos['name']}（{pos['held_days']}/{P['hold_days']} 日）")
-        else:
-            mv = 0.0
+                last_px[p["code"]] = float(r["close_adj"])
+            mv += p["units"] * last_px.get(p["code"], p["entry_px"])
+            p["held_days"] = j - p["entry_j"]
+            p["unrealized_pct"] = round(
+                (last_px.get(p["code"], p["entry_px"]) / p["entry_px"] - 1) * 100, 2)
+        if positions:
+            ev.append("持仓 " + "、".join(
+                "%s(%d/%d日)" % (p["name"], p["held_days"], P["hold_days"]) for p in positions))
         rec["note"] = "；".join(ev)
+        rec["holding"] = bool(positions)
+        rec["alloc"] = round(min(len(positions) / P["max_pos"], 1.0) * 100, 1)
         navs.append((d, cash + mv))
         daily.append(rec)
 
@@ -286,13 +292,15 @@ def run(ctx: dict, cfg: dict) -> dict:
     bench_norm = bench / bench.iloc[0] * init if len(bench) else bench
 
     open_positions = []
-    if pos is not None:
-        mv = units * last_px.get(pos["code"], pos["entry_px"])
+    for p in positions:
+        mv = p["units"] * last_px.get(p["code"], p["entry_px"])
         open_positions.append({
-            "signal_date": _fmt(pos["signal_date"]), "code": pos["code"], "name": pos["name"],
-            "buy_date": _fmt(pos["entry_date"]), "buy_px": round(pos["entry_px_raw"], 3),
-            "cost_pct": 100.0, "last_px": round(last_px.get(pos["code"], 0), 3),
-            "unrealized_pct": round((mv / (units * pos["entry_px"]) - 1) * 100, 2) if units else None,
+            "signal_date": _fmt(p["signal_date"]), "code": p["code"], "name": p["name"],
+            "buy_date": _fmt(p["entry_date"]), "buy_px": round(p["entry_px_raw"], 3),
+            "cost_pct": round(100.0 / P["max_pos"], 1),
+            "last_px": round(last_px.get(p["code"], 0), 3),
+            "unrealized_pct": round((mv / (p["units"] * p["entry_px"]) - 1) * 100, 2)
+            if p["units"] else None,
         })
 
     return {
@@ -300,8 +308,11 @@ def run(ctx: dict, cfg: dict) -> dict:
             "run_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
             "start": dates[0], "end": dates[-1], "days": len(dates),
             "initial_capital": init, "strategy": STRATEGY_CN.get(P["mode"], P["mode"]),
-            "rules": (f"单吊 100% 仓位 · 每日最多 1 只 · 持 {P['hold_days']} 个交易日收盘卖"
-                      + f" · 候选池≤{P['pool_show']}只(评分≥{P['min_score']:g})"
+            "rules": (f"最多 {P['max_pos']} 只并发 · 每日最多买 1 只 · 持 {P['hold_days']} 个交易日收盘卖"
+                      + (f" · 只在跌破 MA5 {abs(P['dist_ma5_max']):g}% 时买" if P["dist_ma5_max"] else "")
+                      + (f" · 低波前 {P['ivol_pct'] * 100:g}%" if P["ivol_pct"] else "")
+                      + (f" · 候选池≤{P['pool_show']}只(评分≥{P['min_score']:g})"
+                         if P["min_score"] > 0 else f" · 候选池≤{P['pool_show']}只")
                       + (f" / 止损 {P['stop'] * 100:g}%" if P["stop"] < 0 else "")
                       + (" · 大盘 MA20 闸门" if P["gate"] else "")
                       + f" · 单边成本 {HALF * 100:g}%"),

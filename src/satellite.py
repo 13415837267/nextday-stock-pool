@@ -79,6 +79,17 @@ DEFAULT = {
     # 第一百五十轮新增: 基础池内 ivol 分位上限(0=不启用)。
     #   0.10 = 只在当日 ivol 最低的 10% 里选, 比绝对阈值 ivol<=1.2 更适应波动率环境变化。
     "ivol_pct_max": 0.0,
+    # 第一百五十一轮: 距 MA5 的距离上限(%), None=不启用。
+    #   训练(178 万样本, 训练/验证分段): "跌破 MA5 越深, 后续 10 日收益越高" 是**连续单调**
+    #   的, 不是某个切点的偶然 —— <=-2% +1.36%、<=-3% +2.60%、<=-4% +4.19%、<=-6% +8.54%、
+    #   <=-7% +10.46%, 训练段与验证段同向且胜率从 49% 单调升到 85%。
+    #   -3% 是"频率 x 质量"的平衡点(日均 0.18 个信号), 更深则样本太少、年化反而被噪声主导。
+    "dist_ma5_max": None,
+    # 第一百五十一轮: 并发持仓上限。单吊 100% 仓位的日波动就是一只票的波动, 回撤压不住;
+    #   资金分 max_pos 份、每日最多买 1 只, 卖出后当日收盘再出信号。
+    #   训练: max_pos=2 年化 18.7% / 回撤 -19.3% / 卡玛 0.97; 3 只降到 11.0%/0.67
+    #   (第 3 只票平均贡献 -0.37%, 是负的 —— 同一天出现 3 个深度回调信号说明是普跌)。
+    "max_pos": 1,
     # 第一百五十轮新增: 排序键(从低波池里挑哪一只), 默认 ivol=现行行为。
     "sort_by": "ivol",
     "amount_min_yi": 1.0,     # 成交额下限(亿)
@@ -119,6 +130,9 @@ def daily_params(cfg: dict) -> dict:
             "max_ivol": cap,
             "dist_high20_max": (None if s.get("dist_high20_max") is None
                                 else float(s["dist_high20_max"])),
+            "dist_ma5_max": (None if s.get("dist_ma5_max") is None
+                             else float(s["dist_ma5_max"])),
+            "max_pos": max(1, int(s.get("max_pos") or 1)),
             "ivol_pct": float(s.get("ivol_pct_max") or 0.0),
             "sort_by": str(s.get("sort_by") or "ivol"),
             "amt_min": float(s["amount_min_yi"]) * 1e8,
@@ -181,6 +195,8 @@ def rank_pool(day, cfg: dict):
         s = df["amount"].astype(float)
     elif key == "dist_high20":
         s = df["dist_high20"].astype(float)
+    elif key == "dist_ma5":
+        s = df["dist_ma5"].astype(float)
     elif key == "mom20_asc":
         s = df["mom20"].astype(float)
     elif key == "mom20_desc":
@@ -202,11 +218,16 @@ def rank_qualified(day, cfg: dict, rk=None):
     P = daily_params(cfg)
     rk = rank_pool(day, cfg) if rk is None else rk
     q = rk
+    # 顺序: 先限定"池边界"(ivol 分位), 再判"资格"(评分线), 最后叠加形态条件。
+    # 分位必须按 ivol 的**数值**取, 不能用 head(n) —— rk 已按 sort_by 排序(可能是 dist_ma5),
+    # head(n) 会取成"跌得最深的前 n 只", 池边界就变成了排序结果, 与分位定义相反。
+    if len(q) and P["ivol_pct"] > 0:
+        cut = float(rk["_ivol"].quantile(P["ivol_pct"]))
+        q = q[q["_ivol"] <= cut]
     if len(q) and P["ivol_cap"] > 0:
         q = q[q["_ivol"] <= P["ivol_cap"]]
-    if len(q) and P["ivol_pct"] > 0:
-        n = max(int(round(len(rk) * P["ivol_pct"])), 1)   # 分位以"基础票池"为分母
-        q = q.head(n)
+    if len(q) and P["dist_ma5_max"] is not None:
+        q = q[q["dist_ma5"] <= P["dist_ma5_max"]]
     if len(q) and P["dist_high20_max"] is not None:
         q = q[q["dist_high20"] <= P["dist_high20_max"]]
     return q
@@ -249,6 +270,38 @@ def pick_one(day, cfg: dict) -> dict | None:
             # pool_base = 基础票池只数(硬性条件之后的全部), 回放用它判断样本量是否够格。
             "pool_n": min(len(q), P["pool_show"]),
             "pool_base": base}
+
+
+def pick_list(day, cfg: dict, held=(), k: int = 1) -> list[dict]:
+    """当日可执行候选列表(按排序键升序、跳过已持有的), 最多 k 只。
+
+    与 pick_one 共用同一套掩码/排序/阈值 —— 组合化之后"候选池"与"执行"必须是
+    同一份列表, 不能各算一套(否则页面列 3 只、实际只买 1 只, 又是两套口径)。
+    """
+    rk = rank_pool(day, cfg)
+    P = daily_params(cfg)
+    if len(rk) < P["min_pool"]:
+        return []
+    q = rank_qualified(day, cfg, rk)
+    if not len(q):
+        return []
+    skip = set(held or ())
+    out = []
+    for _, r in q.iterrows():
+        code = str(r["ts_code"])
+        if code in skip:
+            continue
+        out.append({"code": code,
+                    "ivol20": round(float(r["_ivol"]), 3),
+                    "score": round(score_of(r["_ivol"]), 1),
+                    "dist_ma5": round(float(r["dist_ma5"]), 2),
+                    "pct": round(float(r["pct"]), 2),
+                    "mom20": round(float(r["mom20"]), 1),
+                    "close": round(float(r["close"]), 2),
+                    "amount_yi": round(float(r["amount"]) / 1e8, 2)})
+        if len(out) >= k:
+            break
+    return out
 
 
 def entry_gate(gap_pct: float, cfg: dict) -> tuple[bool, str]:
