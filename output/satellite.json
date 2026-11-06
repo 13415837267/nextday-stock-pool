@@ -37,7 +37,7 @@
   "min_score": 0.0,
   "ivol_cap": 0.0,
   "max_pos": 3,
-  "dist_ma5_max": 6.0,
+  "dist_ma5_max": null,
   "ivol_pct_max": 0.1,
   "sort_by": "mom20_desc"
  },
@@ -68,6 +68,20 @@
   "rows": [
    {
     "rank": 1,
+    "code": "002351.SZ",
+    "name": "漫步者",
+    "ivol20": 0.948,
+    "score": 36.8,
+    "dist_ma5": 6.4,
+    "pct": 3.46,
+    "close": 12.27,
+    "amount_yi": 4.08,
+    "vol_ratio": 1.63,
+    "turnover_rate": 6.35,
+    "mom20": 26.4
+   },
+   {
+    "rank": 2,
     "code": "603301.SH",
     "name": "振德医疗",
     "ivol20": 1.348,
@@ -81,7 +95,7 @@
     "mom20": 9.6
    },
    {
-    "rank": 2,
+    "rank": 3,
     "code": "600111.SH",
     "name": "北方稀土",
     "ivol20": 1.457,
@@ -93,20 +107,6 @@
     "vol_ratio": 1.26,
     "turnover_rate": 1.34,
     "mom20": 6.8
-   },
-   {
-    "rank": 3,
-    "code": "002230.SZ",
-    "name": "科大讯飞",
-    "ivol20": 1.313,
-    "score": 12.5,
-    "dist_ma5": 3.84,
-    "pct": 2.38,
-    "close": 39.15,
-    "amount_yi": 14.33,
-    "vol_ratio": 1.55,
-    "turnover_rate": 1.61,
-    "mom20": 6.1
    }
   ],
   "score_gate": 0.0,

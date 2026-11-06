@@ -67,7 +67,13 @@ POOL_ALT = 0              # 备选折叠已删除: 达标才进池, 不达标不
 IVOL_REF = 1.5            # 评分基准(百分点): ivol=0 -> 100 分, ivol>=1.5 -> 0 分
 
 DEFAULT = {
-    "mode": "lowvol",         # lowvol | trend_lowvol
+    "mode": "lowvol",         # lowvol | trend_lowvol | breakout(追高: 突破新高+放量)
+    # 突破模式(第一百五十三轮): 真正的"追高"——当日大涨、贴近/创 20 日新高、放量、收盘强。
+    #   与 lowvol 的低波池互斥, 所以 mode=breakout 时不叠加 ivol 分位(dist_high20_max 也不生效)。
+    "bo_pct_min": 3.0,        # 当日涨幅下限(%)
+    "bo_near_high": 1.0,      # 距 20 日新高的上限(%): dist_high20 >= -1 即贴近新高
+    "bo_vol_ratio": 1.5,      # 量比下限
+    "bo_close_pos": 0.8,      # 收盘在日内区间的位置下限(0.8 = 收在最强 20% 区间)
     "hold_days": 10,          # 持有交易日数(第一百五十轮 40->10, 见 config.yaml 注释)
     "min_score": 20.0,        # 评分阈值(0=不设): 评分 < 阈值不进候选池, 一个都不达标则空仓
     "max_ivol": 0,            # 兼容旧口径: 直接给 ivol 上限(0=不用); min_score>0 时以评分为准
@@ -79,11 +85,11 @@ DEFAULT = {
     # 第一百五十轮新增: 基础池内 ivol 分位上限(0=不启用)。
     #   0.10 = 只在当日 ivol 最低的 10% 里选, 比绝对阈值 ivol<=1.2 更适应波动率环境变化。
     "ivol_pct_max": 0.0,
-    # 距 MA5 的上限(%)。第一百五十一轮这里写的是 -3.0(只买跌破 3% 的), 第一百五十二轮推翻:
-    #   同日横截面中性化后, "跌最深组"的超额收益 +1.06% 反而低于贴近 MA5 的 +1.34%,
-    #   深跌组的绝对收益全部来自"那几天市场随后反弹"(弱市 -7.01% / 强市 +6.45%)。
-    #   现在 +6.0 是**追高线**: 只剔除已经冲高的票, 不做任何"越跌越买"。
-    "dist_ma5_max": 6.0,
+    # 距 MA5 的上限(%)。第一百五十一轮写 -3.0(只买跌破 3% 的), 第 152 轮推翻(深跌是 beta
+    #   不是 alpha), 第 153 轮直接关闭(None): 用户要"副策略追高", 就不该有追高上限。
+    #   但"允许追高"只在低波池内成立 —— 同样按 mom20 最强排序, 全池年化 -30.99%(0/6 正年),
+    #   低波前 10% 内 +10.60%(6/6 正年)。池边界是低波, 不是涨幅。
+    "dist_ma5_max": None,
     # 距 MA5 的下限(%), None=不启用。上线不启用 —— 第一百五十二轮已删除"越跌越买",
     # 保留该参数只是让"不接飞刀"这个假设可被回测检验, 不进默认路径。
     "dist_ma5_min": None,
@@ -153,7 +159,11 @@ def daily_params(cfg: dict) -> dict:
             "gate": bool(s["market_gate"]),
             "min_pool": int(s["min_pool"]),
             "pool_show": int(s["pool_show"] or POOL_SHOW),
-            "pool_alt": max(0, int(s["pool_alt"] or POOL_ALT))}   # 备选已废弃, 恒 0
+            "pool_alt": max(0, int(s["pool_alt"] or POOL_ALT)),   # 备选已废弃, 恒 0
+            "bo_pct_min": float(s.get("bo_pct_min") or 0.0),
+            "bo_near_high": float(s.get("bo_near_high") or 0.0),
+            "bo_vol_ratio": float(s.get("bo_vol_ratio") or 0.0),
+            "bo_close_pos": float(s.get("bo_close_pos") or 0.0)}
 
 
 def apply_cost(nav_before: float, turn: float, cost: float = 0.0030) -> float:
@@ -179,6 +189,11 @@ def _masks(day, cfg: dict):
                 & (day["bars"] >= MIN_BARS)).to_numpy()
     m_liquid = m_listed & ((day["amount"] >= P["amt_min"]) & (day["ivol20"] > 0)).to_numpy()
     m_final = m_liquid & day["ts_code"].map(lambda c: board_of(c) in boards).to_numpy()
+    if P["mode"] == "breakout":
+        m_final = m_final & ((day["pct"] >= P["bo_pct_min"])
+                             & (day["dist_high20"] >= -P["bo_near_high"])
+                             & (day["vol_ratio"] >= P["bo_vol_ratio"])
+                             & (day["close_pos"] >= P["bo_close_pos"])).to_numpy()
     if P["mode"] == "trend_lowvol":
         m_final = m_final & ((day["close_adj"] > day["ma5"]) & (day["ma5"] > day["ma10"])
                              & (day["ma10"] > day["ma20"]) & (day["ma20"] > day["ma20_prev"])
@@ -240,7 +255,7 @@ def rank_qualified(day, cfg: dict, rk=None):
     # 顺序: 先限定"池边界"(ivol 分位), 再判"资格"(评分线), 最后叠加形态条件。
     # 分位必须按 ivol 的**数值**取, 不能用 head(n) —— rk 已按 sort_by 排序(可能是 dist_ma5),
     # head(n) 会取成"跌得最深的前 n 只", 池边界就变成了排序结果, 与分位定义相反。
-    if len(q) and P["ivol_pct"] > 0:
+    if len(q) and P["ivol_pct"] > 0 and P["mode"] != "breakout":
         cut = float(rk["_ivol"].quantile(P["ivol_pct"]))
         q = q[q["_ivol"] <= cut]
     if len(q) and P["ivol_cap"] > 0:
@@ -259,6 +274,11 @@ def pool_funnel(day, cfg: dict) -> list:
     m_listed, m_liquid, m_final = _masks(day, cfg)
     P = daily_params(cfg)
     tail = "沪深主板白名单"
+    if P["mode"] == "breakout":
+        m_final = m_final & ((day["pct"] >= P["bo_pct_min"])
+                             & (day["dist_high20"] >= -P["bo_near_high"])
+                             & (day["vol_ratio"] >= P["bo_vol_ratio"])
+                             & (day["close_pos"] >= P["bo_close_pos"])).to_numpy()
     if P["mode"] == "trend_lowvol":
         tail += " + 均线多头"
     return [{"label": "全市场", "n": int(len(day))},

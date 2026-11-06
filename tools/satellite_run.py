@@ -75,12 +75,12 @@ def _f(v, nd=2, default=None):
 
 
 def _pool_snapshot(day, cfg, names: dict, altn: int = None) -> dict:
-    """当日候选池快照(第一百五十二轮) —— 低波池里 20 日动量最强的票, 最多 3 只。
+    """当日候选池快照(第一百五十三轮) —— 低波池里 20 日动量最强的票, 最多 3 只。
 
     口径(与页面 legend / 漏斗逐字对应, 不各算各的):
       base   = 基础票池: 通过上市/流动性/板块等硬性条件的只数(rank_pool 的池子)
-      rows   = 候选池: 基础池里 ivol 最低 10% → 剔除距 MA5 超 +6% 的追高票 → 动量最强,
-               最多 pool_show 只
+      rows   = 候选池: 基础池里 ivol 最低 10%(池边界) → 按 20 日动量最强排序,
+               不设涨幅上限(追高只追在低波池里), 最多 pool_show 只
       n      = 候选池只数(= len(rows)); 基础票池不足 min_pool 或全部不合格时为 0
       alt    = 已废弃, 恒空数组
       funnel = 全市场 → 上市状态 → 成交额 → 板块 的逐道剩余只数
@@ -343,7 +343,7 @@ def main():
                      cand["ivol20"]), flush=True)
         else:
             tape["signal"] = None
-            note = note or "候选池不足/无符合条件的票(低波前 %g%% + 不追高), 明日不买" % (
+            note = note or "候选池不足/无符合条件的票(低波前 %g%%), 明日不买" % (
                 P["ivol_pct"] * 100)
     else:
         tape["signal"] = None
