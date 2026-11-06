@@ -7,7 +7,6 @@
  "cash": 100000.0,
  "nav": 1.0,
  "signal": null,
- "position": null,
  "trades": [],
  "daily": [
   {
@@ -35,11 +34,14 @@
   "min_pool": 20,
   "pool_show": 3,
   "pool_alt": 0,
-  "min_score": 20.0,
-  "ivol_cap": 1.2
+  "min_score": 0.0,
+  "ivol_cap": 0.0,
+  "max_pos": 2,
+  "dist_ma5_max": -3.0,
+  "ivol_pct_max": 0.1
  },
  "pool": {
-  "n": 3,
+  "n": 0,
   "base": 1823,
   "show": 3,
   "alt": [],
@@ -61,52 +63,13 @@
     "n": 1823
    }
   ],
-  "rows": [
-   {
-    "rank": 1,
-    "code": "000620.SZ",
-    "name": "盈新发展",
-    "ivol20": 0.629,
-    "score": 58.1,
-    "pct": 1.49,
-    "close": 2.72,
-    "amount_yi": 3.77,
-    "vol_ratio": 1.15,
-    "turnover_rate": 2.97,
-    "mom20": -9.9
-   },
-   {
-    "rank": 2,
-    "code": "000925.SZ",
-    "name": "众合科技",
-    "ivol20": 0.838,
-    "score": 44.1,
-    "pct": 2.03,
-    "close": 7.05,
-    "amount_yi": 1.28,
-    "vol_ratio": 0.96,
-    "turnover_rate": 2.72,
-    "mom20": -8.6
-   },
-   {
-    "rank": 3,
-    "code": "002079.SZ",
-    "name": "苏州固锝",
-    "ivol20": 0.863,
-    "score": 42.5,
-    "pct": 3.89,
-    "close": 8.28,
-    "amount_yi": 3.24,
-    "vol_ratio": 1.9,
-    "turnover_rate": 4.33,
-    "mom20": 0.0
-   }
-  ],
-  "score_gate": 20.0,
-  "ivol_cap": 1.2,
+  "rows": [],
+  "score_gate": 0.0,
+  "ivol_cap": 0.0,
   "date": "20261105",
   "gate_ok": false,
   "picked": "",
   "pick_note": "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
- }
+ },
+ "positions": []
 }
