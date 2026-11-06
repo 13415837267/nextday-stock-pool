@@ -1,12 +1,12 @@
 {
  "meta": {
-  "run_time": "2026-11-06 03:55:24",
+  "run_time": "2026-11-06 08:27:48",
   "start": "20200826",
   "end": "20261105",
   "days": 1500,
   "initial_capital": 100000.0,
   "strategy": "低波单吊",
-  "rules": "单吊 100% 仓位 · 每日最多 1 只 · 持 40 个交易日收盘卖 / 止损 -12% · 大盘 MA20 闸门 · 单边成本 0.15%"
+  "rules": "单吊 100% 仓位 · 每日最多 1 只 · 持 40 个交易日收盘卖 · 候选池≤3只(评分≥20) / 止损 -12% · 大盘 MA20 闸门 · 单边成本 0.15%"
  },
  "metrics": {
   "总收益率%": 50.88,
@@ -14066,7 +14066,7 @@
     "date": "20251208",
     "trade_ok": true,
     "alloc": 100.0,
-    "pool_n": 1,
+    "pool_n": 3,
     "holding": false,
     "fills": [],
     "skipped": [],
@@ -14482,7 +14482,7 @@
     "date": "20260205",
     "trade_ok": true,
     "alloc": 100.0,
-    "pool_n": 1,
+    "pool_n": 3,
     "holding": false,
     "fills": [],
     "skipped": [],
@@ -14898,7 +14898,7 @@
     "date": "20260414",
     "trade_ok": true,
     "alloc": 100.0,
-    "pool_n": 1,
+    "pool_n": 3,
     "holding": false,
     "fills": [],
     "skipped": [],
@@ -15644,7 +15644,7 @@
     "date": "20260731",
     "trade_ok": true,
     "alloc": 100.0,
-    "pool_n": 1,
+    "pool_n": 3,
     "holding": false,
     "fills": [],
     "skipped": [],
