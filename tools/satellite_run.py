@@ -235,6 +235,8 @@ def main():
               "amount_min_yi": round(P["amt_min"] / 1e8, 2),
               "gap_min": P["gap_min"], "gap_max": P["gap_max"],
               "stop_pct": round(P["stop"] * 100, 2), "market_gate": P["gate"],
+              # 第一百五十五轮: 移动止损随参数发布, 页面"自高点回撤 X% 即卖"与配置同源
+              "trail_pct": round(P["trail"] * 100, 2),
               "cost_pct": round(P["cost"] * 100, 3),
               # 池口径随参数一起发布: 页面 legend 的"候选池 N 只 / 样本下限 M 只"必须
               # 跟配置一致, 不能在页面里写死 20 —— 改了 config 页面不跟着变就成了假披露。
@@ -281,6 +283,8 @@ def main():
                                "entry_px": round(px, 4), "entry_px_raw": round(op_raw, 3),
                                "gap_pct": round(gap, 2), "shares": round(shares, 4),
                                "cost": round(budget, 2), "hold_days": P["hold_days"],
+                               # 第一百五十五轮: 移动止损需要"持仓期最高收盘价"(复权口径, 与 entry_px 同源)
+                               "hwm": round(px, 4),
                                "status": "holding"}
                         cash -= budget
                         positions.append(pos)
@@ -300,8 +304,10 @@ def main():
         else:
             cl, clr, *_ = p
             ret = (cl / float(pos["entry_px"]) - 1) * 100
+            # 移动止损: 先按当日收盘刷新持仓期最高价, 再判定(创新高当日不会触发)
+            pos["hwm"] = round(max(float(pos.get("hwm") or pos["entry_px"]), cl), 4)
             held = dates.index(today) - dates.index(pos["entry_date"]) if pos["entry_date"] in dates else 0
-            ex, why = should_exit(held, ret, cfg)
+            ex, why = should_exit(held, ret, cfg, hwm=pos["hwm"], close=cl)
             if ex:
                 proceeds = float(pos["shares"]) * cl * (1 - HALF)
                 cash += proceeds

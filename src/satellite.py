@@ -371,11 +371,22 @@ def entry_gate(gap_pct: float, cfg: dict) -> tuple[bool, str]:
     return True, ""
 
 
-def should_exit(held_days: int, ret_pct: float, cfg: dict) -> tuple[bool, str]:
-    """是否卖出。held_days = 已持有交易日数(买入当日为 0)。"""
+def should_exit(held_days: int, ret_pct: float, cfg: dict,
+                hwm: float | None = None, close: float | None = None) -> tuple[bool, str]:
+    """是否卖出。held_days = 已持有交易日数(买入当日为 0)。
+
+    第一百五十五轮加"移动止损"(trail_pct): 收盘价相对**持仓期最高收盘价**回撤超过阈值
+    即卖。hwm/close 缺省时该条不生效, 所以旧调用方的行为与之前逐位一致。
+
+    判定顺序: 固定止损 -> 移动止损 -> 持满。三条都在收盘判定、收盘成交, 与止损同口径,
+    不引入未来函数(hwm 只用当日及之前已实现的收盘价)。
+    """
     P = daily_params(cfg)
     if P["stop"] < 0 and ret_pct <= P["stop"] * 100:
         return True, "止损 %+.1f%%" % ret_pct
+    if (P["trail"] > 0 and hwm and close and float(hwm) > 0
+            and float(close) / float(hwm) - 1 <= -P["trail"]):
+        return True, "移动止损 %.0f%%(自高点)" % (P["trail"] * 100)
     if held_days >= P["hold_days"]:
         return True, "持满 %d 个交易日" % P["hold_days"]
     return False, ""

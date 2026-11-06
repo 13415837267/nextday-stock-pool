@@ -144,8 +144,28 @@ def _build_replay(dates: list, nav: pd.Series, trades: list[dict],
     }
 
 
-def run(ctx: dict, cfg: dict) -> dict:
+def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
+        stamp_2023: bool | None = None) -> dict:
+    # 第 162 轮: 两个执行摩擦开关默认从 config 读, 脚本可显式覆盖(用于对照实验)。
+    if defer_on_limit_down is None:
+        defer_on_limit_down = bool((cfg.get("satellite") or {}).get("defer_on_limit_down", False))
+    if stamp_2023 is None:
+        stamp_2023 = bool((cfg.get("execution") or {}).get("stamp_tax_time_varying", False))
     P = daily_params(cfg)
+    # 第一百五十六轮修复: cost_pct 此前是**死参数** —— config 里写 0.8 也不生效,
+    # 因为买卖两侧直接用了硬编码常量 HALF。现在真正读 config: 往返成本 cost_pct%
+    # 对半分到买卖两侧。默认 cost_pct=0.3 -> 单边 0.0015 = HALF, 旧结果逐位不变。
+    # 这解释了为什么"把成本从 0.1% 调到 0.5%, 回测纹丝不动" —— 参数根本没接上。
+    _half = (P["cost"] / 2.0) if P["cost"] > 0 else HALF
+    # 第一百六十二轮: 印花税时变。2023-08-28 起 A 股卖出印花税由千 1 降至万 5,
+    # 而 cost_pct=0.3 的构成注释里用的是**万 5**(降税后口径)。也就是说 2023-08-28 之前
+    # 的每一笔都少算了 0.05% 的卖出成本 —— 一个从未被审过的、方向单一的系统性乐观偏差。
+    # 打开后只在卖出侧按日期加 0.05%, 买入侧不变(印花税只在卖出时收)。
+    _STAMP_CUT = "20230828"
+
+    def _sell_net(d: str, gross: float) -> float:
+        extra = 0.0005 if (stamp_2023 and str(d) < _STAMP_CUT) else 0.0
+        return gross * (1 - _half - extra)
     dates = ctx["main_dates"]
     by_date = ctx["by_date"]
     reg = ctx.get("reg")
@@ -183,6 +203,35 @@ def run(ctx: dict, cfg: dict) -> dict:
                "fills": [], "skipped": [], "note": ""}
         ev = []
 
+        # ---------- 0) 开盘: 昨日跌停未能卖出的挂单(第一百六十二轮) ----------
+        for p in list(positions):
+            if not p.get("_pending_exit"):
+                continue
+            r = _row(day, p["code"])
+            if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
+                continue                      # 停牌, 继续挂着
+            op = float(r["open"])
+            if op <= float(r["low_limit"]) + 1e-9:
+                p["_defer_n"] = int(p.get("_defer_n") or 0) + 1
+                ev.append(f"{p['name']} 开盘仍跌停，继续挂单")
+                continue                      # 开盘一字跌停, 还是卖不出
+            px_adj = float(r["open_adj"])
+            last_px[p["code"]] = float(r["close_adj"])
+            ret2 = (px_adj / p["entry_px"] - 1) * 100
+            cash += _sell_net(d, p["units"] * px_adj)
+            trades.append({"code": p["code"], "name": p["name"],
+                           "signal_date": p["signal_date"], "entry_date": p["entry_date"],
+                           "exit_date": d, "entry_px": round(p["entry_px_raw"], 3),
+                           "exit_px": round(op, 3),
+                           "gap_pct": p.get("gap_pct"),
+                           "hold_days": j - p["entry_j"],
+                           "ret_pct": round(ret2, 2),
+                           "note": f"{p['_pending_exit']} 跌停顺延{p.get('_defer_n', 1)}日开盘",
+                           "entry_px_adj": round(p["entry_px"], 4),
+                           "exit_px_adj": round(px_adj, 4)})
+            ev.append(f"卖出 {p['name']}（跌停顺延，开盘成交）")
+            positions.remove(p)
+
         # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 buys_per_day 笔, 上限 max_pos) ----------
         for _s in (sig if isinstance(sig, list) else ([sig] if sig else [])):
             if len(positions) >= P["max_pos"]:
@@ -203,7 +252,7 @@ def run(ctx: dict, cfg: dict) -> dict:
                     skipped += 1
                     rec["skipped"].append({"code": sig["code"], "name": nm, "note": why})
                 else:
-                    px = float(r["open_adj"]) * (1 + HALF)
+                    px = float(r["open_adj"]) * (1 + _half)
                     # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 持仓成本"估算:
                     # 买入发生在开盘, 当日收盘价还不可知, 用成本不引入未来函数。
                     nav_now = cash + sum(p["units"] * p["entry_px"] for p in positions)
@@ -225,6 +274,8 @@ def run(ctx: dict, cfg: dict) -> dict:
 
         # ---------- 2) 收盘: 逐只卖出判定 ----------
         for p in list(positions):
+            if p.get("_pending_exit"):
+                continue                      # 已在挂单队列, 不再重复判定(否则 _defer_n 会重复计数)
             r = _row(day, p["code"])
             if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
                 continue
@@ -232,7 +283,7 @@ def run(ctx: dict, cfg: dict) -> dict:
             last_px[p["code"]] = cl
             p["hwm"] = max(float(p.get("hwm") or p["entry_px"]), cl)
             ret = (cl / p["entry_px"] - 1) * 100
-            ex, why = should_exit(j - p["entry_j"], ret, cfg)
+            ex, why = should_exit(j - p["entry_j"], ret, cfg, hwm=p.get("hwm"), close=cl)
             # 持仓层风控(第一百五十二轮): 两个可选旋钮, 都在收盘判定、收盘成交, 与止损同口径。
             if not ex and P["gate_exit"] and not gate_today:
                 # loser 口径: 只砍浮亏的, 留住还在走强的(闸门是"风险偏好下降", 不是"所有票都完蛋")
@@ -242,17 +293,27 @@ def run(ctx: dict, cfg: dict) -> dict:
                 _ma = float(r.get("ma%d" % P["exit_ma"]) or 0)
                 if _ma > 0 and cl < _ma:
                     ex, why = True, "跌破 MA%d" % P["exit_ma"]
-            if not ex and P["trail"] > 0 and cl / p["hwm"] - 1 <= -P["trail"]:
-                ex, why = True, "移动止损 %.0f%%" % (P["trail"] * 100)
             if ex:
-                cash += p["units"] * cl * (1 - HALF)
+                # 第一百六十二轮: 收盘封死跌停 -> 卖不出。实盘只能次日开盘挂单。
+                # 判定用未复权收盘价 vs 跌停价(交易所口径), 与复权无关。
+                # 注意这不是"保守假设": 跌停 -10% 必然击穿 -12% 止损以外的一切阈值,
+                # 移动止损(-8%)触发的 63 笔里有 5 笔落在跌停日 —— 回测把"卖不掉"当成了"卖在跌停价"。
+                if defer_on_limit_down and float(r["close"]) <= float(r["low_limit"]) + 1e-9:
+                    p["_pending_exit"] = why
+                    p["_defer_n"] = int(p.get("_defer_n") or 0) + 1
+                    ev.append(f"{p['name']} 收盘跌停，挂单顺延（{why}）")
+                    continue
+                cash += _sell_net(d, p["units"] * cl)
                 trades.append({"code": p["code"], "name": p["name"],
                                "signal_date": p["signal_date"], "entry_date": p["entry_date"],
                                "exit_date": d, "entry_px": round(p["entry_px_raw"], 3),
                                "exit_px": round(float(r["close"]), 3),
                                "gap_pct": p.get("gap_pct"),
                                "hold_days": j - p["entry_j"],
-                               "ret_pct": round(ret, 2), "note": why})
+                               "ret_pct": round(ret, 2), "note": why,
+                               # 复权口径的成交价(与 ret_pct 自洽; entry_px/exit_px 是屏幕原始价)
+                               "entry_px_adj": round(p["entry_px"], 4),
+                               "exit_px_adj": round(cl, 4)})
                 ev.append(f"卖出 {p['name']}（{why}）")
                 positions.remove(p)
 
@@ -338,7 +399,7 @@ def run(ctx: dict, cfg: dict) -> dict:
                          if P["min_score"] > 0 else f" · 候选池≤{P['pool_show']}只")
                       + (f" / 止损 {P['stop'] * 100:g}%" if P["stop"] < 0 else "")
                       + (" · 大盘 MA20 闸门" if P["gate"] else "")
-                      + f" · 单边成本 {HALF * 100:g}%"),
+                      + f" · 单边成本 {_half * 100:g}%"),
         },
         "metrics": {
             "总收益率%": round(total * 100, 2),
@@ -350,7 +411,9 @@ def run(ctx: dict, cfg: dict) -> dict:
             "胜率%": round(len(wins) / len(real) * 100, 2) if real else 0,
             "平均单笔收益%": round(float(np.mean([t["ret_pct"] for t in real])), 3) if real else 0,
             "盈亏比": round(gw / gl, 2) if gl else None,
-            "空仓天数": len(nav) - sum(t["hold_days"] + 1 for t in real),
+            # 第一百六十二轮修复: 原式 len(nav) - sum(hold_days+1) 在并发持仓时把重叠
+            # 日期重复扣减, 1400 日窗口算出 -1336 天(负值)。改为按日统计无持仓天数。
+            "空仓天数": sum(1 for x in daily if not x["holding"]),
             "跳过买入次数": skipped,
             "同期市场等权基准%": round(float(bench_norm.iloc[-1] / init - 1) * 100, 2)
             if len(bench_norm) else None,

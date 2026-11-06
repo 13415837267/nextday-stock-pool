@@ -329,6 +329,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
 
     ex = cfg["execution"]
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
+    # 第一百六十二轮: 印花税时变。2023-08-28 起卖出印花税由千 1 降至万 5;
+    # config 的 stamp_tax=0.0005 是**降税后**口径, 全程套用等于给 2012-2023 的每一笔
+    # 少算 0.05%。开关默认关闭以保持历史数值可复现, 打开后按卖出日切换。
+    _stamp_var = bool(ex.get("stamp_tax_time_varying"))
+
+    def _stamp_at(r) -> float:
+        if not _stamp_var:
+            return stamp
+        return 0.001 if str(r.get("trade_date", "")) < "20230828" else stamp
     gap_tiers = ex.get("gap_size_tiers") or []   # 缺口分级下注: [{below: -4.0, mult: 1.0}, ...]
     gap_above_tiers = ex.get("gap_above_tiers") or []   # 高开降仓: [{above: 0, mult: 0.5}, ...]
     gap_floor_tiers = ex.get("gap_floor_tiers") or []   # 深低开加仓下限: [{below: -1, min_pool: 11, floor: 0.8}]
@@ -838,10 +847,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 u_c *= (1 - _df)
             gross_o = u_o * open_adj * (1 - slip)
             gross_c = u_c * close_adj * (1 - slip)
-            net_o = gross_o * (1 - stamp) * (1 - comm)
-            net_c = gross_c * (1 - stamp) * (1 - comm)
+            _st = _stamp_at(row)
+            net_o = gross_o * (1 - _st) * (1 - comm)
+            net_c = gross_c * (1 - _st) * (1 - comm)
             proceeds = net_o + net_c
-            fee = gross_o * (stamp + comm) + gross_c * (stamp + comm)
+            fee = gross_o * (_st + comm) + gross_c * (_st + comm)
             fee_total += fee
             # 开盘卖出: 资金当日开盘即回笼可再投入; 收盘卖出(整日/跌停回退/延卖/分批尾腿):
             # 资金收盘后回笼, 次一交易日开盘才可用于买入(防止虚假资金复用)
