@@ -301,6 +301,7 @@ def run(ctx: dict, cfg: dict) -> dict:
             "start": dates[0], "end": dates[-1], "days": len(dates),
             "initial_capital": init, "strategy": STRATEGY_CN.get(P["mode"], P["mode"]),
             "rules": (f"单吊 100% 仓位 · 每日最多 1 只 · 持 {P['hold_days']} 个交易日收盘卖"
+                      + f" · 候选池≤{P['pool_show']}只(评分≥{P['min_score']:g})"
                       + (f" / 止损 {P['stop'] * 100:g}%" if P["stop"] < 0 else "")
                       + (" · 大盘 MA20 闸门" if P["gate"] else "")
                       + f" · 单边成本 {HALF * 100:g}%"),

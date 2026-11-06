@@ -272,7 +272,8 @@
     <ul class="rules">
       <li>范围：与主策略<b>同一份股票池</b>（沪深主板白名单、非ST、非停牌、上市满 250 个交易日）</li>
       <li>成交额 ≥ 1.0 亿；20 日特质波动 ivol20 &gt; 0</li>
-      <li>按 ivol20 升序取第 1 名 —— <b>不评分、不看动量、不追趋势</b>。第 2~20 名在候选池下方<b>折叠为"备选排序"</b>，标注不参与执行：不进候选池、不影响仓位、不参与回测</li>
+      <li>按 ivol20 升序取前 3 名 —— <b>评分 = 100×(1−ivol20/1.5)</b>（ivol 越低分越高），评分 ≥ <b>20 分</b>（ivol ≤ 1.2）才进候选池，<b>最多 3 只</b>；一个都不达标则当日空仓。执行仍是单吊：只买第 1 名，第 2/3 名是候补展示、不参与执行</li>
+      <li>评分阈值由回测训练确定（800 日 16 笔）：更严的线会持续砍掉赢家（ivol≤0.8 砍掉 +14.59%/+11.35%/+9.25%，总收益 75.3%→-41.3%），故 20 分线只作<b>极端波动保险丝</b>，不是收益增强工具</li>
       <li>大盘闸门：等权指数在 MA20 上方（且宽度达标）才开新仓；持仓不受闸门影响，照常持满</li>
     </ul>
     <b>为什么"上涨趋势"不用在个股上（第一百三十九轮四组实测，均为年化/回撤）</b>
@@ -315,8 +316,8 @@
       两处：看计划在首页、看池子和回测要换页签，手机上来回滚三屏。
    二、候选池：两个策略都不再显示"全市场 1799 只"这种假池深。主策略只有一个执行标的
       —— 候选池恒 1 只(= 表内行数)，第 2~20 名降级为"备选排序"，默认折叠并标注不参与
-      执行；副策略(v4 轮动)的执行标的是 20 只等权组合，候选池 = 目标组合 20 只(表内行数)，
-      第 21 名以后不进组合。漏斗写清 1799 → 1 / 1799 → 20 是怎么来的。
+      执行；副策略(第一百四十九轮起)候选池 = 评分达标的前 3 名(表内行数，0~3 只)，
+      不再有 20 只备选折叠；执行仍是单吊只买第 1 名。漏斗写清 1799 → 1 / 1799 → 3 是怎么来的。
    三、多端：桌面与手机是同一份 DOM、同一套渲染器，手机沿用既有 .rtable 卡片规则，
       没有第二套页面、也没有"手机版隐藏某几列"。
 */
@@ -329,7 +330,7 @@ const HASHMAP = {
 };
 const STRAT_NOTE = {
   main: "每日只买评分第 1 名 1 笔 · T+1 开盘价成交 · T+2 收盘清仓",
-  sat: "低波单吊 · 每日最多 1 只 · 与主策略同架构、共用一份数据",
+  sat: "低波单吊 · 候选池最多 3 只（评分达标）· 只买第 1 名",
 };
 const U = {
   latest: "./data/latest.json", history: "./data/history.json",
@@ -942,7 +943,9 @@ function headSat(d) {
     `信号日 ${rpDate(d.updated)} · 更新于 ${rpDate(d.updated)} 收盘后 · 低波单吊（虚拟本金 10 万，独立记账）`;
   const b = [replayBadge()];
   b.push(`<span class="badge ${p.gate_ok ? "ok" : "stop"}">大盘闸门 ${p.gate_ok ? "开 · 可开新仓" : "关 · 不开新仓"}</span>`);
-  if ((p.rows || []).length) b.push(`<span class="badge gold">候选池 ${p.rows.length} 只</span>`);
+  if ((p.rows || []).length) b.push(`<span class="badge gold">候选池 ${p.rows.length}/${p.show || P.pool_show || 3} 只</span>`);
+  else b.push(`<span class="badge">候选池 0 只·无票达标</span>`);
+  if (p.score_gate != null || P.min_score != null) b.push(`<span class="badge">评分线 ${Math.round(p.score_gate ?? P.min_score)} 分</span>`);
   b.push(`<span class="badge">净值 ${Number(d.nav ?? 1).toFixed(4)}</span>`);
   if (pos) b.push(`<span class="badge">持仓 ${esc(pos.code)}（${pos.held_days ?? "-"}/${P.hold_days ?? "-"} 日）</span>`);
   else if (d.signal) b.push(`<span class="badge ok">明日买入 ${esc(d.signal.code)}</span>`);
@@ -999,16 +1002,15 @@ function planSat(d) {
   }
   rows.push(`<b>卖出：</b>持满 <b>${holdN}</b> 个交易日收盘卖${P.stop_pct ? `；收盘相对买入价跌破 <b>${P.stop_pct}%</b> 止损` : ""}`);
 
-  // 候选池只有 1 只, 备选只报只数 —— 计划卡讲"明天买什么", 不铺开排序表(那在下方折叠里)
+  // 候选池最多 3 只(评分达标), 计划卡只讲"明天买什么", 候补不铺开
   const top = (p.rows || [])[0];
-  const nAlt = Array.isArray(p.alt) ? p.alt.length : Math.max((p.rows || []).length - 1, 0);
+  const cands = p.rows || [];
   if (top) rows.push(
-    `▸ <b>候选池唯一标的 ${esc(top.name)}</b>（${esc(top.code)}，ivol ${top.ivol20}）：${sig
+    `▸ <b>候选池第 1 名 ${esc(top.name)}</b>（${esc(top.code)}，评分 ${top.score ?? "-"}）：${sig
       ? "明日计划，9:25 按开盘价买入"
       : (pos ? "持仓中，不重复买入" : "第 1 名，闸门关闭不执行")}`);
-  if (nAlt) {
-    const a0 = (p.alt || [])[0], aN = (p.alt || []).slice(-1)[0];
-    rows.push(`<b>备选 ${nAlt} 只：</b>第 ${a0 ? a0.rank : 2}~${aN ? aN.rank : nAlt + 1} 名折叠备查，<b>不参与执行、不影响仓位</b>`);
+  if (cands.length > 1) {
+    rows.push(`<b>候补 ${cands.length - 1} 只：</b>${cands.slice(1).map(x => `${esc(x.name || x.code)}（${esc(x.code)}，评分 ${x.score ?? "-"}）`).join("、")}，<b>不参与执行（单吊只买第 1 名）</b>`);
   }
 
   return planCard({
@@ -1023,7 +1025,7 @@ function planSat(d) {
   });
 }
 
-/* ---- 候选池: 恒 1 只(单吊只有一个执行标的) = 表内行数; 第 2~20 名折叠为备选排序 ---- */
+/* ---- 候选池: 评分达标的前 3 名(0~3 只) = 表内行数; 备选折叠已删除 ---- */
 function poolMain(d) {
   const td = d.t1_decision || {};
   const picks = d.picks || [];
@@ -1044,44 +1046,41 @@ function poolMain(d) {
 
 function poolSat(d) {
   const P = d.params || {}, p = d.pool || {};
-  const all = p.rows || [];
-  // 候选池 = 第 1 名, 恒 1 行; 第 2 名以后是"备选排序", 不是候选, 折叠且不参与执行。
-  // 老账本(第一百四十二轮)把 20 名都塞在 rows 里, 这里自动降级: 第 1 行留池里, 其余进备选。
-  const rows = all.slice(0, 1);
-  const alt = Array.isArray(p.alt) ? p.alt : all.slice(1);
-  const base = p.base ?? p.n ?? all.length;
+  // 第一百四十九轮: 候选池 = 评分达标的前 3 名(后端已按阈值过滤), 不再有第 2~20 名备选折叠。
+  const rows = p.rows || [];
+  const base = p.base ?? p.n ?? rows.length;
   const minPool = Number(P.min_pool || 20);
+  const gate = Number(p.score_gate ?? P.min_score ?? 0);
+  const cap = Number(p.ivol_cap ?? P.ivol_cap ?? 0);
+  const show = Number(p.show ?? P.pool_show ?? 3);
 
   const funnel = (p.funnel && p.funnel.length)
     ? p.funnel.slice()
     : [{ label: "基础票池（主板 · 非ST · 非停牌 · 成交额≥1亿）", n: base }];
   funnel.push({ label: rows.length
-    ? `候选池（ivol 最低 ${rows.length} 只）`
-    : `候选池（基础票池不足 ${minPool} 只）`, n: rows.length, last: true });
+    ? `候选池（评分≥${gate} 达标，最多 ${show} 只）`
+    : `候选池（无票达评分线 ${gate} 分）`, n: rows.length, last: true });
 
   if (!rows.length) {
+    const why = base < minPool
+      ? `基础票池 ${base} 只，低于样本下限 ${minPool} 只`
+      : `基础票池 ${base} 只里没有票达到评分线 ${gate} 分（ivol ≤ ${cap}）`;
     return funnelBar(funnel) +
-      `<div class="loading">今日无候选 —— 基础票池 ${base} 只${base < minPool ? `，低于样本下限 ${minPool} 只` : ""}，明日空仓。系统正常运行，非数据缺失。</div>`;
+      `<div class="loading">今日候选池为空 —— ${why}，明日空仓。系统正常运行，非数据缺失。</div>`;
   }
 
-  const one = rows[0];
   const row = x => ({ no: x.rank ?? 1, tag: P.mode_cn || "低波单吊",
     code: x.code, name: x.name, close: x.close, pct: x.pct,
     volRatio: x.vol_ratio ?? "-", turnover: x.turnover_rate ?? "-",
-    amountYi: x.amount_yi, mom20: x.mom20, metric: x.ivol20 });
+    amountYi: x.amount_yi, mom20: x.mom20, metric: x.score ?? "-" });
 
-  const altHtml = alt.length ? `<details class="altbox" style="margin-top:10px">
-    <summary>备选排序：第 ${alt[0].rank} ~ ${alt[alt.length - 1].rank} 名（${alt.length} 只，仅供核对，不参与执行）</summary>
-    <div class="muted" style="font-size:12px;margin:10px 0 2px;line-height:1.7">
-      单吊只买第 1 名，下面这些<b>不产生任何委托</b> —— 列出来只为回答"第 2 名是谁、差多少"，以及复核排序本身有没有问题。<br>
-      它们不进候选池、不影响仓位、不参与回测。</div>
-    ${poolTable(alt.map(x => ({ ...row(x), reason: `第 ${x.rank} 名 · ivol 比第 1 名高 ${(Number(x.ivol20) - Number(one.ivol20)).toFixed(3)}` })), "ivol20")}
-  </details>` : "";
-
+  const top = rows[0];
   return funnelBar(funnel) +
-    poolTable([{ ...row(one), reason: `基础票池 ${base} 只里 ivol 最低${p.gate_ok ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}` }], "ivol20") +
-    altHtml +
-    `<div class="legend">候选池 <b>${rows.length}</b> 只（= 上表行数）· 单吊只买这 1 只 · 备选 ${alt.length} 只折叠备查 · 基础票池 ${base} 只（样本下限 ${minPool} 只，低于则不出票）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+    poolTable(rows.map((x, i) => ({ ...row(x),
+      reason: i === 0
+        ? `评分最高（ivol ${x.ivol20}）${p.gate_ok ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}`
+        : `候补第 ${i + 1} 名（ivol ${x.ivol20}），单吊只买第 1 名，不参与执行` })), "评分") +
+    `<div class="legend">候选池 <b>${rows.length}</b> 只（评分 ≥ ${gate} 达标，最多 ${show} 只）· 单吊只买第 1 名 <b>${esc(top.code)}</b> · 基础票池 ${base} 只（样本下限 ${minPool} 只，低于则不出票）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
 }
 
 /* ---- 单吊执行记录 ---- */
@@ -1319,11 +1318,11 @@ async function renderStrategy() {
   const seq = ++RENDER_SEQ;
   const key = STRAT, isMain = key === "main";
   setSub("plan-sub", isMain ? "深低开承接 · 每日仅执行评分第 1 名 1 笔，T+2 收盘清仓"
-    : "低波单吊 · 每日最多 1 只 · 与主策略同架构、共用一份数据");
+    : "低波单吊 · 候选池最多 3 只（评分达标）· 只买第 1 名");
   document.getElementById("pool-title").textContent = "当日候选池";
   document.getElementById("exec-title").textContent = "单吊执行记录";
   setSub("pool-sub", isMain ? "仅沪深主板 · 有信号日只发 1 只；无信号日按备用漏斗补位（至多 3 只）"
-    : "基础票池按 20 日特质波动升序取第 1 名 —— 候选池恒 1 只（= 表内行数）；第 2~20 名折叠为备选");
+    : "基础票池按 20 日特质波动升序 · 评分达标（≥20 分）的前 3 名进候选池，取满为止；执行只买第 1 名");
   setSub("exec-sub", isMain ? "逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）"
     : "逐笔明细：买入哪只、什么价、卖出哪只、什么价（v3 自 2026-11-05 起）");
   setSub("bt-sub", "加载中...");
