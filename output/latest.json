@@ -1,118 +1,118 @@
 {
-  "update_time": "2026-11-06 15:07:53",
-  "signal_date": "2026-11-05",
-  "config_fp": "528906607aec",
-  "plan": {
-    "buy_date": "2026-11-06",
-    "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
-    "sell_date": "2026-11-09",
-    "sell_point": "T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）",
-    "position": "若开仓: 买入评分第1名 1 只, 最高 100% 总资产仓位(评分分档: ≥1.2→100%/≥1→100% 总资产); 平日不设缺口门槛, T+1 开盘价直接成交(仅停牌/一字涨停买不到); 高开减仓: 竞价缺口 ≥0.5%→30%(照常成交, 只降仓位); 池深分档: 当日达标票 ≥21只→100%/≥11只→50%/≥1只→30%(只降仓位, 不弃单; 达标≠买入只数, 恒买评分第1名); 深低开回满仓: 竞价缺口 ≤-1% 且达标≥5只 → 撤销池深折价、回100%仓; 刀口保护: 信号日全市场涨跌中位数 >-0.5% 且个股超额下跌≤-4pp → 不参与(个股独跌≠系统性错杀); 恐慌日回满仓: 全市场涨跌中位数 ≤-1.5% → 撤销评分/池深折价回100%仓; 风控日: 只在竞价缺口 ≤-2.5% 时按40%仓接恐慌深跌, 否则空仓; 出场: T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）(遵守A股T+1制度, 无当日卖出)"
-  },
-  "strategy": "次日开盘买入 · T+2收盘卖出（14:55）（趋势内缩量回调+次日开盘价成交＋备选补位:隔夜动量/深跌阳线反转/趋势回踩5日线）",
-  "regime": {
-    "ok": false,
-    "breadth": 0.428,
-    "mkt_above_ma": false,
-    "block_days": 10,
-    "max_block_days": 0,
-    "reenter_frac": null,
-    "note": "大盘风控触发(连续第10日): 次日只在竞价缺口 ≤-2.5% 时按40%仓位接恐慌深跌, 否则空仓"
-  },
-  "stats": {
-    "universe": 5578,
-    "mode": "dip",
-    "non_st_board": 3050,
-    "liquidity": 1148,
-    "price_action": 9,
-    "trend_ok": 1,
-    "scored": 1
-  },
-  "picks": [
-    {
-      "code": "002626.SZ",
-      "name": "金达威",
-      "close": 17.56,
-      "pct": -3.09,
-      "amount_yi": 2.68,
-      "turnover_rate": 2.49,
-      "vol_ratio": 1.32,
-      "mom20": 12.2,
-      "score": 0.0,
-      "reasons": "回调-3.1%、量比1.32(缩量)、20日动量12%、乖离1.4%、换手2.5%、次日竞价深低开承接",
-      "strategy": "dip",
-      "strategy_cn": "主力·趋势缩量回调",
-      "pool": "main",
-      "pool_n": 1
-    }
+ "update_time": "2026-11-06 17:00:30",
+ "signal_date": "2026-11-06",
+ "config_fp": "528906607aec",
+ "plan": {
+  "buy_date": "2026-11-09",
+  "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
+  "sell_date": "2026-11-10",
+  "sell_point": "T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）",
+  "position": "若开仓: 买入评分第1名 1 只, 最高 100% 总资产仓位(评分分档: ≥1.2→100%/≥1→100% 总资产); 平日不设缺口门槛, T+1 开盘价直接成交(仅停牌/一字涨停买不到); 高开减仓: 竞价缺口 ≥0.5%→30%(照常成交, 只降仓位); 池深分档: 当日达标票 ≥21只→100%/≥11只→50%/≥1只→30%(只降仓位, 不弃单; 达标≠买入只数, 恒买评分第1名); 深低开回满仓: 竞价缺口 ≤-1% 且达标≥5只 → 撤销池深折价、回100%仓; 刀口保护: 信号日全市场涨跌中位数 >-0.5% 且个股超额下跌≤-4pp → 不参与(个股独跌≠系统性错杀); 恐慌日回满仓: 全市场涨跌中位数 ≤-1.5% → 撤销评分/池深折价回100%仓; 风控日: 只在竞价缺口 ≤-2.5% 时按40%仓接恐慌深跌, 否则空仓; 出场: T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）(遵守A股T+1制度, 无当日卖出)"
+ },
+ "strategy": "次日开盘买入 · T+2收盘卖出（14:55）（趋势内缩量回调+次日开盘价成交＋备选补位:隔夜动量/深跌阳线反转/趋势回踩5日线）",
+ "regime": {
+  "ok": false,
+  "breadth": 0.359,
+  "mkt_above_ma": false,
+  "block_days": 10,
+  "max_block_days": 0,
+  "reenter_frac": null,
+  "note": "大盘风控触发(连续第10日): 次日只在竞价缺口 ≤-2.5% 时按40%仓位接恐慌深跌, 否则空仓"
+ },
+ "stats": {
+  "universe": 5579,
+  "mode": "dip",
+  "non_st_board": 3050,
+  "liquidity": 919,
+  "price_action": 110,
+  "trend_ok": 9,
+  "scored": 9
+ },
+ "picks": [
+  {
+   "code": "603767.SH",
+   "name": "中马传动",
+   "close": 15.58,
+   "pct": -4.3,
+   "amount_yi": 2.22,
+   "turnover_rate": 4.56,
+   "vol_ratio": 0.77,
+   "mom20": 6.0,
+   "score": 0.951,
+   "reasons": "回调-4.3%、量比0.77(缩量)、20日动量6%、乖离-0.9%、换手4.6%、次日竞价深低开承接",
+   "strategy": "dip",
+   "strategy_cn": "主力·趋势缩量回调",
+   "pool": "main",
+   "pool_n": 9
+  }
+ ],
+ "t1_decision": {
+  "allow_buy": false,
+  "buy_note": "首选评分 0.95 < 门槛 1(横截面 z 分): 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)",
+  "panic_day": false,
+  "floor_pct": null,
+  "position_pct": 12.0,
+  "month_gain_pct": 0.0,
+  "month_cap_active": false,
+  "cap_note": "",
+  "score_gate": 1.0,
+  "top_score": 0.951,
+  "gate_blocked": true,
+  "score_tier_mult": 1.0,
+  "score_tier_note": null,
+  "pool_n": 9,
+  "pool_tier_mult": 0.3,
+  "pool_tier_note": "达标9只→30%仓(仅买评分第1名)",
+  "mkt_ret_pct": -1.87,
+  "knife_mult": 1.0,
+  "knife_note": null,
+  "mkt_floor_note": "全市场下跌(中位数-1.9%)→回100%仓",
+  "gap_tier_note": "≥0.5%→30%",
+  "steps": [
+   {
+    "rank": 1,
+    "code": "603767.SH",
+    "name": "中马传动",
+    "score": 0.951,
+    "close": 15.58,
+    "pct": -4.3,
+    "pool": "main",
+    "strategy": "dip",
+    "strategy_cn": "主力·趋势缩量回调",
+    "pool_n": 9,
+    "rule": "评分 0.95 < 门槛 1 → 不参与(空仓)",
+    "fallback": ""
+   }
   ],
-  "t1_decision": {
-    "allow_buy": false,
-    "buy_note": "首选评分 0.00 < 门槛 1(横截面 z 分): 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)",
-    "panic_day": false,
-    "floor_pct": null,
-    "position_pct": 12.0,
-    "month_gain_pct": 0.0,
-    "month_cap_active": false,
-    "cap_note": "",
-    "score_gate": 1.0,
-    "top_score": 0.0,
-    "gate_blocked": true,
-    "score_tier_mult": 1.0,
-    "score_tier_note": null,
-    "pool_n": 1,
-    "pool_tier_mult": 0.3,
-    "pool_tier_note": "达标1只→30%仓(仅买评分第1名)",
-    "mkt_ret_pct": 2.02,
-    "knife_mult": 0.0,
-    "knife_note": "大盘中位数+2.0%而个股超额-5.1pp→不参与(个股独跌)",
-    "mkt_floor_note": null,
-    "gap_tier_note": "≥0.5%→30%",
-    "steps": [
-      {
-        "rank": 1,
-        "code": "002626.SZ",
-        "name": "金达威",
-        "score": 0.0,
-        "close": 17.56,
-        "pct": -3.09,
-        "pool": "main",
-        "strategy": "dip",
-        "strategy_cn": "主力·趋势缩量回调",
-        "pool_n": 1,
-        "rule": "评分 0.00 < 门槛 1 → 不参与(空仓)",
-        "fallback": ""
-      }
-    ],
-    "sell_plan": "T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）",
-    "empty_funnel": null
-  },
-  "monitor": {
-    "level": "样本不足",
-    "n": 2,
-    "window": 20,
-    "mean_pct": -5.78,
-    "win_pct": 0.0,
-    "note": "已结算2/20笔, 随实盘积累自动生效(期间维持现有风控纪律)",
-    "thresholds": {
-      "watch_mean_pct": 1.0,
-      "warn_mean_pct": 0.0,
-      "halt_mean_pct": -1.0,
-      "window": 20
-    }
-  },
-  "observe": {
-    "n": 2,
-    "avg_pct": -2.68,
-    "win_pct": 50.0,
-    "note": "风控空仓日对照: 若当日完全放行(其余执行闸不变)的虚拟top1收益, 前瞻验证风控机会成本(第45轮回顾: era后贡献+1183pp), 不参与决策"
-  },
-  "data_quality": {
-    "anomalies": [
-      "真实异常: 收盘超出自身涨跌停价共1条(001381.SZ)",
-      "疑似除权: pct与收盘昨收不一致共2条(603511.SH, 603858.SH等, 除权日属正常)"
-    ],
-    "rows": 5578
-  },
-  "disclaimer": "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
+  "sell_plan": "T+2 当日收盘卖出（14:55，持有整个 T+2 交易日）",
+  "empty_funnel": null
+ },
+ "monitor": {
+  "level": "样本不足",
+  "n": 2,
+  "window": 20,
+  "mean_pct": -5.78,
+  "win_pct": 0.0,
+  "note": "已结算2/20笔, 随实盘积累自动生效(期间维持现有风控纪律)",
+  "thresholds": {
+   "watch_mean_pct": 1.0,
+   "warn_mean_pct": 0.0,
+   "halt_mean_pct": -1.0,
+   "window": 20
+  }
+ },
+ "observe": {
+  "n": 2,
+  "avg_pct": -2.68,
+  "win_pct": 50.0,
+  "note": "风控空仓日对照: 若当日完全放行(其余执行闸不变)的虚拟top1收益, 前瞻验证风控机会成本(第45轮回顾: era后贡献+1183pp), 不参与决策"
+ },
+ "data_quality": {
+  "anomalies": [
+   "新股上市首日1只(920085.BJ等, pct脏值已在指标层置NaN, 正常)",
+   "真实异常: 收盘超出自身涨跌停价共1条(001381.SZ)"
+  ],
+  "rows": 5579
+ },
+ "disclaimer": "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
 }

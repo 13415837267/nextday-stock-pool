@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-06",
+   "buy_date": "2026-11-09",
+   "sell_date": "2026-11-10",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "603767.SH",
+     "name": "中马传动",
+     "close": 15.58,
+     "pct": -4.3,
+     "reasons": "回调-4.3%、量比0.77(缩量)、20日动量6%、乖离-0.9%、换手4.6%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "528906607aec"
+  },
+  {
    "publish_date": "2026-11-05",
    "buy_date": "2026-11-06",
    "sell_date": "2026-11-09",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "528906607aec"
+   "config_fp": "528906607aec",
+   "skip_chain": [
+    "第1名 金达威: 缺口-2.3%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-04",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "528906607aec",
    "skip_chain": [
     "第1名 惠泉啤酒: 缺口-1.2%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "600573.SH"
    ]
   },
   {

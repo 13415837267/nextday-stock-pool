@@ -2,8 +2,8 @@
  "meta": {
   "created": "2026-11-02",
   "version": 1,
-  "updated": "2026-11-06 15:11:25",
-  "n": 4
+  "updated": "2026-11-06 17:03:06",
+  "n": 5
  },
  "records": [
   {
@@ -110,8 +110,34 @@
    "floor_pct": null,
    "condition": "首选评分 0.00 < 门槛 1(横截面 z 分): 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)",
    "fallbacks": [],
-   "state": "planned",
+   "state": "void",
    "recorded_at": "2026-11-05 16:20:13",
+   "buy_px": null,
+   "sell_px": null,
+   "gap_pct": -2.335,
+   "ret_gross_pct": null,
+   "ret_net_pct": null,
+   "weighted_pct": null,
+   "exec": null,
+   "note": "风控未触发(缺口 -2.33% 未达 None%), 按规则空仓"
+  },
+  {
+   "signal_date": "20261106",
+   "buy_date": "20261109",
+   "sell_date": "20261110",
+   "code": "603767.SH",
+   "name": "中马传动",
+   "rank": 1,
+   "score": 0.951,
+   "strategy": "dip",
+   "regime_ok": false,
+   "allow_buy": false,
+   "plan_pos_pct": 12.0,
+   "floor_pct": null,
+   "condition": "首选评分 0.95 < 门槛 1(横截面 z 分): 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)",
+   "fallbacks": [],
+   "state": "planned",
+   "recorded_at": "2026-11-06 17:03:04",
    "buy_px": null,
    "sell_px": null,
    "gap_pct": null,
@@ -123,13 +149,13 @@
   }
  ],
  "stats": {
-  "n_signal": 4,
+  "n_signal": 5,
   "n_closed": 0,
   "n_holding": 0,
   "n_planned": 1,
-  "n_void": 3,
+  "n_void": 4,
   "void_reasons": {
-   "风控未触发": 3
+   "风控未触发": 4
   }
  }
 }
