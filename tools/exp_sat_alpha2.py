@@ -1,24 +1,25 @@
 # -*- coding: utf-8 -*-
-"""第一百七十一轮: 副策略换 alpha 源 —— 高密度事件扫描。
+"""第一百七十一轮: 副策略换 alpha 源 —— 高密度事件扫描(v2)。
 
 问题
 ----
 副策略(低波 4 只 / 持 10 日)年化 19.16%, 单笔 +1.366%; 主策略单笔 +1.435%。
 **单笔几乎一样, 差 7 倍的是持有期** —— 副策略的钱一年只周转 26 次, 主策略 100 次。
-第 163 轮已证明: 低波因子在 1~3 天尺度上没有 alpha(3 日 Q5-Q1 = -0.47%)。
-所以"缩短持有期"不能靠在低波池里换排序键, 必须换入场事件。
+第 163 轮已证明低波因子在 1~3 天没有 alpha(3 日 Q5-Q1 = -0.47%)。
+所以"缩短持有期"必须换入场事件, 不能换排序键。
 
-本脚本用**同一口径**横向评测 13 个候选事件, 回答一个问题:
-  有没有一个事件, 能在 **3 个交易日内**做出 **>=1.0%/笔** 的净收益, 且信号密度够(>=0.2 只/日)?
+v1 的教训: 不带市场闸门时, 连 main_dip(已知 +1.435%/笔)都测出 -0.19% ——
+闸门不是可选项, 它砍掉的正是"下跌市里所有形态都亏"的那一半样本。v2 全部事件
+都在信号日 **叠加 reg.trade_ok**, 并用 select_stocks 的 top1 做官方口径校准。
 
-口径(与主策略/副策略一致, 全部无未来函数)
-------------------------------------------
-· T 日收盘出信号(只用截至 T 日收盘可知的字段)
-· T+1 开盘买, 若 T+1 一字涨停(open >= high_limit)或停牌/无行情则买不到, 剔除
-· T+1+hold 收盘卖; 复权价; 往返成本 0.3%(与 satellite.cost_pct 同)
-· 超额 = 单笔净收益 - 同期市场等权收益(reg.mkt_idx 同区间), 剔除 beta
+口径
+----
+· T 日收盘出信号(只用截至 T 日收盘可知的字段) + 信号日闸门 trade_ok
+· T+1 开盘买; T+1 一字涨停/停牌/无行情则买不到, 剔除
+· 五种卖出: d0=T+1 收盘(日内) / o1=T+2 开盘(主策略口径) / c1=T+2 收盘 / c2=T+3 收盘 / c3=T+4 收盘
+· 复权价; 往返成本 0.3%; 超额 = 单笔 - 同期市场等权(reg.mkt_idx 同区间)
 
-基础池: 主板+创业板 / 非ST / 非停牌 / bars>=250 / 成交额>=1亿(次新事件放宽到 40~250 日)
+基础池: 主板+创业板 / 非ST / 非停牌 / bars>=250 / 成交额>=1亿(次新放宽到 40~250 日)
 
 用法: python tools/exp_sat_alpha2.py [天窗口, 默认 1500]
 输出: output/exp_sat_alpha2.json
@@ -35,12 +36,15 @@ import pandas as pd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from src.backtest import prepare_context      # noqa: E402
-from src.config import board_of, load_config  # noqa: E402
+from src.backtest import prepare_context                        # noqa: E402
+from src.config import board_of, load_config                    # noqa: E402
+from src.selector import select_stocks                          # noqa: E402
 
 OUT = os.path.join(ROOT, "output")
 COST = 0.003          # 往返成本(与 satellite.cost_pct=0.3 同)
-HOLDS = (0, 1, 2, 3, 5)
+# 卖出方式 -> (取价相对信号日的行偏移, open/close, 持有交易日数)
+EXITS = {"d0": (1, "close", 0), "o1": (2, "open", 1), "c1": (2, "close", 1),
+         "c2": (3, "close", 2), "c3": (4, "close", 3)}
 
 PANEL_COLS = [
     "ts_code", "trade_date", "open", "high", "low", "close", "pre_close",
@@ -74,37 +78,44 @@ def events(day):
     to_p95 = float(day["turnover_rate"].quantile(0.95))
     ivol_q10 = float(day["ivol20"].quantile(0.10))
     return {
-        # 1) 涨停次日回踩(缩量): 昨日涨停, 今日回调但没崩
+        # 1) 涨停次日回踩(缩量)
         "limitup_pullback": b & (day["prev_pct"] >= 9.4) & pct.between(-6, -1) & (vr < 1.3),
-        # 2) 涨停次日强势不破(连板预期)
+        # 2) 涨停次日强势不破
         "limitup_hold": b & (day["prev_pct"] >= 9.4) & pct.between(0, 8) & (cp > 0.6),
-        # 3) 大幅低开后被拉回(日内修复)
+        # 3) 大幅低开后被拉回
         "gap_recover": b & (gap < -3) & (cp > 0.7) & (pct > -3),
-        # 4) 三连阴缩量(抛压衰竭)
+        # 4) 三连阴缩量
         "triple_down": b & (pct < 0) & (day["down2"] == 1) & (vr < 0.7),
         # 5) 次新股超跌
         "new_stock_dip": b_new & pct.between(-9, -4),
         # 6) 创业板超跌(主策略同构, 换域)
         "gem_dip": b & (bd == "创业板") & pct.between(-6, -3) & (vr < 0.8) & (cp < 0.4),
-        # 7) 主板超跌(主策略同构, 口径校准用)
+        # 7) 主板超跌(简化版, 只用于相对比较; 官方口径见 main_official)
         "main_dip": b & (bd == "主板") & pct.between(-6, -3) & (vr < 0.8) & (cp < 0.4),
-        # 7b) 主板超跌·放宽收盘位置(看 cp 门槛到底是加分还是减分)
-        "main_dip_wide": b & (bd == "主板") & pct.between(-6, -3) & (vr < 0.8),
-        # 7c) 科创板超跌(第三个域)
-        "star_dip": b & (bd == "科创板") & pct.between(-8, -4) & (vr < 0.8) & (cp < 0.4),
-        # 8) 高换手票回踩(游资票, 换手前 5%)
+        # 8) 高换手票回踩
         "high_turn_pullback": b & (day["turnover_rate"] >= to_p95) & pct.between(-6, -2),
-        # 9) 长上影 + 放量(冲高回落, 次日修复)
+        # 9) 长上影 + 放量
         "long_upper": b & (upper > 2.5) & (vr > 1.3) & pct.between(-5, 3),
-        # 10) 回踩 20 日线企稳(趋势中回调)
+        # 10) 回踩 20 日线企稳
         "ma20_support": b & day["bias20"].between(-1, 2) & (pct > 0) & (day["mom20"] > 5),
-        # 11) 极度缩量横盘(变盘前夜)
+        # 11) 极度缩量横盘
         "shrink_flat": b & (vr < 0.5) & (pct.abs() < 2),
-        # 12) 现行副策略因子(低波前 10%), 作 3 日持有的对照
+        # 12) 现行副策略因子(低波前 10%)
         "lowvol_q10": b & (day["ivol20"] <= ivol_q10),
-        # 13) 涨停(首板)直接持有: 验证"追涨停"是否可行
+        # 13) 首板涨停直接持有
         "limitup_day": b & (pct >= 9.4) & (cp > 0.5),
+        # 14) 科创板超跌
+        "star_dip": b & (bd == "科创板") & pct.between(-8, -4) & (vr < 0.8) & (cp < 0.4),
     }
+
+
+def official_picks(day, d, cfg):
+    """主策略官方 top1(同一套选股器), 用作口径校准。"""
+    try:
+        picks, _ = select_stocks(d, day, cfg, None, top_n=1, name_filter=False)
+    except Exception:
+        return None
+    return str(picks[0]["code"]) if picks else None
 
 
 # ---------------------------------------------------------------- 主流程
@@ -121,16 +132,14 @@ def main():
         reg.index = reg.index.astype(str)
     lvl_arr = np.array([float(reg.loc[d, "mkt_idx"]) if d in reg.index else np.nan
                         for d in main_dates])
+    gate_arr = np.array([bool(reg.loc[d, "trade_ok"]) if d in reg.index else False
+                         for d in main_dates])
     pos_of = {d: i for i, d in enumerate(main_dates)}
     N = len(main_dates)
+    print(f"[gate] 闸门开启 {int(gate_arr.sum())}/{N} 日 ({gate_arr.mean()*100:.1f}%)", flush=True)
 
     print(f"[panel] 拼接 {N} 日 ...", flush=True)
-    frames = []
-    for d in main_dates:
-        f = by_date.get(d)
-        if f is None:
-            continue
-        frames.append(f[PANEL_COLS])
+    frames = [by_date[d][PANEL_COLS] for d in main_dates if d in by_date]
     panel = pd.concat(frames, ignore_index=True)
     del frames
     print(f"[panel] {len(panel):,} 行", flush=True)
@@ -139,7 +148,6 @@ def main():
     panel = panel[panel["p"].notna()].reset_index(drop=True)
     panel["p"] = panel["p"].astype("int32")
 
-    # 按 (日期位置, 代码) 建索引 -> 用 reindex 取 T+1 / T+1+h 的价格, 停牌缺日自动 NaN
     px = panel.set_index(["p", "ts_code"])[["open_adj", "close_adj", "open",
                                             "high_limit", "pre_close", "vol"]]
 
@@ -150,28 +158,24 @@ def main():
     b_open, b_close_d1, b_open_raw, b_hilim, b_pre, b_vol = at(1).T
     panel["buy_open"] = b_open
     panel["buy_raw"] = b_open_raw
-    panel["buy_hi_lim"] = b_hilim
     panel["buy_gap"] = (b_open_raw / np.where(b_pre.astype(float) > 0, b_pre, np.nan) - 1) * 100
     panel["buyable"] = (np.isfinite(b_open.astype(float)) & (b_vol.astype(float) > 0)
                         & (b_open_raw < b_hilim - 1e-9))
-    panel["sell_0"] = b_close_d1                    # hold=0: T+1 开盘买, T+1 收盘卖(日内)
-    i1 = np.clip(panel["p"].to_numpy() + 1, 0, N - 1)
-    panel["mkt_0"] = 0.0
-    for h in HOLDS:
-        if h == 0:
-            continue
-        panel[f"sell_{h}"] = at(h + 1)[:, 1]         # close_adj
-        i2 = np.clip(panel["p"].to_numpy() + 1 + h, 0, N - 1)
-        panel[f"mkt_{h}"] = lvl_arr[i2] / lvl_arr[i1] - 1
+    p_arr = panel["p"].to_numpy()
+    for k, (off, kind, _h) in EXITS.items():
+        arr = at(off)
+        panel[f"sell_{k}"] = arr[:, 0] if kind == "open" else arr[:, 1]
+        i1 = np.clip(p_arr + 1, 0, N - 1)
+        i2 = np.clip(p_arr + off, 0, N - 1)
+        panel[f"mkt_{k}"] = lvl_arr[i2] / lvl_arr[i1] - 1
     del px
 
-    # ---- 逐日算事件掩码, 记录行号 ----
+    # ---- 逐日: 事件掩码 + 官方 top1 ----
     print("[events] 逐日计算掩码 ...", flush=True)
-    ev_names = list(events(by_date[main_dates[0]]).keys())
+    ev_names = list(events(by_date[main_dates[0]]).keys()) + ["main_official"]
     hits = {k: [] for k in ev_names}
     rid = np.arange(len(panel))
-    # 用 searchsorted 定位每日分块(panel 已按日期主序 concat, p 单调不减)
-    bounds = np.searchsorted(panel["p"].to_numpy(), np.arange(N + 1))
+    bounds = np.searchsorted(p_arr, np.arange(N + 1))
     for i, d in enumerate(main_dates):
         day = by_date.get(d)
         if day is None:
@@ -179,14 +183,22 @@ def main():
         lo, hi = bounds[i], bounds[i + 1]
         if hi <= lo:
             continue
+        if not bool(gate_arr[i]):
+            continue                      # 闸门关闭: 当日一律不开仓(所有事件同口径)
         blk = panel.iloc[lo:hi]
         ev = events(blk)
         for k, m in ev.items():
             mm = np.asarray(m, dtype=bool)
             if mm.any():
                 hits[k].append(rid[lo:hi][mm])
+        code = official_picks(day, d, cfg)
+        if code:
+            idx = blk.index[blk["ts_code"] == code]
+            if len(idx):
+                hits["main_official"].append(np.array([idx[0]]))
 
-    out = {"window": {"days": N, "start": main_dates[0], "end": main_dates[-1]},
+    out = {"window": {"days": N, "start": main_dates[0], "end": main_dates[-1],
+                      "gate_on_pct": round(float(gate_arr.mean()) * 100, 1)},
            "events": {}}
     for k in ev_names:
         if not hits[k]:
@@ -194,22 +206,22 @@ def main():
         ix = np.concatenate(hits[k])
         df = panel.iloc[ix]
         df = df[df["buyable"].fillna(False)]
-        if len(df) < 50:
+        if len(df) < 30:
             continue
         rec = {"n_signals": int(len(df)),
                "n_days": int(df["p"].nunique()),
                "per_day": round(len(df) / N, 2),
                "avg_gap": round(float(df["buy_gap"].mean()), 3)}
-        for h in HOLDS:
-            r = (df[f"sell_{h}"].astype(float) / df["buy_open"].astype(float)) * (1 - COST) - 1
-            mk = df[f"mkt_{h}"].astype(float)
+        for key in EXITS:
+            r = (df[f"sell_{key}"].astype(float) / df["buy_open"].astype(float)) * (1 - COST) - 1
+            mk = df[f"mkt_{key}"].astype(float)
             ok = np.isfinite(r.to_numpy()) & np.isfinite(mk.to_numpy())
             r2, mk2 = r[ok], mk[ok]
             if len(r2) < 30:
                 continue
             yrs_arr = np.asarray(main_dates, dtype=object)[df.loc[ok, "p"].to_numpy()]
             yr = pd.Series([str(x)[:4] for x in yrs_arr], index=r2.index)
-            rec[f"h{h}"] = {
+            rec[key] = {
                 "n": int(len(r2)),
                 "avg_pct": round(float(r2.mean()) * 100, 3),
                 "excess_pct": round(float((r2 - mk2).mean()) * 100, 3),
@@ -218,46 +230,46 @@ def main():
                 "by_year": {str(y): round(float(v.mean()) * 100, 2)
                             for y, v in r2.groupby(yr)},
             }
-            if h == 3:
-                rec["ann_equiv_pct"] = round(((1 + float(r2.mean())) ** (252.0 / h) - 1) * 100, 1)
         out["events"][k] = rec
 
-    print("\n%-20s %6s %6s %8s %8s %8s %9s" % (
-        "事件", "信号数", "只/日", "h0单笔%", "h1单笔%", "h3单笔%", "h3超额%"))
-    order = sorted(out["events"].items(),
-                   key=lambda kv: -kv[1].get("h3", {}).get("excess_pct", -99))
+    keys = list(EXITS)
+    print("\n%-20s %6s | %s" % ("事件", "信号数", "  ".join("%7s" % k for k in keys)))
+    order = sorted(out["events"].items(), key=lambda kv: -kv[1].get("o1", {}).get("avg_pct", -99))
     for k, v in order:
-        g = lambda h, f: v.get(f"h{h}", {}).get(f, float("nan"))
-        print("%-20s %6d %6.2f %8.3f %8.3f %8.3f %9.3f" % (
-            k, v["n_signals"], v["per_day"],
-            g(0, "avg_pct"), g(1, "avg_pct"), g(3, "avg_pct"), g(3, "excess_pct")))
+        g = lambda key: v.get(key, {}).get("avg_pct", float("nan"))
+        print("%-20s %6d | %s" % (
+            k, v["n_signals"], "  ".join("%7.3f" % g(x) for x in keys)))
 
-    print("\n年化等价(每天满仓一次, 净成本后):  h0 / h1 / h3")
+    print("\n超额(减同期等权, %):")
+    print("%-20s %s" % ("事件", "  ".join("%7s" % k for k in keys)))
     for k, v in order:
-        g = lambda h: v.get(f"h{h}", {}).get("avg_pct")
+        g = lambda key: v.get(key, {}).get("excess_pct", float("nan"))
+        print("%-20s %s" % (k, "  ".join("%7.3f" % g(x) for x in keys)))
+
+    print("\n年化等价(满仓天天做, 按持有交易日数折算):")
+    for k, v in order:
         vals = []
-        for h in (0, 1, 3):
-            x = g(h)
-            vals.append("%8.1f" % (((1 + x / 100.0) ** (252.0 / max(h, 1)) - 1) * 100)
-                        if x is not None and h > 0 else
-                        ("%8.1f" % (((1 + x / 100.0) ** 252 - 1) * 100) if x is not None else "     nan"))
-        print("%-20s %s" % (k, " ".join(vals)))
+        for key in keys:
+            x = v.get(key, {}).get("avg_pct")
+            h = EXITS[key][2]
+            if x is None:
+                vals.append("    nan")
+                continue
+            n_turn = 252.0 if h == 0 else 252.0 / h
+            vals.append("%7.1f" % (((1 + x / 100.0) ** n_turn - 1) * 100))
+        print("%-20s %s" % (k, "  ".join(vals)))
 
-    # 分年(仅 h3)
-    print("\n分年 h3 单笔均值(%):")
-    yrs = sorted({y for v in out["events"].values()
-                  for y in v.get("h3", {}).get("by_year", {})})
+    print("\n分年 o1 单笔均值(%):")
+    yrs = sorted({y for v in out["events"].values() for y in v.get("o1", {}).get("by_year", {})})
     print("%-20s %s" % ("事件", " ".join("%7s" % y for y in yrs)))
     for k, v in order:
-        h = v.get("h3")
-        if not h:
-            continue
-        print("%-20s %s" % (k, " ".join("%7.2f" % h["by_year"].get(y, float("nan"))
-                                        for y in yrs)))
+        yr = v.get("o1", {}).get("by_year", {})
+        print("%-20s %s" % (k, " ".join("%7.2f" % yr.get(y, float("nan")) for y in yrs)))
 
-    md = out["events"].get("main_dip", {})
-    if "h1" in md:
-        print("\n[口径自检] main_dip h1 单笔 %.3f%% (主策略官方 1.435%%)" % md["h1"]["avg_pct"])
+    mo = out["events"].get("main_official", {})
+    if "o1" in mo:
+        print("\n[口径自检] main_official o1 单笔 %.3f%% (主策略官方 1.435%%), n=%d"
+              % (mo["o1"]["avg_pct"], mo["o1"]["n"]))
 
     os.makedirs(OUT, exist_ok=True)
     p = os.path.join(OUT, "exp_sat_alpha2.json")
