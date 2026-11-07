@@ -1,0 +1,61 @@
+{
+ "n": 29192,
+ "open_all": -0.535,
+ "close_all": 0.469,
+ "win_open": 42.1,
+ "win_close": 45.9,
+ "mkt_close": 0.178,
+ "mkt_open": 0.046,
+ "excess_open": -0.58,
+ "excess_close": 0.291,
+ "groups": [
+  {
+   "group": "换手榜",
+   "n": 9035,
+   "open": -0.424,
+   "close": 1.07,
+   "excess": 0.892,
+   "net_excess": 0.762
+  },
+  {
+   "group": "北向净买&跌5%+",
+   "n": 1067,
+   "open": 0.168,
+   "close": 1.162,
+   "excess": 0.984,
+   "net_excess": 0.854
+  },
+  {
+   "group": "机构净买",
+   "n": 8065,
+   "open": -0.239,
+   "close": 0.824,
+   "excess": 0.645,
+   "net_excess": 0.515
+  },
+  {
+   "group": "北向净买",
+   "n": 6280,
+   "open": -0.116,
+   "close": 0.684,
+   "excess": 0.506,
+   "net_excess": 0.376
+  },
+  {
+   "group": "跌幅榜",
+   "n": 10797,
+   "open": -0.647,
+   "close": 0.44,
+   "excess": 0.262,
+   "net_excess": 0.132
+  },
+  {
+   "group": "游资净买",
+   "n": 7179,
+   "open": -0.57,
+   "close": 0.237,
+   "excess": 0.059,
+   "net_excess": -0.071
+  }
+ ]
+}

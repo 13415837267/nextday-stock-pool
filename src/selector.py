@@ -704,6 +704,10 @@ def select_stocks(
         if not fb.get("enabled", True) or not fb.get("mode"):
             continue
         sub = {**cfg, "selection": {**sel_cfg, "mode": fb["mode"], "fallbacks": []}}
+        # 第一百六十六轮: 备用池可指定独立板块集(boards) —— 让"同一套 dip 形态"在
+        # 主板无票/票不合格时, 到创业板(20% 涨跌停)里找结构相同的票。缺省沿用全局 universe。
+        if fb.get("boards"):
+            sub["universe"] = {**cfg["universe"], "boards": list(fb["boards"])}
         fb_picks, _ = _select_one(date, day_df, sub, names, top_n=int(fb.get("top_n") or 0),
                                   name_filter=name_filter)
         for p in fb_picks:

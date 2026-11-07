@@ -1,0 +1,8 @@
+{
+ "n_blocked": 1,
+ "n_testable": 1,
+ "blocked_mean": 8.978,
+ "blocked_win": 100.0,
+ "actual_mean": 1.435,
+ "actual_win": 56.4
+}

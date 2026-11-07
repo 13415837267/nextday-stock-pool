@@ -378,6 +378,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     flat_days = 0
     fee_total = 0.0
     pending_cash = 0.0   # T+2收盘卖模式: 当日收盘卖出回笼、次日开盘方可投入的资金
+    # 第一百六十六轮诊断(仅 BT_DEBUG_CASH=1 时启用, 不改变任何成交):
+    # 记录"有意愿买、但资金未回笼(现金不足目标仓位 min_fill_frac)"而被静默跳过的信号。
+    # 这批是"现金锁"成本 —— 卖出在 T+2 收盘、回款次日开盘才可用, 于是隔日连发的
+    # 信号会被吞掉; 想知道吞掉的是不是好票, 必须先能看见它。
+    cash_blocked: list[dict] = [] if os.environ.get("BT_DEBUG_CASH") else []
     # 连亏熔断(可选): 连续亏损达 streak 笔后暂停买入 pause_days 个交易日(0=禁用)
     _ps = (cfg.get("risk") or {}).get("loss_streak_pause") or {}
     ps_streak, ps_days = int(_ps.get("streak", 0)), int(_ps.get("pause_days", 5))
@@ -708,6 +713,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 该阈值直接决定"资金未回笼日要不要用小仓参与", 是成交笔数的开关之一。
             _min_fill = float(ex.get("min_fill_frac", 0.3) if ex.get("min_fill_frac") is not None else 0.3)
             if alloc < pick_frac * equity * _min_fill:
+                if os.environ.get("BT_DEBUG_CASH"):
+                    cash_blocked.append({
+                        "d": d, "code": p["code"], "name": p.get("name"),
+                        "rank": p.get("_rank"), "pool": p.get("pool", "main"),
+                        "score": p.get("score"), "gap": round(gap * 100, 2),
+                        "target": round(pick_frac, 3),
+                        "cash_frac": round(cash / equity, 4) if equity else 0.0,
+                        "hit": round(alloc / (pick_frac * equity), 3) if pick_frac * equity else 0.0,
+                    })
                 break
             _lp = p.get("_lim_px")
             # 分批建仓(第九十九轮, 可选; 缺省 1.0=全开盘买, 与旧口径逐位等价):
@@ -1026,6 +1040,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         # 装不下成交记录, 失效监测回溯(tools/monitor_retro)需要独立的成交序列
         "trades_executed_recent": [t for t in trades if t.get("ret_pct") is not None][-200:],
         **({"trades_all": trades} if __import__("os").environ.get("BT_FULL_TRADES") else {}),
+        **({"cash_blocked": cash_blocked} if os.environ.get("BT_DEBUG_CASH") else {}),
         **({"open_positions": open_positions} if open_positions else {}),
         "monthly": _monthly(nav),
     }
