@@ -64,7 +64,10 @@ def main():
     dates = list(ctx["by_date"].keys())
     idx = {d: i for i, d in enumerate(dates)}
     per = ctx["per_code"]
-    lvl = market_series(ctx["by_date"], dates)
+    # 市场基准直接取引擎自己的等权指数(regime_base: 主板/非ST/非停牌/bars>=21 的 pct 均值), 与 metrics 里的基准同源
+    lvl = {str(k): float(v) for k, v in ctx["reg"]["mkt_idx"].items()} if "reg" in ctx else {}
+    if not lvl:
+        lvl = market_series(ctx["by_date"], dates)
 
     rows = []
     for t in r["trades_all"]:
