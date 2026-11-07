@@ -120,9 +120,17 @@ DEFAULT = {
     "min_pool": 20,           # 基础票池样本下限, 不足则不出票(与池深无关)
     "pool_show": POOL_SHOW,   # 候选池只数上限(评分达标的前 N 名)
     "pool_alt": POOL_ALT,     # 备选排序深度(已废弃, 固定 0)
+    # 第一百七十一轮: mode="dip" —— 把主策略验证过的"缩量阴线回调"形态搬到另一块板。
+    #   主策略靠这个形态在主板做出 1.435%/笔(持 1.5 天), 而副策略的低波持 10 日只有
+    #   1.366%/笔、年化 19%。形态相同、域不同 = 不同选股、零重叠。
+    #   四个条件全用 T 日收盘可知字段, 与主策略 selector 的 dip 分支同源。
+    "dip_pct_min": -6.0,      # 当日涨幅下限(%)
+    "dip_pct_max": -3.0,      # 当日涨幅上限(%)
+    "dip_vol_max": 0.8,       # 量比上限(缩量才买)
+    "dip_close_pos_max": 0.4,  # 收盘在日内区间位置上限(收在低位=尾盘仍在出)
 }
 
-STRATEGY_CN = {"trend_lowvol": "趋势低波单吊", "lowvol": "低波单吊"}
+STRATEGY_CN = {"trend_lowvol": "趋势低波单吊", "lowvol": "低波单吊", "dip": "缩量回调单吊"}
 
 
 def score_of(ivol) -> float:
@@ -177,7 +185,11 @@ def daily_params(cfg: dict) -> dict:
             "bo_pct_min": float(s.get("bo_pct_min") or 0.0),
             "bo_near_high": float(s.get("bo_near_high") or 0.0),
             "bo_vol_ratio": float(s.get("bo_vol_ratio") or 0.0),
-            "bo_close_pos": float(s.get("bo_close_pos") or 0.0)}
+            "bo_close_pos": float(s.get("bo_close_pos") or 0.0),
+            "dip_pct_min": float(s.get("dip_pct_min", -6.0)),
+            "dip_pct_max": float(s.get("dip_pct_max", -3.0)),
+            "dip_vol_max": float(s.get("dip_vol_max", 0.8)),
+            "dip_close_pos_max": float(s.get("dip_close_pos_max", 0.4))}
 
 
 def apply_cost(nav_before: float, turn: float, cost: float = 0.0030) -> float:
@@ -208,6 +220,11 @@ def _masks(day, cfg: dict):
                              & (day["dist_high20"] >= -P["bo_near_high"])
                              & (day["vol_ratio"] >= P["bo_vol_ratio"])
                              & (day["close_pos"] >= P["bo_close_pos"])).to_numpy()
+    if P["mode"] == "dip":
+        # 缩量阴线回调: 与主策略 selector 的 dip 分支同源(幅度/量比/收盘位置)
+        m_final = m_final & day["pct"].between(P["dip_pct_min"], P["dip_pct_max"]).to_numpy() \
+            & (day["close_pos"] <= P["dip_close_pos_max"]).to_numpy() \
+            & (day["vol_ratio"] <= P["dip_vol_max"]).to_numpy()
     if P["mode"] == "trend_lowvol":
         m_final = m_final & ((day["close_adj"] > day["ma5"]) & (day["ma5"] > day["ma10"])
                              & (day["ma10"] > day["ma20"]) & (day["ma20"] > day["ma20_prev"])
@@ -295,6 +312,11 @@ def pool_funnel(day, cfg: dict) -> list:
                              & (day["dist_high20"] >= -P["bo_near_high"])
                              & (day["vol_ratio"] >= P["bo_vol_ratio"])
                              & (day["close_pos"] >= P["bo_close_pos"])).to_numpy()
+    if P["mode"] == "dip":
+        m_final = m_final & ((day["pct"] >= P["dip_pct_min"]) & (day["pct"] <= P["dip_pct_max"])
+                             & (day["close_pos"] <= P["dip_close_pos_max"])
+                             & (day["vol_ratio"] <= P["dip_vol_max"])).to_numpy()
+        tail += " + 缩量阴线回调"
     if P["mode"] == "trend_lowvol":
         tail += " + 均线多头"
     return [{"label": "全市场", "n": int(len(day))},
