@@ -164,7 +164,7 @@ def main():
         comps = np.empty(trials)
         for ti in range(trials):
             pick = RNG.random(len(df)) < (k / len(df))
-            comps[ti] = np.prod(np.where(pick, df["hold_open"], df["hold_close"])) - 1
+            comps[ti] = np.prod(1 + np.where(pick, df["hold_open"], df["hold_close"])) - 1
         pct = float((comps < comp / 100).mean() * 100)
         rowsB.append({"th": th, "n_open": k, "share": k / len(df) * 100, "comp": comp,
                       "delta": comp - base_comp, "mean": float(np.mean(r_rule) * 100),
@@ -247,7 +247,8 @@ def main():
         a = sub.groupby("pb", observed=True).agg(n=("ret", "size"), mean=("ret", "mean"),
                                                  win=("ret", lambda x: (x > 0).mean() * 100),
                                                  s1=("s1", "mean"))
-        a[["mean", "win", "s1"]] = (a[["mean", "s1"]] * 100).round(3)
+        a["mean"] = (a["mean"] * 100).round(3)
+        a["s1"] = (a["s1"] * 100).round(3)
         a["win"] = a["win"].round(1)
         print(a.to_string())
         # 若把所有笔都按 1.0 仓(不复利差异)近似对比: 单位仓位复利 vs 现行
@@ -258,6 +259,26 @@ def main():
                                                  "win": float(v["win"]), "s1": float(v["s1"])}
                                         for k, v in a.iterrows()},
                             "unit_comp": unit, "cur_comp": cur}
+
+    # ---------------- E. 卖出时点的天花板(完美信息 oracle) ----------------
+    print("\n=== E. 卖出时点空间的天花板: 每笔都在开盘/收盘里挑更好的那个 ===")
+    orc = np.maximum(df["hold_open"], df["hold_close"])
+    comp_orc = float(np.prod(1 + orc) - 1) * 100
+    print(f"  oracle 逐笔复利 {comp_orc:,.0f}%  vs 现行全收盘 {base_comp:,.0f}% "
+          f"(+{(comp_orc/base_comp-1)*100:.0f}%)")
+    print(f"  单笔均值: oracle {orc.mean()*100:+.3f}% vs 收盘 {df['hold_close'].mean()*100:+.3f}% "
+          f"(+{(orc.mean()-df['hold_close'].mean())*100:.3f}pp/笔)")
+    y = df.assign(o=orc, c=df["hold_close"]).groupby("year").apply(
+        lambda x: pd.Series({"n": len(x), "base": np.prod(1 + x["c"]) - 1,
+                             "oracle": np.prod(1 + x["o"]) - 1}))
+    y[["base", "oracle"]] = (y[["base", "oracle"]] * 100).round(0)
+    y["gain%"] = ((y["oracle"] / y["base"] - 1) * 100).round(0)
+    print(y.to_string())
+    out["oracle"] = {"comp": comp_orc, "base": base_comp, "gain_pct": (comp_orc / base_comp - 1) * 100,
+                     "mean_oracle": float(orc.mean() * 100),
+                     "mean_base": float(df["hold_close"].mean() * 100),
+                     "yearly": {str(k): {"n": int(v["n"]), "base": float(v["base"]),
+                                         "oracle": float(v["oracle"])} for k, v in y.iterrows()}}
 
     json.dump(out, open(os.path.join(OUT, "exp_t1close.json"), "w"), ensure_ascii=False, indent=1)
     print("\nsaved output/exp_t1close.json")
