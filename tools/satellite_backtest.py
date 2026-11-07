@@ -152,6 +152,14 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
     if stamp_2023 is None:
         stamp_2023 = bool((cfg.get("execution") or {}).get("stamp_tax_time_varying", False))
     P = daily_params(cfg)
+    # 第一百七十一轮: 融资杠杆(默认 1.0, 与旧口径逐位一致)。
+    #   副策略的"仓位效率"只有 1/max_pos(4 只各 25%), 拉高 lev 等于把每个槽位放大。
+    #   lev>1 时允许透支 (lev-1)*nav, 透支额按 margin_rate 年化逐日计提。
+    #   与主策略 execution.leverage 同一套约定, 便于两条腿并排比较。
+    _sat = cfg.get("satellite") or {}
+    LEV = float(_sat.get("leverage", 1.0) or 1.0)
+    RATE = float(_sat.get("margin_rate", 0.055) or 0.0) if LEV > 1.0 else 0.0
+    _interest = 0.0
     # 第一百五十六轮修复: cost_pct 此前是**死参数** —— config 里写 0.8 也不生效,
     # 因为买卖两侧直接用了硬编码常量 HALF。现在真正读 config: 往返成本 cost_pct%
     # 对半分到买卖两侧。默认 cost_pct=0.3 -> 单边 0.0015 = HALF, 旧结果逐位不变。
@@ -192,6 +200,12 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                           "holding": bool(positions), "fills": [], "skipped": [],
                           "note": "面板缺该日行情"})
             continue
+
+        # 融资利息: 对透支余额按年化逐日计提
+        if cash < 0 and RATE > 0:
+            _i = -cash * RATE / 252.0
+            cash -= _i
+            _interest += _i
 
         # 当日收盘的闸门(只用当日可知信息): 决定明日能否开新仓
         gate_today = True
@@ -257,7 +271,8 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                     # 买入发生在开盘, 当日收盘价还不可知, 用成本不引入未来函数。
                     nav_now = cash + sum(p["units"] * p["entry_px"] for p in positions)
                     _slots = P["budget_slots"] or P["max_pos"]
-                    budget = min(nav_now / _slots, cash * 0.995)
+                    _cap = cash + max(0.0, (LEV - 1.0) * nav_now) if LEV > 1.0 else cash
+                    budget = min(nav_now / _slots * LEV, _cap * 0.995)
                     if budget < 1000:
                         skipped += 1
                         rec["skipped"].append({"code": sig["code"], "name": nm, "note": "现金不足"})
@@ -417,6 +432,7 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             "跳过买入次数": skipped,
             "同期市场等权基准%": round(float(bench_norm.iloc[-1] / init - 1) * 100, 2)
             if len(bench_norm) else None,
+            "融资利息(元)": round(_interest, 0) if LEV > 1.0 else 0,
         },
         "equity": [{"d": _fmt(d), "nav": round(float(v), 0)} for d, v in nav.items()],
         "benchmark": [{"d": _fmt(d), "nav": round(float(v), 0)} for d, v in bench_norm.items()]
