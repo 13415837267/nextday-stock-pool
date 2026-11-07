@@ -40,7 +40,7 @@ from src.config import board_of, load_config  # noqa: E402
 
 OUT = os.path.join(ROOT, "output")
 COST = 0.003          # 往返成本(与 satellite.cost_pct=0.3 同)
-HOLDS = (1, 2, 3, 5)
+HOLDS = (0, 1, 2, 3, 5)
 
 PANEL_COLS = [
     "ts_code", "trade_date", "open", "high", "low", "close", "pre_close",
@@ -85,9 +85,13 @@ def events(day):
         # 5) 次新股超跌
         "new_stock_dip": b_new & pct.between(-9, -4),
         # 6) 创业板超跌(主策略同构, 换域)
-        "gem_dip": b & (bd == "gem") & pct.between(-6, -3) & (vr < 0.8) & (cp < 0.4),
+        "gem_dip": b & (bd == "创业板") & pct.between(-6, -3) & (vr < 0.8) & (cp < 0.4),
         # 7) 主板超跌(主策略同构, 口径校准用)
-        "main_dip": b & (bd == "main") & pct.between(-6, -3) & (vr < 0.8) & (cp < 0.4),
+        "main_dip": b & (bd == "主板") & pct.between(-6, -3) & (vr < 0.8) & (cp < 0.4),
+        # 7b) 主板超跌·放宽收盘位置(看 cp 门槛到底是加分还是减分)
+        "main_dip_wide": b & (bd == "主板") & pct.between(-6, -3) & (vr < 0.8),
+        # 7c) 科创板超跌(第三个域)
+        "star_dip": b & (bd == "科创板") & pct.between(-8, -4) & (vr < 0.8) & (cp < 0.4),
         # 8) 高换手票回踩(游资票, 换手前 5%)
         "high_turn_pullback": b & (day["turnover_rate"] >= to_p95) & pct.between(-6, -2),
         # 9) 长上影 + 放量(冲高回落, 次日修复)
@@ -143,17 +147,20 @@ def main():
         mi = pd.MultiIndex.from_arrays([panel["p"] + k, panel["ts_code"]])
         return px.reindex(mi).to_numpy()
 
-    b_open, b_close_unused, b_open_raw, b_hilim, b_pre, b_vol = at(1).T
+    b_open, b_close_d1, b_open_raw, b_hilim, b_pre, b_vol = at(1).T
     panel["buy_open"] = b_open
     panel["buy_raw"] = b_open_raw
     panel["buy_hi_lim"] = b_hilim
     panel["buy_gap"] = (b_open_raw / np.where(b_pre.astype(float) > 0, b_pre, np.nan) - 1) * 100
     panel["buyable"] = (np.isfinite(b_open.astype(float)) & (b_vol.astype(float) > 0)
                         & (b_open_raw < b_hilim - 1e-9))
+    panel["sell_0"] = b_close_d1                    # hold=0: T+1 开盘买, T+1 收盘卖(日内)
+    i1 = np.clip(panel["p"].to_numpy() + 1, 0, N - 1)
+    panel["mkt_0"] = 0.0
     for h in HOLDS:
-        s = at(h + 1)[:, 1]                       # close_adj
-        panel[f"sell_{h}"] = s
-        i1 = np.clip(panel["p"].to_numpy() + 1, 0, N - 1)
+        if h == 0:
+            continue
+        panel[f"sell_{h}"] = at(h + 1)[:, 1]         # close_adj
         i2 = np.clip(panel["p"].to_numpy() + 1 + h, 0, N - 1)
         panel[f"mkt_{h}"] = lvl_arr[i2] / lvl_arr[i1] - 1
     del px
@@ -215,17 +222,26 @@ def main():
                 rec["ann_equiv_pct"] = round(((1 + float(r2.mean())) ** (252.0 / h) - 1) * 100, 1)
         out["events"][k] = rec
 
-    print("\n%-20s %6s %6s %8s %8s %7s %10s" % (
-        "事件", "信号数", "只/日", "h3单笔%", "h3超额%", "h3胜率", "年化等价%"))
+    print("\n%-20s %6s %6s %8s %8s %8s %9s" % (
+        "事件", "信号数", "只/日", "h0单笔%", "h1单笔%", "h3单笔%", "h3超额%"))
     order = sorted(out["events"].items(),
                    key=lambda kv: -kv[1].get("h3", {}).get("excess_pct", -99))
     for k, v in order:
-        h = v.get("h3")
-        if not h:
-            continue
-        print("%-20s %6d %6.2f %8.3f %8.3f %6.1f%% %10.1f" % (
-            k, v["n_signals"], v["per_day"], h["avg_pct"], h["excess_pct"],
-            h["win_pct"], v.get("ann_equiv_pct", float("nan"))))
+        g = lambda h, f: v.get(f"h{h}", {}).get(f, float("nan"))
+        print("%-20s %6d %6.2f %8.3f %8.3f %8.3f %9.3f" % (
+            k, v["n_signals"], v["per_day"],
+            g(0, "avg_pct"), g(1, "avg_pct"), g(3, "avg_pct"), g(3, "excess_pct")))
+
+    print("\n年化等价(每天满仓一次, 净成本后):  h0 / h1 / h3")
+    for k, v in order:
+        g = lambda h: v.get(f"h{h}", {}).get("avg_pct")
+        vals = []
+        for h in (0, 1, 3):
+            x = g(h)
+            vals.append("%8.1f" % (((1 + x / 100.0) ** (252.0 / max(h, 1)) - 1) * 100)
+                        if x is not None and h > 0 else
+                        ("%8.1f" % (((1 + x / 100.0) ** 252 - 1) * 100) if x is not None else "     nan"))
+        print("%-20s %s" % (k, " ".join(vals)))
 
     # 分年(仅 h3)
     print("\n分年 h3 单笔均值(%):")
