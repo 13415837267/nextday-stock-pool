@@ -113,7 +113,8 @@ def main():
         panel[f"mkt_{k}"] = lvl[i2] / lvl[i1] - 1
 
     m = sig.merge(panel[["p", "ts_code", "buy_open", "buyable", "gap",
-                         *[f"px_{k}" for k in EXITS]]].rename(columns={"ts_code": "code"}),
+                         *[f"px_{k}" for k in EXITS],
+                         *[f"mkt_{k}" for k in EXITS]]].rename(columns={"ts_code": "code"}),
                   on=["p", "code"], how="left")
     m = m[m["buyable"].fillna(False)]
     print(f"[fill] 可成交 {len(m):,} 行, 平均缺口 {m['gap'].mean():.3f}%")
