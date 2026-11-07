@@ -85,11 +85,12 @@ def trade_leverage(trades, L_default, rate=RATE, score_th=None, pool_th=None,
         if pool_th is not None and (t.get("pool_n") or 0) >= pool_th:
             L = L_hi
         levs.append(L)
+        pos = float(t.get("pos_frac") or 1.0)   # 引擎实际下注比例(档位 0.3/0.5/1.0)
         d1, d2 = norm(t["buy_date"]), norm(t["sell_date"])
         hold = max(1, (pd.to_datetime(d2) - pd.to_datetime(d1)).days)
-        cost = (L - 1.0) * rate * hold / 365.0
-        interest += (L - 1.0) * rate * hold / 365.0
-        nav *= 1.0 + L * ret - cost
+        cost = (L - 1.0) * pos * rate * hold / 365.0
+        interest += cost
+        nav *= 1.0 + L * pos * ret - cost
         navs.append(nav)
     return np.array([1.0] + navs), np.array(levs), interest
 
@@ -144,7 +145,7 @@ def main():
         dd = (navs / peak - 1).min()
         out["trade_frontier"].append(dict(L=L, total=total * 100, ann=ann * 100,
                                           mdd=dd * 100,
-                                          worst=float(rets.min() * L * 100)))
+                                          worst=float((rets * np.array([float(t.get("pos_frac") or 1.0) for t in trades])).min() * L * 100)))
         print(f"{L:<6.2f} {total*100:>10.1f} {ann*100:>10.2f} {dd*100:>9.2f} "
               f"{rets.min()*L*100:>12.2f}")
 
@@ -170,7 +171,8 @@ def main():
 
     print("\n=== E. 单笔最大亏损(杠杆下的穿仓距离) ===")
     for L in (1.0, 1.5, 2.0):
-        print(f"L={L}: 最差单笔 {rets.min()*100*L:.2f}%  2.5%分位 {np.percentile(rets,2.5)*100*L:.2f}%")
+        pos=np.array([float(t.get("pos_frac") or 1.0) for t in trades])
+        print(f"L={L}: 最差单笔 {(rets*pos).min()*100*L:.2f}%  2.5%分位 {np.percentile(rets*pos,2.5)*100*L:.2f}%")
 
     json.dump(out, open(os.path.join(OUT, "exp_leverage.json"), "w"),
               ensure_ascii=False, indent=1)
