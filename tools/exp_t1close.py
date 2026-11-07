@@ -103,14 +103,18 @@ def main():
     # ---------------- A. seg1 可预判性 ----------------
     print("\n=== A. seg1(T+1 日内) 的分桶均值: 按买入日竞价缺口 ===")
     df["gb"] = pd.cut(df["gap"] * 100, BINS_GAP)
-    g = df.groupby("gb", observed=True).agg(n=("s1", "size"), s1=("s1", "mean"), total=("ret", "mean"),
+    df["rest2"] = df["s2"] + df["s3"]
+    g = df.groupby("gb", observed=True).agg(n=("s1", "size"), s1=("s1", "mean"), rest=("rest2", "mean"),
+                                            total=("ret", "mean"),
                                             win=("ret", lambda x: (x > 0).mean() * 100))
     g["s1"] = (g["s1"] * 100).round(3)
+    g["rest"] = (g["rest"] * 100).round(3)
     g["total"] = (g["total"] * 100).round(3)
     g["win"] = g["win"].round(1)
     print(g.to_string())
-    out["gap_bucket"] = {str(k): {"n": int(v["n"]), "s1": float(v["s1"]), "total": float(v["total"]),
-                                 "win": float(v["win"])} for k, v in g.iterrows()}
+    out["gap_bucket"] = {str(k): {"n": int(v["n"]), "s1": float(v["s1"]), "rest": float(v["rest"]),
+                                 "total": float(v["total"]), "win": float(v["win"])}
+                         for k, v in g.iterrows()}
 
     print("\n=== A2. seg1 vs 同日候选池深 / 评分 ===")
     for col, bins in (("pool_n", [0, 5, 10, 20, 30, 50, 9999]),
@@ -129,7 +133,7 @@ def main():
     for col in ("gap", "pool_n", "score"):
         sub = df[["s1", col]].dropna()
         if len(sub) > 30:
-            ics[col] = float(sub["s1"].corr(sub[col], method="spearman"))
+            ics[col] = float(sub["s1"].rank().corr(sub[col].rank()))
     print("Spearman IC vs seg1:", {k: round(v, 3) for k, v in ics.items()})
     out["ic"] = ics
 
