@@ -363,7 +363,13 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     # —— 门槛降低后不再"一刀切空仓", 低分票只给小仓, 高分票才满仓; 兼顾笔数与期望。
     score_tiers = ex.get("score_tiers") or []
     skip_gap_deep = ex.get("skip_gap_deep")       # 可选: 缺口深于该值(更恐慌)也放弃(崩塌保护)
+    # 第一百七十轮: 融资杠杆。lev=1.0 时与旧口径逐位等价(cash 不可为负)。
+    #   lev>1 时允许透支 (lev-1)*equity 买入, 透支额按 margin_rate 年化逐日计息。
+    #   实盘含义: 自有资金 1 份 + 融资 (lev-1) 份; 单票集中度/标的资格由券商约束, 回测不建模。
+    lev = float(ex.get("leverage", 1.0) or 1.0)
+    lev_rate = float(ex.get("margin_rate", 0.055) or 0.0)
     cash = float(bt_cfg["initial_capital"])
+    interest_total = 0.0
     curve: dict[str, float] = {}
     trades: list[dict] = []
     pending_buy: tuple[str, list[dict]] | None = None   # (buy_date, picks)
@@ -397,7 +403,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     month_key, month_start_nav = None, None
 
     def do_buy(picks: list[dict], d: str, idx: int = 0):
-        nonlocal cash, fee_total
+        nonlocal cash, fee_total, interest_total
         frac_buy_open = min(1.0, max(0.0, float(ex.get("buy_open_frac", 1.0) or 0.0)))
         if not picks:
             return
@@ -624,7 +630,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 if _m < float(_pg.get("cut_below", 0.0)):
                     frac *= float(_pg.get("cut_mult", 0.5))
         for p in qualified:
-            if cash <= 0:
+            # 融资可用额度 = 总杠杆额度 - 已透支
+            margin_avail = max(0.0, (lev - 1.0) * equity - max(0.0, -cash)) if lev > 1.0 else 0.0
+            if cash + margin_avail <= 0:
                 break
             row = p.pop("_row")
             pick_frac = frac
@@ -700,7 +708,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     if _g100 <= float(_t["below"]) and _pn >= int(_t.get("min_pool", 0)):
                         pick_frac = max(pick_frac, frac * float(_t.get("floor", 1.0)))
                         break
-            alloc = min(pick_frac * equity, cash)
+            alloc = min(pick_frac * equity * lev, cash + margin_avail)
             # 第一百零三轮修复: 分档乘数为 0(或叠乘后为 0)时会生成 units=0 的"零仓成交" ——
             # 既记进交易次数/胜率(0 收益被算作亏损), 又与实际资金路径矛盾。
             # 与 day 级 frac<=0 的守卫同源, 只是那一层拦不住单笔被乘成 0。
@@ -927,6 +935,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         # 次日开盘: 前一交易日收盘卖出回笼的资金此时方可投入(T+2收盘卖模式)
         cash += pending_cash
         pending_cash = 0.0
+        # 融资利息: 对透支额按年化逐日计提(自然日近似为交易日 252)
+        if cash < 0 and lev_rate > 0:
+            _int = -cash * lev_rate / 252.0
+            cash -= _int
+            interest_total += _int
+            fee_total += _int
         # 开盘: 先卖出昨日到期持仓(T-2信号的池), 再买入(T-1信号的池)
         do_sell(d, idx, has_buy=bool(pending_buy is not None and pending_buy[1]))
         if pending_buy is not None:
