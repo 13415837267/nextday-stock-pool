@@ -1109,6 +1109,12 @@ def cmd_mine(a) -> int:
         return 0
 
     if not a.dry_run:
+        # 保留转正流水：mine 每次重扫都会覆盖 proposals.yaml, 若不显式带上 accepted,
+        # "本轮提了几条、自动放行几条"这条多重比较的唯一原始记录就会被冲掉。
+        # 首轮实跑就这么丢过一次（workflow 里的 mine 把 accepted 抹成了空）。
+        prev = _load_proposals()
+        if prev.get("accepted"):
+            scan["accepted"] = prev["accepted"]
         PROPOSALS_F.write_text(
             yaml.safe_dump(scan, allow_unicode=True, sort_keys=False, width=200), encoding="utf-8")
         MINE_MD.write_text(render_mine_md(scan), encoding="utf-8")
