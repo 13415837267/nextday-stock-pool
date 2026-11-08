@@ -520,6 +520,29 @@ def main(days: int = 1500) -> None:
                       "test_win": round(float((b > 0).mean()) * 100, 1), "test_t": round(t_te, 2)})
     out["oos_simple"] = srows
 
+    # ---- 因子稳健性: 同一因子在前后两段的极差是否同号 —— 区分"因子无效"与"市场结构变化"
+    print("\n=== 因子稳健性: 前 60% vs 后 40% 的极差(宽池·闸门开) ===", flush=True)
+    print("%-14s | %9s %9s %6s | %9s %9s %6s | %s"
+          % ("因子", "trainQ1", "trainQ5", "train极差", "testQ1", "testQ5", "test极差", "同号?"))
+    rob = []
+    for col in rank:
+        rec = {"factor": col}
+        for nm, mm in (("train", tr), ("test", te)):
+            t = bucket_table(sub.loc[mm], col)
+            if t.get("skip"):
+                rec[nm] = None
+                continue
+            rec[nm] = {"q1": t["buckets"][0]["ret"], "q5": t["buckets"][-1]["ret"],
+                       "spread": t["spread"], "mono": t["mono"], "n": t["n"]}
+        a, b = rec.get("train"), rec.get("test")
+        if a and b:
+            same = "是" if (a["spread"] > 0) == (b["spread"] > 0) else "**否**"
+            print("%-14s | %9.3f %9.3f %6.2f | %9.3f %9.3f %6.2f | %s"
+                  % (col, a["q1"], a["q5"], a["spread"], b["q1"], b["q5"], b["spread"], same))
+            rec["same_sign"] = (a["spread"] > 0) == (b["spread"] > 0)
+        rob.append(rec)
+    out["robust"] = rob
+
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, "exp_fmix.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
