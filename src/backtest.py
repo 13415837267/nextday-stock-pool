@@ -773,7 +773,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 原 `_pct_sig is not None` 的语义, 以保证不配 mkt_rank_win 时逐位等价。
             # 池深加仓: 策略自身维度(今天有多少票同时符合形态), 独立叠乘。
             if pool_n_boost_tiers:
-                _pn = int(p.get("pool_n") or 0)
+                _pn = int(p.get("_pool_n") or 0)
                 for _t in pool_n_boost_tiers:
                     if _pn < int(_t.get("min", 0)):
                         continue
