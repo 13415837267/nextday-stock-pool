@@ -247,7 +247,14 @@ def rank_pool(day, cfg: dict):
     if len(df) < P["min_pool"]:
         return df.iloc[0:0]
     s = _sort_key(df, P["sort_by"])
-    return df.assign(_ivol=df["ivol20"].astype(float), _key=s).sort_values("_key")
+    d = df.assign(_ivol=df["ivol20"].astype(float), _key=s).sort_values("_key")
+    # 第一百七十六轮: 池内排序分位(0~100, 第 1 名=100)。
+    #   纯展示变换: 与排序键严格单调, 不改变任何执行结果; 目的是让"评分"与"实际排第几"
+    #   同源 —— 此前页面上的 score 是 ivol 分(149 轮口径), 而执行按 mom20_ivol 排序
+    #   (154 轮), 于是会出现"第 1 名评分 45、第 2 名 72"的自相矛盾。
+    _n = len(d)
+    d = d.assign(_rk_pct=[100.0 * (1.0 - i / max(1, _n - 1)) for i in range(_n)])
+    return d
 
 
 def _sort_key(df, key: str):
@@ -348,6 +355,9 @@ def pick_one(day, cfg: dict) -> dict | None:
             # pool_n = 候选池只数(评分达标的前 pool_show 名, 0~3);
             # pool_base = 基础票池只数(硬性条件之后的全部), 回放用它判断样本量是否够格。
             "pool_n": min(len(q), P["pool_show"]),
+            # 第一百七十六轮: 池内排序分位(展示用, 与执行排序同源)
+            "rank_pct": round(float(r.get("_rk_pct", 0.0)), 1),
+            "rank_key": P["sort_by"],
             "pool_base": base}
 
 
@@ -376,6 +386,8 @@ def pick_list(day, cfg: dict, held=(), k: int = 1) -> list[dict]:
                     "dist_ma5": round(float(r["dist_ma5"]), 2),
                     "pct": round(float(r["pct"]), 2),
                     "mom20": round(float(r["mom20"]), 1),
+                    "rank_pct": round(float(r.get("_rk_pct", 0.0)), 1),
+                    "rank_key": P["sort_by"],
                     "close": round(float(r["close"]), 2),
                     "amount_yi": round(float(r["amount"]) / 1e8, 2)})
         if len(out) >= k:

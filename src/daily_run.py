@@ -84,6 +84,9 @@ def _config_fp(cfg: dict) -> str:
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
         "blocked_frac": e.get("blocked_frac"),          # 第一百零二轮: 风控日参与系数
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
+        # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
+        # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
+        "plan_ver": 1,
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -407,6 +410,141 @@ def _sell_exit(rs, row_of, cal, sell_d: str, code: str, ex: dict, buy_adj: float
         sold_close = True
         note = (note + " 开盘浮亏按收盘").strip()
     return row, dd, sold_close, note, (0.0 if sold_close else frac_open)
+
+
+# ----------------------------------------------------------------------
+# 第一百七十六轮: 明日计划(主抄底 / 副追高, 每日各 1 只)
+# ----------------------------------------------------------------------
+def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
+                 ex: dict, t1: dict, regime_info: dict, names: dict | None = None) -> dict:
+    """生成"明日计划"双方案卡片: 给人工盯盘执行, 不是自动下单指令。
+
+    为什么单独一块而不是复用 picks:
+      picks 是候选池(可多只、带仓位分档), 回答"买多少"; plans 是**单票作业单**,
+      回答"看哪只、什么价位动手、什么情况放弃"。用户的实际用法是盘后看一眼、
+      次日自己盯盘决定, 两件事的信息密度不同, 混在一张卡里会互相淹没。
+
+    两条纪律:
+      1) 计划票 != 建议买入。系统风控/评分不达标时, 卡片必须原样写出"系统口径是空仓",
+         不能因为"人工可以自己决定"就把风险提示藏起来。
+      2) 观察清单里每条能追到 config 已回测参数的, 标"回测口径"; 追不到的(分时确认、
+         盘口承接)一律标"未回测"—— 不许把经验包装成统计结论。
+    """
+    plans = {"as_of": signal_date, "main": None, "alt": None,
+             "manual": {
+                 "steps": [
+                     "09:15-09:25 看集合竞价: 缺口落在卡片区间内才挂单, 超出即放弃",
+                     "09:25 成交价 = 开盘价; 高开触发降仓档时按卡片仓位执行, 不追单",
+                     "09:30-09:35 只看不动: 若分时跌破开盘价 1% 且无量反抽, 可放弃(标[未回测])",
+                     "T+2 14:55 前清仓; 副方案按持有天数/移动止损离场",
+                 ],
+                 "caveat": "分时确认与盘口承接两条无日线数据可回测, 属执行建议, 不计入任何统计结论。",
+             }}
+
+    # ---------- 主方案: 抄底(缩量阴线回调) ----------
+    mp = verified[0] if verified else (ranked[0] if ranked else None)
+    if mp:
+        _gat = t1.get("gap_tier_note")
+        _observe = []
+        if not t1.get("allow_buy"):
+            _observe.append(f"系统口径: 空仓 —— {t1.get('buy_note') or '当日不参与'}")
+        else:
+            _observe.append(
+                f"系统口径: 可按 {t1.get('position_pct')}% 仓位参与"
+                + (f"; {_gat}" if _gat else ""))
+        _observe.append(
+            f"开盘涨幅 < {float(ex.get('skip_open_gain', 10.0)):g}% 且非一字/非停牌才买得到"
+            " [回测口径]")
+        plans["main"] = {
+            "strategy": "dip",
+            "strategy_cn": "主方案 · 抄底(缩量阴线回调)",
+            "code": mp.get("code"), "name": mp.get("name"),
+            "close": mp.get("close"), "pct": mp.get("pct"),
+            "score": mp.get("score"), "score_kind": "横截面 z 分(当日同池比较, 非 0~100)",
+            "signal": mp.get("reasons"),
+            "observe": _observe,
+            "abort": [
+                f"开盘涨幅 >= {float(ex.get('skip_open_gain', 10.0)):g}%(一字/接近涨停) [回测口径]",
+                "停牌或全天无成交 [回测口径]",
+                "开盘跌幅 <= -5%: 深破位, 修复概率显著下降 [未回测, 经验规则]",
+            ],
+            "exit": "T+2 当日 14:55 收盘卖出(持满整个 T+2 交易日)",
+            "system_ok": bool(t1.get("allow_buy")),
+            "position_pct": (t1.get("position_pct") if t1.get("allow_buy") else 0.0),
+        }
+
+    # ---------- 副方案: 追高(低波池内风险调整动量) ----------
+    try:
+        from .satellite import STRATEGY_CN as _SAT_CN
+        from .satellite import daily_params as _sat_params
+        from .satellite import pick_list as _sat_pick
+        # 副策略要求 bars>=250(上市满一年), 而主流程面板只预热 30~60 天 —— 直接在
+        # 当日面板上跑, m_listed 会全 False、静默返回空池(2026-11-09 实测: alt 恒为 null)。
+        # 这里按需补一份长面板; 命中 data/panel 缓存时耗时约 5 秒, 有缓存缺失才会联网。
+        _sday = day
+        try:
+            if day is None or (len(day) and float(day["bars"].max()) < 260):
+                from .backtest import prepare_context as _prep
+                _sctx = _prep(cfg, 320)
+                _sday = _sctx["by_date"].get(signal_date.replace("-", ""), day)
+        except Exception:  # noqa: BLE001 补面板失败不阻断, 退回当日面板
+            _sday = day
+        sl = _sat_pick(_sday, cfg, (), 4)
+    except Exception as _e:  # noqa: BLE001  副策略异常不能拖垮主流程
+        sl, _SAT_CN, _sat_params = [], {}, None
+        plans["alt_error"] = f"{type(_e).__name__}: {_e}"
+    if sl:
+        s = sl[0]
+        P = _sat_params(cfg) if _sat_params else {}
+        _gate_ok = bool(regime_info.get("ok"))
+        plans["alt"] = {
+            "strategy": P.get("mode", "lowvol"),
+            "strategy_cn": "副方案 · 追高(低波池内风险调整动量)",
+            "code": s.get("code"),
+            "name": (names or {}).get(s.get("code")) or s.get("name") or s.get("code"),
+            "close": s.get("close"), "pct": s.get("pct"),
+            # 评分与执行排序同源: 池内排序分位(第 1 名=100), 不是 ivol 分
+            "score": s.get("rank_pct"), "score_kind": "池内排序分位(0~100, 第1名=100)",
+            "ivol20": s.get("ivol20"), "dist_ma5": s.get("dist_ma5"), "mom20": s.get("mom20"),
+            "signal": (f"20日动量{s.get('mom20')}% / 特质波动{s.get('ivol20')}"
+                       f" / 距5日线{s.get('dist_ma5')}%"),
+            "observe": [
+                (f"系统口径: {'大盘闸门已开, 可参与' if _gate_ok else '大盘闸门关闭(指数在MA20下), 系统不开新仓'}"
+                 " [回测口径]"),
+                f"竞价缺口须在 [{P.get('gap_min')}%, +{P.get('gap_max')}%] 内"
+                " [回测口径: 低开破位不接、高开过多不追]",
+            ],
+            "abort": [
+                f"低开 <= {P.get('gap_min')}%: 破位不接 [回测口径]",
+                f"高开 >= +{P.get('gap_max')}%: 追高成本过高 [回测口径]",
+            ],
+            "exit": (f"持有 {P.get('hold_days')} 个交易日后收盘卖; 移动止损 "
+                     f"{float(P.get('trail') or 0) * 100:g}% / 固定止损 "
+                     f"{float(P.get('stop') or 0) * 100:g}% [回测口径]"),
+            "system_ok": _gate_ok,
+            "position_pct": round(100.0 / max(1, int(P.get("max_pos") or 1)), 1),
+            # 第一百七十六轮: 只买第 1 名的代价(1500 日实测, 同引擎同成本)
+            "position_note": (
+                "系统口径是一次买满 4 只、每只 25%; 只买第 1 名(单吊) 1500 日年化 9.09% / "
+                "回撤 -43.71%, 每日 1 只滚动 8.10% / -17.87%, 都不如 4 只并发的 18.99% / -18.67%"
+                " —— 差距来自资金利用率与分散, 不是选股(第 1 名的单笔并不更强)。"),
+            "peers": [{"code": x.get("code"),
+                       "name": (names or {}).get(x.get("code")) or x.get("name") or x.get("code"),
+                       "rank_pct": x.get("rank_pct"), "mom20": x.get("mom20")}
+                      for x in sl[1:4]],
+        }
+    elif "alt_error" not in plans:
+        plans["alt_note"] = "当日副策略无达标候选(池子不足或大盘闸门关闭)"
+
+    # 第一百七十六轮: 主腿空窗时, 副腿是当日唯一可执行方案 —— 这不是"凑数的备选",
+    # 1500 日实测它在主策略空仓日的表现(292 笔 / 均值 +1.612% / 胜率 51.0%)
+    # 反而高于自身整体(392 笔 / +1.366% / 50.3%)。第 133 轮 trend 补位是 -0.35%,
+    # 差别在池子: 低波池抗跌, 追涨池在风控日正好是最差的一格。
+    if plans.get("main") and not plans["main"].get("system_ok") and plans.get("alt"):
+        plans["note"] = ("主方案今日系统口径为空仓 → 副方案是唯一可执行方案。"
+                         "1500 日实测: 副策略在主策略空仓日的 292 笔均值 +1.612%, "
+                         "高于其自身整体 +1.366% —— 补位不是凑数。")
+    return plans
 
 
 def main():
@@ -1220,6 +1358,11 @@ def main():
                           "评分入池": stats.get("scored")} if not verified else None),
     }
 
+    # 第一百七十六轮: 明日计划双方案(主抄底 / 副追高)。放在 latest 之前算好,
+    # 异常在其中被吞掉并写 alt_error, 不影响主流程出池。
+    _plans = _build_plans(cfg, by_date[signal_date], _fmt(signal_date), verified, ranked,
+                          ex, t1_decision, regime_info, names)
+
     latest = {
         "update_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
@@ -1244,6 +1387,7 @@ def main():
         "regime": regime_info,
         "stats": {k: v for k, v in stats.items()},
         "picks": verified,
+        "plans": _plans,          # 第一百七十六轮: 明日计划(双方案, 人工执行)
         "t1_decision": t1_decision,
         "monitor": monitor_info,
         "observe": observe_info,
