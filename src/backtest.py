@@ -344,10 +344,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     pool_tiers = ex.get("pool_n_tiers") or []           # 池深分档下注: [{min: 41, mult: 1.0}, ...]
     knife_tiers = ex.get("knife_tiers") or []           # 阴跌刀口保护(第一百零三轮): [{mkt_above, res_below, mult}]
     mkt_floor_tiers = ex.get("mkt_floor_tiers") or []   # 全市场恐慌日回满仓: [{mkt_below, floor}]
+    mkt_boost_tiers = ex.get("mkt_boost_tiers") or []   # 第一百七十三轮: 恐慌日超配 [{mkt_below, mult}]
     # 信号日"市场典型个股涨跌"(全市场 pct 中位数): 只用 T 日收盘后的横截面, 无未来函数。
     # 用于把"大盘一起跌"(系统性错杀, 次日修复有共振)与"大盘平稳而个股独跌"(个股有事)分开。
     mkt_ret_map: dict[str, float] = {}
-    if knife_tiers or mkt_floor_tiers:
+    if knife_tiers or mkt_floor_tiers or mkt_boost_tiers:
         for _d in main_dates:
             _dd = by_date.get(_d)
             if _dd is None:
@@ -496,7 +497,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             gap = row["open_adj"] / float(prev_close.iloc[0]) - 1 if len(prev_close) else 0
             # 信号日个股涨跌(用于"刀口保护": 与市场典型个股涨跌相减得超额跌幅)
             _pct_sig = None
-            if knife_tiers or mkt_floor_tiers:
+            if knife_tiers or mkt_floor_tiers or mkt_boost_tiers:
                 _pr = sig_row.loc[sig_row["ts_code"] == p["code"], "pct"]
                 if len(_pr):
                     _pct_sig = float(_pr.iloc[0])
@@ -636,10 +637,6 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 if _m < float(_pg.get("cut_below", 0.0)):
                     frac *= float(_pg.get("cut_mult", 0.5))
         for p in qualified:
-            # 融资可用额度 = 总杠杆额度 - 已透支
-            margin_avail = max(0.0, (lev - 1.0) * equity - max(0.0, -cash)) if lev > 1.0 else 0.0
-            if cash + margin_avail <= 0:
-                break
             row = p.pop("_row")
             pick_frac = frac
             # 评分分档下注(可选): 评分越高仓位越重(降序匹配, 未命中则用最低档)
@@ -714,6 +711,26 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     if _g100 <= float(_t["below"]) and _pn >= int(_t.get("min_pool", 0)):
                         pick_frac = max(pick_frac, frac * float(_t.get("floor", 1.0)))
                         break
+            # 恐慌日超配(第一百七十三轮, 可选; 缺省空=逐位等价)。
+            # mkt_floor_tiers 只能把仓位"补回"当日 frac 基准(风控日 frac=0.4 -> 最多 0.4),
+            # 语义是"撤销折价"; 本项语义是"在最终仓位之上再乘一个 >1 的倍数", 允许突破满仓。
+            # 依据: 信号日市场典型个股跌幅越深, 次日错杀修复的期望越高(200 笔样本:
+            # mkt<=-0.5% 的 78 笔 +2.06% vs 其余 +1.21%); 这是加仓不是降仓, 与第 119 轮
+            # "自我降仓必崩"不冲突。
+            if mkt_boost_tiers and p.get("_pct_sig") is not None:
+                _mr = mkt_ret_map.get(p["signal_date"])
+                if _mr is not None:
+                    for _t in mkt_boost_tiers:
+                        if _mr <= float(_t.get("mkt_below", -1.5)):
+                            pick_frac *= float(_t.get("mult", 1.0))
+                            break
+            # 融资可用额度按"本笔目标仓位"重算: pick_frac>1 时杠杆额度须同步放大,
+            # 否则 min(pick_frac*equity*lev, cash+margin_avail) 会被 (lev-1)*equity 卡死,
+            # 超配永远不生效。pick_frac<=1 时 _lev_eff==lev, 与旧口径逐位一致。
+            _lev_eff = lev * max(1.0, pick_frac)
+            margin_avail = max(0.0, (_lev_eff - 1.0) * equity - max(0.0, -cash)) if _lev_eff > 1.0 else 0.0
+            if cash + margin_avail <= 0:
+                break
             alloc = min(pick_frac * equity * lev, cash + margin_avail)
             # 第一百零三轮修复: 分档乘数为 0(或叠乘后为 0)时会生成 units=0 的"零仓成交" ——
             # 既记进交易次数/胜率(0 收益被算作亏损), 又与实际资金路径矛盾。
