@@ -153,7 +153,10 @@ def main(days: int = 1500, only: list[str] | None = None, spec: str = "") -> Non
               % (sg["pre"]["n"], sg["pre"]["mean"], sg["post"]["n"], sg["post"]["mean"],
                  time.time() - t1), flush=True)
         os.makedirs(OUT, exist_ok=True)
-        with open(os.path.join(OUT, "exp_mktboost.json"), "w", encoding="utf-8") as f:
+        # 按窗口分文件: 1500 日与 3053 日的结果必须并存, 否则后跑的会覆盖先跑的,
+        # CHANGELOG 里引用的另一窗口数字就没有可复现的产物。
+        fn = "exp_mktboost.json" if days <= 1600 else f"exp_mktboost_{days}.json"
+        with open(os.path.join(OUT, fn), "w", encoding="utf-8") as f:
             json.dump({"days": days, "rows": rows}, f, ensure_ascii=False, indent=1)
 
     print("\n=== 分年收益 ===")
@@ -161,7 +164,7 @@ def main(days: int = 1500, only: list[str] | None = None, spec: str = "") -> Non
     print("%-6s " % "年" + " ".join(f"{x['name']:>10s}" for x in rows))
     for y in years:
         print("%-6s " % y + " ".join(f"{x['year'].get(y, 0):>10.1f}" for x in rows))
-    print("\nsaved output/exp_mktboost.json")
+    print("\nsaved output/exp_mktboost*.json")
 
 
 if __name__ == "__main__":
