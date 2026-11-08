@@ -101,9 +101,17 @@ def build_groups(spec: str):
             continue
         if part.startswith("B="):
             for x in part[2:].split(","):
-                thr, mult = x.split(":")
-                out.append((f"b{abs(float(thr)):.1f}x{float(mult):.2f}_L{lev:g}".replace(".", ""),
-                            lev, [{"mkt_below": float(thr), "mult": float(mult)}]))
+                seg = x.split(":")
+                thr, mult = float(seg[0]), float(seg[1])
+                tier = {"mkt_below": thr, "mult": mult}
+                tag = f"b{abs(thr):.1f}"
+                if len(seg) > 2:                     # lo:hi:mult -> 带下限的区间档
+                    tier["mkt_above"] = float(seg[0])
+                    tier["mkt_below"] = float(seg[1])
+                    mult = float(seg[2])
+                    tier["mult"] = mult
+                    tag = f"r{abs(float(seg[0])):.1f}_{abs(float(seg[1])):.1f}"
+                out.append((f"{tag}x{mult:.2f}_L{lev:g}".replace(".", ""), lev, [tier]))
     return out
 
 

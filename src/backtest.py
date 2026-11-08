@@ -717,13 +717,21 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 依据: 信号日市场典型个股跌幅越深, 次日错杀修复的期望越高(200 笔样本:
             # mkt<=-0.5% 的 78 笔 +2.06% vs 其余 +1.21%); 这是加仓不是降仓, 与第 119 轮
             # "自我降仓必崩"不冲突。
+            # 可选 mkt_above: 给出区间下限 —— 只在 [mkt_above, mkt_below] 之间加仓。
+            # 必要性: 200 笔样本里 mkt<=-2.5% 的 6 笔均值 -1.61%(接飞刀), 而 -0.5~-1.5
+            # 的 60 笔均值 +1.9%。不加下限等于连崩塌日一起放大, 是把"错杀修复"和"趋势崩塌"
+            # 混为一谈。缺省 None = 不设下限(仅 mkt_below 生效)。
             if mkt_boost_tiers and p.get("_pct_sig") is not None:
                 _mr = mkt_ret_map.get(p["signal_date"])
                 if _mr is not None:
                     for _t in mkt_boost_tiers:
-                        if _mr <= float(_t.get("mkt_below", -1.5)):
-                            pick_frac *= float(_t.get("mult", 1.0))
-                            break
+                        if _mr > float(_t.get("mkt_below", -1.5)):
+                            continue
+                        _ma = _t.get("mkt_above")
+                        if _ma is not None and _mr < float(_ma):
+                            continue
+                        pick_frac *= float(_t.get("mult", 1.0))
+                        break
             # 融资可用额度按"本笔目标仓位"重算: pick_frac>1 时杠杆额度须同步放大,
             # 否则 min(pick_frac*equity*lev, cash+margin_avail) 会被 (lev-1)*equity 卡死,
             # 超配永远不生效。pick_frac<=1 时 _lev_eff==lev, 与旧口径逐位一致。
