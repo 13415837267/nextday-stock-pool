@@ -67,17 +67,30 @@ jobs:
           python tools/evolve.py mine --accept-auto
           python tools/evolve.py health || true
 
+      # 推送助手：两个工作流可能同时往同一分支写（研究通道跑完会自动提交产物），
+      # 裸 push 会被 fetch-first 拒绝 —— 第一百七十四轮实跑就撞上了，三条裁决因此没落账。
+      # 这里统一 rebase-autostash 后重试，最多 5 次。
       - name: 提交候选池变更
         if: inputs.mode != 'dry' && inputs.mode != 'apply-only'
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          push_retry() {
+            BR=$(git rev-parse --abbrev-ref HEAD)
+            for i in 1 2 3 4 5; do
+              git pull --rebase --autostash origin "$BR" >/dev/null 2>&1 || true
+              if git push origin "HEAD:$BR"; then return 0; fi
+              echo "push 被拒, 第 $i 次重试"; sleep $((i * 5))
+            done
+            return 1
+          }
           git add evolution
           if git diff --cached --quiet; then
             echo "候选池无变化"
           else
             git commit -m "自进化: 矿工 $(TZ=Asia/Shanghai date +%F) 提案 [skip ci]"
-            git push
+            push_retry
           fi
 
       - name: 裁决候选池
@@ -108,7 +121,13 @@ jobs:
             echo "账本无变化, 跳过提交"
           else
             git commit -m "自进化: $(TZ=Asia/Shanghai date +%F) 周度裁决记录 [skip ci]"
-            git push
+            BR=$(git rev-parse --abbrev-ref HEAD)
+            for i in 1 2 3 4 5; do
+              git pull --rebase --autostash origin "$BR" >/dev/null 2>&1 || true
+              if git push origin "HEAD:$BR"; then break; fi
+              echo "push 被拒, 第 $i 次重试"; sleep $((i * 5))
+              if [ $i -eq 5 ]; then echo "账本推送失败"; exit 1; fi
+            done
           fi
 
       - name: 应用通过闸门的候选
@@ -139,7 +158,13 @@ jobs:
               echo "自动类无实际变更"
             else
               git commit -m "自进化(自动类): $AUTO_IDS 通过全部闸门 [skip ci]"
-              git push
+              BR=$(git rev-parse --abbrev-ref HEAD)
+              for i in 1 2 3 4 5; do
+                git pull --rebase --autostash origin "$BR" >/dev/null 2>&1 || true
+                if git push origin "HEAD:$BR"; then break; fi
+                echo "push 被拒, 第 $i 次重试"; sleep $((i * 5))
+                if [ $i -eq 5 ]; then echo "自动类推送失败"; exit 1; fi
+              done
             fi
           fi
 
@@ -151,7 +176,11 @@ jobs:
             done
             git add config.yaml evolution
             git commit -m "自进化(待评审): $REVIEW_IDS 通过全部闸门"
-            git push -u origin "$BR"
+            for i in 1 2 3; do
+              if git push -u origin "$BR"; then break; fi
+              echo "分支推送被拒, 第 $i 次重试"; sleep $((i * 5))
+              if [ $i -eq 3 ]; then echo "待评审分支推送失败"; exit 1; fi
+            done
             gh pr create --base main --head "$BR" \
               --title "自进化: $REVIEW_IDS 通过全部闸门" \
               --body-file evolution/last_run.md \
