@@ -4,12 +4,17 @@
 - 治理策略：v1（改它需人工 PR）
 - 封存区起点：`2025-07-01`
 - 封存区预算：{}（上限 4/年）
-- 账本条目：11 条（含历史回填 9 条）
+- 账本条目：16 条（含历史回填 9 条）
 
 ## 最近 20 条裁决
 
 | 时间 | 候选 | 类型 | 裁决 | 理由 |
 |---|---|---|---|---|
+| 2026-11-08 | `abl_score_tiers` | structure | REJECT_NOISE | 与基线无可测差异：该条件在现行选股/执行路径上不起作用（可能只影响备用池，或被上游过滤吸收），无可利用信息 |
+| 2026-11-08 | `abl_mkt_floor_tiers` | structure | REJECT_FAST | 快筛未过：封存区前 1500 日已明确变坏，不值得进入全史口径 |
+| 2026-11-08 | `abl_gap_above_tiers` | structure | REJECT_FAST | 快筛未过：封存区前 1500 日已明确变坏，不值得进入全史口径 |
+| 2026-11-08 | `abl_mkt_boost_tiers` | structure | REJECT_FAST | 快筛未过：封存区前 1500 日已明确变坏，不值得进入全史口径 |
+| 2026-11-08 | `abl_pool_n_tiers` | structure | REJECT_FAST | 快筛未过：封存区前 1500 日已明确变坏，不值得进入全史口径 |
 | 2026-11-02 | `knife_allow` | structure | REJECT_FAST | 快筛未过：封存区前 1500 日已明确变坏，不值得进入全史口径 |
 | 2026-11-02 | `gapfloor_off` | structure | REJECT_FAST | 快筛未过：封存区前 1500 日已明确变坏，不值得进入全史口径 |
 | 2026-11-02 | `r121_bias115` | parameter | REJECT_NOISE | 1500 日 +128.13pp / +1.5%、卡玛 6.32→6.35、笔数不变，落在 ab_test 噪声带（±3 |

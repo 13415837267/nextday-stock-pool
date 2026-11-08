@@ -100,3 +100,72 @@
   rationale: >
     第一百二十一轮的对照实验：+128.13pp(+1.5%)、卡玛 6.32→6.35、笔数不变，
     已被 ab_test 护栏标为 ≈噪声。登记在此仅用于验证账本去重是否生效。
+
+- id: abl_gap_above_tiers
+  kind: structure
+  since: "2026-11-08"
+  expires: "2027-05-07"
+  patch:
+    execution.gap_above_tiers: []
+  question: "`execution.gap_above_tiers` 这套减仓折扣，是纪律还是自我设限？"
+  rationale: >
+    当前 1 档：[{"above": 0.5, "score_below": 1.6, "mult": 0.3}]，最低系数 0.3 < 1，方向是**减仓**。清空后若全史收益/卡玛不降，说明它在替市场交学费（第一百一十九轮对另外几组减仓档给过同样的否）；若明显变差，说明它在过滤真风险，应当保留。 这是存在性审计，不产生任何新数值。
+  mined: true
+  source: ablation
+
+- id: abl_mkt_floor_tiers
+  kind: structure
+  since: "2026-11-08"
+  expires: "2027-05-07"
+  patch:
+    execution.mkt_floor_tiers: []
+  question: "`execution.mkt_floor_tiers` 的系数全是 1.0 —— 这段配置是死代码吗？"
+  rationale: >
+    当前 1 档：[{"mkt_below": -1.5, "floor": 1.0}]，全部动作系数都等于 1.0，即在任何分支上都不改变仓位。若清空后回测**逐位不变**，它就是纯死配置，应当删除以缩小可误解空间；若有差异，说明它通过分支顺序间接影响了别的规则，需要查明是哪一条。 这是存在性审计，不产生任何新数值。
+  mined: true
+  source: ablation
+
+- id: abl_pool_n_tiers
+  kind: structure
+  since: "2026-11-08"
+  expires: "2027-05-07"
+  patch:
+    execution.pool_n_tiers: []
+  question: "`execution.pool_n_tiers` 这套减仓折扣，是纪律还是自我设限？"
+  rationale: >
+    当前 3 档：[{"min": 21, "mult": 1.0}, {"min": 11, "mult": 0.5}, {"min": 1, "mult": 0.3}]，最低系数 0.3 < 1，方向是**减仓**。清空后若全史收益/卡玛不降，说明它在替市场交学费（第一百一十九轮对另外几组减仓档给过同样的否）；若明显变差，说明它在过滤真风险，应当保留。 这是存在性审计，不产生任何新数值。
+  mined: true
+  source: ablation
+
+- id: abl_score_tiers
+  kind: structure
+  since: "2026-11-08"
+  expires: "2027-05-07"
+  patch:
+    execution.score_tiers: []
+  question: "`execution.score_tiers` 的系数全是 1.0 —— 这段配置是死代码吗？"
+  rationale: >
+    当前 2 档：[{"min": 1.2, "mult": 1.0}, {"min": 1.0, "mult": 1.0}]，全部动作系数都等于 1.0，即在任何分支上都不改变仓位。若清空后回测**逐位不变**，它就是纯死配置，应当删除以缩小可误解空间；若有差异，说明它通过分支顺序间接影响了别的规则，需要查明是哪一条。 这是存在性审计，不产生任何新数值。
+  mined: true
+  source: ablation
+
+- id: abl_mkt_boost_tiers
+  kind: structure
+  since: "2026-11-08"
+  expires: "2027-05-07"
+  patch:
+    execution.mkt_boost_tiers: []
+  question: "`execution.mkt_boost_tiers` 这套加仓档，是真 alpha 还是拟合？"
+  rationale: >
+    **在位者审计（incumbent audit）**：这条机制是第一百七十三轮刚上线的
+    （`mkt_pct ∈ [-2.5%, -1.0%]` 时仓位 ×1.5），双窗口表现是 1500 日 140.78→180.71%、
+    全史 109.88→134.08%，两次最大回撤都逐位不变。但那一轮是我手工合并的，
+    没有走这套闸门 —— 本轮把它作为反方向的消融实验补登记，用同一把尺子复核一次。
+    三种结论要分开：① 清空后明显变差 => 主线 alpha 被独立确认，机制保留；
+    ② 清空后无差异 => 上一轮的双窗口同向是巧合，必须回滚；
+    ③ 收益降但回撤也降 => 它只是杠杆的变形，应把 mult 从 1.5 降回纯杠杆档。
+    注意它必须是**带下限的区间档**（第一百七十三轮已记录：只判上限的版本
+    全史回撤从 -26.98% 恶化到 -33.36%，还不如直接上 1.5x 杠杆）。
+  mined: true
+  source: ablation
+  audit_of_round: 173

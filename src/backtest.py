@@ -357,6 +357,29 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             _v = _v[~np.isnan(_v)]
             if len(_v):
                 mkt_ret_map[_d] = float(np.median(_v))
+    # 第一百七十四轮: 市场跌幅的滚动分位。
+    # 固定百分点阈值有个结构性缺陷: 高波动年份跌 1% 是日常, 低波动年份跌 1% 是事件,
+    # 同一条 -1.0% 在两个年份里筛出的样本密度完全不同。分位把"跌"标准化成
+    # "在最近 N 日里跌得比多少比例的日子更狠", 于是阈值自动随波动率迁移。
+    # 默认 0 = 不启用, 全部走原绝对阈值路径, 逐位等价。
+    mkt_rank_map: dict[str, float] = {}
+    _rank_win = int(ex.get("mkt_rank_win", 0) or 0)
+    if _rank_win > 0 and mkt_ret_map:
+        _seq = pd.Series([mkt_ret_map.get(_d, np.nan) for _d in main_dates],
+                         index=list(main_dates), dtype="float64")
+
+        def _rk_last(w: np.ndarray) -> float:
+            v = w[-1]
+            if not np.isfinite(v):
+                return np.nan
+            a = w[:-1]
+            a = a[np.isfinite(a)]
+            if len(a) < 20:      # 样本太薄的分位没有意义, 宁可不出信号
+                return np.nan
+            return float((a < v).mean())
+
+        _rks = _seq.rolling(_rank_win, min_periods=max(40, _rank_win // 5)).apply(_rk_last, raw=True)
+        mkt_rank_map = {str(k): float(v) for k, v in _rks.items() if np.isfinite(v)}
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
     gate_scale = bool(ex.get("score_gate_pool_scale", False))   # 第一百轮: 门槛按池内z分理论上限缩放
     gate_ref = float(ex.get("score_gate_ref_pool", 40) or 40)    # 缩放基准池深(该池深下门槛=min_top1_score)
@@ -721,17 +744,33 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 必要性: 200 笔样本里 mkt<=-2.5% 的 6 笔均值 -1.61%(接飞刀), 而 -0.5~-1.5
             # 的 60 笔均值 +1.9%。不加下限等于连崩塌日一起放大, 是把"错杀修复"和"趋势崩塌"
             # 混为一谈。缺省 None = 不设下限(仅 mkt_below 生效)。
-            if mkt_boost_tiers and p.get("_pct_sig") is not None:
+            # 第一百七十四轮: 同一分支支持分位档(rank_below / rank_above, 0~1)。
+            # 分位模式不要求个股 pct 存在(它只用市场横截面), 但绝对阈值模式仍保留
+            # 原 `_pct_sig is not None` 的语义, 以保证不配 mkt_rank_win 时逐位等价。
+            if mkt_boost_tiers:
                 _mr = mkt_ret_map.get(p["signal_date"])
-                if _mr is not None:
-                    for _t in mkt_boost_tiers:
-                        if _mr > float(_t.get("mkt_below", -1.5)):
+                for _t in mkt_boost_tiers:
+                    if "rank_below" in _t or "rank_above" in _t:
+                        _rk = mkt_rank_map.get(p["signal_date"])
+                        if _rk is None:
                             continue
-                        _ma = _t.get("mkt_above")
-                        if _ma is not None and _mr < float(_ma):
+                        _rb = _t.get("rank_below")
+                        if _rb is not None and _rk > float(_rb):
+                            continue
+                        _ra = _t.get("rank_above")
+                        if _ra is not None and _rk < float(_ra):
                             continue
                         pick_frac *= float(_t.get("mult", 1.0))
                         break
+                    if p.get("_pct_sig") is None or _mr is None:
+                        continue
+                    if _mr > float(_t.get("mkt_below", -1.5)):
+                        continue
+                    _ma = _t.get("mkt_above")
+                    if _ma is not None and _mr < float(_ma):
+                        continue
+                    pick_frac *= float(_t.get("mult", 1.0))
+                    break
             # 融资可用额度按"本笔目标仓位"重算: pick_frac>1 时杠杆额度须同步放大,
             # 否则 min(pick_frac*equity*lev, cash+margin_avail) 会被 (lev-1)*equity 卡死,
             # 超配永远不生效。pick_frac<=1 时 _lev_eff==lev, 与旧口径逐位一致。
