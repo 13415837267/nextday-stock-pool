@@ -96,19 +96,34 @@ def tier_audit(trades):
             for k, v in g.iterrows()}
 
 
-def main(days: int = 1500, only: list[str] | None = None) -> None:
+def build_groups(spec: str):
+    """解析 "L=1.5,1.75;CY=2.0" 形式的临时组定义。"""
+    groups = []
+    for part in spec.split(";"):
+        part = part.strip()
+        if part.startswith("L="):
+            for x in part[2:].split(","):
+                groups.append((f"L{x}", float(x), BASE_TIERS, 0.0))
+        elif part.startswith("CY="):
+            for x in part[3:].split(","):
+                groups.append((f"L{x}cy", float(x), BASE_TIERS, 0.015))
+    return groups
+
+
+def main(days: int = 1500, only: list[str] | None = None, spec: str = "") -> None:
     cfg0 = load_config()
     print(f"\n[prepare] days={days}", flush=True)
     t0 = time.time()
     ctx = prepare_context(cfg0, days)
     print(f"[prepare] done in {time.time() - t0:.0f}s\n", flush=True)
 
+    groups = build_groups(spec) if spec else GROUPS
     rows = []
     hdr = "%-8s %5s %12s %10s %9s %7s %7s %6s %8s %10s"
     print(hdr % ("组", "lev", "总收益%", "年化%", "回撤%", "卡玛", "夏普", "笔数", "单笔%", "均杠杆"))
     print("-" * 100, flush=True)
 
-    for name, lev, tiers, cy in GROUPS:
+    for name, lev, tiers, cy in groups:
         if only and name not in only:
             continue
         cfg = copy.deepcopy(cfg0)
@@ -138,7 +153,7 @@ def main(days: int = 1500, only: list[str] | None = None) -> None:
         # 增量落盘: 单组 20~30 分钟, 5 组接近 job 上限, 中途超时也要保住已完成的部分。
         os.makedirs(OUT, exist_ok=True)
         with open(os.path.join(OUT, "exp_lev_pool.json"), "w", encoding="utf-8") as f:
-            json.dump({"days": days, "rows": rows, "done": True, "partial": len(rows) < len(GROUPS)},
+            json.dump({"days": days, "rows": rows, "done": True, "partial": len(rows) < len(groups)},
                       f, ensure_ascii=False, indent=1)
 
     print("\n=== 分年收益 ===")
@@ -158,5 +173,8 @@ def main(days: int = 1500, only: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     d = int(sys.argv[1]) if len(sys.argv) > 1 else 1500
-    o = sys.argv[2].split(",") if len(sys.argv) > 2 and sys.argv[2] else None
-    main(d, o)
+    a2 = sys.argv[2] if len(sys.argv) > 2 else ""
+    if "=" in a2:
+        main(d, None, a2)
+    else:
+        main(d, a2.split(",") if a2 else None, "")
