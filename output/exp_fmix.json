@@ -5169,6 +5169,129 @@
    "rand_p50": -0.185,
    "rand_p95": -0.169,
    "pctile": 100.0
+  },
+  {
+   "step": 2,
+   "factor": "mom20",
+   "bucket": "Q5/5",
+   "n": 20092,
+   "per_day": 25.27,
+   "ret_pct": 0.336,
+   "t": 10.38,
+   "rand_p5": -0.22,
+   "rand_p50": -0.188,
+   "rand_p95": -0.147,
+   "pctile": 100.0
+  },
+  {
+   "step": 3,
+   "factor": "vwap_gap",
+   "bucket": "Q5/5",
+   "n": 4019,
+   "per_day": 5.06,
+   "ret_pct": 0.684,
+   "t": 8.17,
+   "rand_p5": -0.278,
+   "rand_p50": -0.188,
+   "rand_p95": -0.106,
+   "pctile": 100.0
+  },
+  {
+   "step": 4,
+   "factor": "dist_high20",
+   "bucket": "Q1/5",
+   "n": 804,
+   "per_day": 1.01,
+   "ret_pct": 1.487,
+   "t": 7.31,
+   "rand_p5": -0.366,
+   "rand_p50": -0.208,
+   "rand_p95": -0.01,
+   "pctile": 100.0
+  },
+  {
+   "step": 5,
+   "factor": "rs20",
+   "bucket": "Q5/5",
+   "n": 161,
+   "per_day": 0.2,
+   "ret_pct": 3.344,
+   "t": 5.51,
+   "rand_p5": -0.614,
+   "rand_p50": -0.228,
+   "rand_p95": 0.203,
+   "pctile": 100.0
+  },
+  {
+   "step": 6,
+   "factor": "down3",
+   "bucket": "Q1/1",
+   "n": 161,
+   "per_day": 0.2,
+   "ret_pct": 3.344,
+   "t": 5.51,
+   "rand_p5": -0.641,
+   "rand_p50": -0.179,
+   "rand_p95": 0.333,
+   "pctile": 100.0
+  }
+ ],
+ "intersect": [
+  {
+   "layer": "宽池",
+   "n": 502297,
+   "per_day": 631.82,
+   "ret_pct": -0.185,
+   "win_pct": 43.4,
+   "t": -38.83
+  },
+  {
+   "layer": "+ vwap_z Q1",
+   "n": 100460,
+   "per_day": 126.36,
+   "ret_pct": 0.072,
+   "win_pct": 48.1,
+   "t": 6.7
+  },
+  {
+   "layer": "+ 严池形态",
+   "n": 43092,
+   "per_day": 54.2,
+   "ret_pct": -0.114,
+   "win_pct": 45.4,
+   "t": -6.26
+  },
+  {
+   "layer": "+ vwap_z & 严池",
+   "n": 12123,
+   "per_day": 15.25,
+   "ret_pct": -0.114,
+   "win_pct": 45.7,
+   "t": -3.38
+  },
+  {
+   "layer": "+ vwap_z & 缺口<=0",
+   "n": 61552,
+   "per_day": 77.42,
+   "ret_pct": 0.187,
+   "win_pct": 50.6,
+   "t": 13.78
+  },
+  {
+   "layer": "+ 三者交集",
+   "n": 7394,
+   "per_day": 9.3,
+   "ret_pct": 0.014,
+   "win_pct": 48.6,
+   "t": 0.32
+  },
+  {
+   "layer": "+ 三者 & 缺口<=-1",
+   "n": 2187,
+   "per_day": 2.75,
+   "ret_pct": 0.647,
+   "win_pct": 57.4,
+   "t": 7.08
   }
  ],
  "anchor": {
