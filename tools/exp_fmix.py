@@ -434,6 +434,92 @@ def main(days: int = 1500) -> None:
     out["anchor"] = {"n": 353, "per_day": 0.25, "ret_pct": 1.435,
                      "note": "官方主策略(评分排序+缺口过滤+池深降档), 1.25x 前口径"}
 
+    # ---- 样本外: 前 60% 交易日训练贪心规则(阈值取自训练段分位), 后 40% 验证
+    print("\n=== 样本外验证: 前 60% 训练 → 后 40% 验证 ===", flush=True)
+    ds = np.array(sorted(sub["trade_date"].unique()))
+    cut = ds[int(len(ds) * 0.6)]
+    dts = sub["trade_date"].to_numpy()
+    tr = dts <= cut
+    te = ~tr
+    rarr = sub["ret"].to_numpy()
+    print(f"切分点 {cut}: 训练 {tr.sum():,} 笔 / 验证 {te.sum():,} 笔", flush=True)
+
+    def fit_greedy(mask, steps=4):
+        """在 mask 内贪心选因子+档位, 返回规则列表(含训练段分位阈值)。"""
+        rules = []
+        rem = list(cols)
+        cur = mask.copy()
+        for _ in range(steps):
+            best = None
+            for c in rem:
+                v = sub[c].to_numpy()
+                vv = v[cur]
+                if np.isnan(vv).all() or len(vv) < 200:
+                    continue
+                qs = np.nanquantile(vv, [0.2, 0.4, 0.6, 0.8])
+                edges = [-np.inf, qs[0], qs[1], qs[2], qs[3], np.inf]
+                for k in range(5):
+                    sel = cur & (v >= edges[k]) & (v <= edges[k + 1])
+                    if sel.sum() < 60:
+                        continue
+                    mu = rarr[sel].mean()
+                    if best is None or mu > best[0]:
+                        best = (mu, c, edges[k], edges[k + 1])
+            if best is None:
+                break
+            mu, c, lo, hi = best
+            cur = cur & (sub[c].to_numpy() >= lo) & (sub[c].to_numpy() <= hi)
+            rules.append({"factor": c, "lo": float(lo), "hi": float(hi),
+                          "train_n": int(cur.sum()), "train_ret": round(float(mu) * 100, 3)})
+            rem = [x for x in rem if x != c]
+        return rules, cur
+
+    rules, cur_tr = fit_greedy(tr)
+    m_te = te.copy()
+    step_rows = []
+    print("%3s %-14s %-22s | %8s %8s | %8s %8s %7s"
+          % ("层", "因子", "训练段区间", "训练n", "训练%", "验证n", "验证%", "验证t"))
+    for i, r in enumerate(rules, 1):
+        v = sub[r["factor"]].to_numpy()
+        m_te &= (v >= r["lo"]) & (v <= r["hi"])
+        # 训练段该层累计子集
+        mtr = tr.copy()
+        for rr in rules[:i]:
+            vv = sub[rr["factor"]].to_numpy()
+            mtr &= (vv >= rr["lo"]) & (vv <= rr["hi"])
+        a, b = rarr[mtr], rarr[m_te]
+        t_te = float(b.mean() / (b.std() / np.sqrt(len(b)))) if len(b) > 5 and b.std() else float("nan")
+        span = ("%.4g~%.4g" % (r["lo"], r["hi"])) if abs(r["lo"]) < 1e9 and abs(r["hi"]) < 1e9 \
+            else ("<=%.4g" % r["hi"] if abs(r["hi"]) < 1e9 else ">=%.4g" % r["lo"])
+        print("%3d %-14s %-22s | %8d %8.3f | %8d %8.3f %7.2f"
+              % (i, r["factor"], span, len(a), a.mean() * 100,
+                 len(b), (b.mean() * 100 if len(b) else float("nan")), t_te), flush=True)
+        step_rows.append({"step": i, "factor": r["factor"], "lo": r["lo"], "hi": r["hi"],
+                          "train_n": int(len(a)), "train_ret": round(float(a.mean()) * 100, 3),
+                          "test_n": int(len(b)),
+                          "test_ret": round(float(b.mean()) * 100, 3) if len(b) else None,
+                          "test_t": round(t_te, 2) if len(b) else None})
+    out["oos"] = {"cut": str(cut), "rules": rules, "steps": step_rows}
+
+    # 简单组合的样本外: vwap_z Q1 + 缺口<=0
+    print("\n--- 简单组合的样本外 ---", flush=True)
+    q1_tr = np.nanquantile(sub["vwap_z"].to_numpy()[tr], 0.2)
+    simple = [("vwap_z<=Q1(训练段)", (sub["vwap_z"] <= q1_tr).to_numpy()),
+              ("+ 缺口<=0", (sub["vwap_z"] <= q1_tr).to_numpy() & (gap_in <= 0)),
+              ("+ 缺口<=-1", (sub["vwap_z"] <= q1_tr).to_numpy() & (gap_in <= -1))]
+    srows = []
+    for nm, m in simple:
+        a, b = rarr[m & tr], rarr[m & te]
+        t_te = float(b.mean() / (b.std() / np.sqrt(len(b)))) if len(b) > 5 and b.std() else float("nan")
+        print("%-22s 训练 n=%6d %+.3f%% | 验证 n=%6d %+.3f%% 胜率%5.1f%% t=%5.2f"
+              % (nm, len(a), a.mean() * 100 if len(a) else float("nan"),
+                 len(b), b.mean() * 100 if len(b) else float("nan"),
+                 (b > 0).mean() * 100 if len(b) else float("nan"), t_te), flush=True)
+        srows.append({"name": nm, "train_n": int(len(a)), "train_ret": round(float(a.mean()) * 100, 3),
+                      "test_n": int(len(b)), "test_ret": round(float(b.mean()) * 100, 3),
+                      "test_win": round(float((b > 0).mean()) * 100, 1), "test_t": round(t_te, 2)})
+    out["oos_simple"] = srows
+
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, "exp_fmix.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
