@@ -138,6 +138,7 @@ def build_groups(spec: str):
         part = part.strip()
         if part.startswith("L="):
             lev = float(part[2:])
+            out.append((f"L{lev:g}", lev, []))      # 纯杠杆对照(无 vol_boost)
             continue
         if part.startswith("V="):
             for x in part[2:].split(","):
