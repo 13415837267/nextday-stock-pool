@@ -289,7 +289,7 @@ def cmd_run(a) -> int:
     pre_records, todo = [], []
     for c in cands:
         cid, patch = c["id"], c.get("patch") or {}
-        if a.only and cid != a.only:
+        if a.only and cid not in [x.strip() for x in a.only.split(",") if x.strip()]:
             continue
         fp_ = fingerprint(patch)
         rec, verdict = known_verdict(fp_, ledger, cooldown)
@@ -778,6 +778,350 @@ def cmd_apply(a) -> int:
     return 0
 
 
+# ────────────────────────────── mine ──────────────────────────────
+# 为什么要有矿工（第一百七十四轮）
+# ----------------------------------
+# 第一二三轮上线后复盘发现：引擎本身没坏，是**料断了**。
+# candidates.yaml 只有 3 条，全部已裁决；2026-11-07 那次定时任务 35 秒跑完、零裁决。
+# 五轮研究（169~173）产出了卖出侧、杠杆前沿、副策略八字、26 因子、恐慌超配，
+# **一条都没有登记进候选池** —— 于是"自进化"退化成"人工喂一条、机器裁一条"，
+# 而人工喂料这一步没有任何机制保证会发生。
+#
+# 但直接让机器"自己发明候选"是危险的：policy 已用 Kendall W 证明参数层不可辨识，
+# 随便搜参数就是批量生产过拟合。所以矿工被刻意限制成**只读静态关系、不碰数值**：
+#
+#   M1 ablation  非空 tier 列表 → "整个清空"  ← 问"这个机制该不该存在"
+#   M2 orphan    配置键在 src/ 里从未出现     ← 问"这行配置真的接了线吗"
+#   M3 shadow    tier 列表内后档被前档完全覆盖 ← 问"这档还活得到吗"
+#
+# 三条规则全部可静态判定、零回测成本、不产生新数值。产出只进 proposals.yaml，
+# **绝不直接进 candidates.yaml**：转正必须显式 `mine --accept`，这一步是人工闸门。
+# 理由与 policy 里"引擎不会自己发明候选"不冲突 —— 矿工不发明，它只把
+# "配置里写着但没人问过"的问题翻出来，问题本身仍然要过五道闸门才能改 config。
+PROPOSALS_F = EVO / "proposals.yaml"
+MINE_MD = EVO / "mine_report.md"
+
+# 这些键是 tier 条目的"动作"，不是"条件"：判断可达性时要忽略它们。
+_TIER_ACTION_KEYS = {"mult", "floor", "score_below", "alloc_pct", "frac"}
+_CODE_DIRS = ("src", "tools")
+KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _code_text() -> str:
+    """把 src/ 与 tools/ 的全部源码读成一个大字符串，用于 M2 的"键名是否出现过"。"""
+    buf = []
+    for d in _CODE_DIRS:
+        for p in sorted((ROOT / d).rglob("*.py")):
+            if "__pycache__" in str(p):
+                continue
+            try:
+                buf.append(p.read_text(encoding="utf-8"))
+            except (UnicodeDecodeError, OSError):
+                continue
+    return "\n".join(buf)
+
+
+def _walk_leaves(cfg: dict, prefix: str = ""):
+    for k, v in (cfg or {}).items():
+        q = f"{prefix}.{k}" if prefix else str(k)
+        if isinstance(v, dict) and v:
+            yield from _walk_leaves(v, q)
+        else:
+            yield q, v
+
+
+def _tier_lists(cfg: dict) -> dict[str, list]:
+    """所有"非空的 tier 列表"（元素是 dict 的列表）。空列表不算 —— 那是已关掉的机制。
+
+    只认键名以 `_tiers` 结尾的路径。`selection.fallbacks` 也是 dict 列表，但它是
+    备用策略链（元素含 mode/top_n），清空它等于删掉备用池，不是"关一个折扣档"，
+    语义不同不能混进来 —— 第一百七十四轮本地首跑时就误生成过 abl_fallbacks。
+    """
+    out = {}
+    for path, v in _walk_leaves(cfg):
+        if not path.split(".")[-1].endswith("_tiers"):
+            continue
+        if isinstance(v, list) and v and all(isinstance(x, dict) for x in v):
+            out[path] = v
+    return out
+
+
+def _workspace_complete() -> tuple[bool, list[str]]:
+    """自检：src/ 里的 `from .X import` 目标是否都存在。
+
+    为什么必须查这一条：M2 判"孤儿配置"的依据是"键名在源码里一次都没出现"。
+    如果工作区缺了某个模块（浅克隆、稀疏检出、文件没同步过来），那个模块读的键
+    会全部被误判成死配置。第一百七十四轮本地首跑就撞上过：src/monitor.py 缺失，
+    monitor.watch_mean_pct 等三个键被判孤儿，补齐文件后立刻归零。
+    误报比漏报危险得多 —— 它会让维护者去改一条本来正常的配置。
+    """
+    import_ = re.compile(r"^\s*from\s+\.\s*(\w+)\s+import", re.M)
+    missing = []
+    for p in sorted((ROOT / "src").glob("*.py")):
+        if p.name == "__init__.py":
+            continue
+        try:
+            txt = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for mod in import_.findall(txt):
+            if not (ROOT / "src" / f"{mod}.py").exists() and not (ROOT / "src" / mod).is_dir():
+                missing.append(f"src/{mod}.py（被 {p.name} 引用）")
+    return (not missing), sorted(set(missing))
+
+
+def _shadowed(tiers: list) -> list[tuple[int, int]]:
+    """找出被判为不可达的 (前档, 后档) 序号对。
+
+    引擎里的 tier 循环一律是 `for t in tiers: if 命中: 应用; break`，
+    所以若后档的条件字典被前档**完全包含**（前档条件更少或相等），后档永远轮不到。
+    这里只做严格包含判定，宁可漏报也不误报 —— 方向性判断（min 越大越先 /
+    below 越小越先）交给五个闸门，不在这里猜。
+    """
+    hits = []
+
+    def cond(t: dict) -> dict:
+        return {k: v for k, v in t.items() if k not in _TIER_ACTION_KEYS}
+
+    for j in range(len(tiers)):
+        cj = cond(tiers[j])
+        for i in range(j):
+            ci = cond(tiers[i])
+            # ci 的条件是 cj 的子集且取值相同 => 前档更宽松 => 后档永远轮不到。
+            # ci 为空（无条件档）时 all() 天然为 True，同样判为遮蔽，符合 break 语义。
+            if all(k in cj and cj[k] == ci[k] for k in ci):
+                hits.append((i, j))
+                break
+    return hits
+
+
+def _existing_patches() -> tuple[set[str], set[str]]:
+    """已在候选池里的 (id 集合, patch 指纹集合)，用于矿工去重。"""
+    raw = load_yaml(CANDS_F)
+    cands = raw if isinstance(raw, list) else (raw.get("candidates") or [])
+    ids = {str(c.get("id")) for c in cands}
+    fps = {fingerprint(c.get("patch") or {}) for c in cands}
+    return ids, fps
+
+
+def _load_proposals() -> dict:
+    if not PROPOSALS_F.exists():
+        return {}
+    return load_yaml(PROPOSALS_F) or {}
+
+
+def scan_proposals(cfg: dict) -> dict:
+    """纯函数：给定 config，返回 {proposals, orphans, shadows, stats}。不发网、不跑回测。"""
+    ids, fps = _existing_patches()
+    ledger = read_ledger()
+    state = read_state()
+    applied = {fingerprint(a.get("patch") or {}) for a in (state.get("applied") or [])}
+    src = _code_text()
+    complete, missing = _workspace_complete()
+    if not complete:
+        print(f"[mine][warn] 工作区不完整，跳过 M2 孤儿检测：{missing}", flush=True)
+
+    proposals, orphans, shadows = [], [], []
+    tiers = _tier_lists(cfg)
+
+    # ── M1 ablation
+    for path, tlist in sorted(tiers.items()):
+        patch = {path: []}
+        fp_ = fingerprint(patch)
+        pid = "abl_" + path.split(".")[-1]
+        if pid in ids:
+            continue
+        if fp_ in fps or fp_ in applied:
+            continue
+        rec, verdict = known_verdict(fp_, ledger, 10_000)
+        if verdict:
+            continue
+        # 方向决定问题的措辞：减仓档问"这个折扣是不是自我设限"，
+        # 加仓档问"这个加仓是真 alpha 还是拟合"。两者的失败模式完全不同 ——
+        # 减仓档的假阳性表现为收益白丢，加仓档的假阳性表现为回撤放大。
+        acts = [float(t.get("mult", t.get("floor", 1.0)) or 1.0) for t in tlist]
+        lo, hi = min(acts), max(acts)
+        if hi > 1.0:
+            direction = "boost"
+            q = f"`{path}` 这套加仓档，是真 alpha 还是拟合？"
+            r = (f"当前 {len(tlist)} 档：{json.dumps(tlist, ensure_ascii=False)}，最高系数 "
+                 f"{hi:g} > 1，方向是**放大敞口**。清空后若全史收益/卡玛显著下降，说明它吃到的是"
+                 f"真实错杀修复；若无差异，说明上一轮看到的效果来自窗口运气；若收益降但回撤也降，"
+                 f"它只是杠杆的变形，应改回纯杠杆。")
+        elif lo < 1.0:
+            direction = "cut"
+            q = f"`{path}` 这套减仓折扣，是纪律还是自我设限？"
+            r = (f"当前 {len(tlist)} 档：{json.dumps(tlist, ensure_ascii=False)}，最低系数 "
+                 f"{lo:g} < 1，方向是**减仓**。清空后若全史收益/卡玛不降，说明它在替市场交学费"
+                 f"（第一百一十九轮对另外几组减仓档给过同样的否）；若明显变差，说明它在过滤真风险，"
+                 f"应当保留。")
+        else:
+            direction = "neutral"
+            q = f"`{path}` 的系数全是 1.0 —— 这段配置是死代码吗？"
+            r = (f"当前 {len(tlist)} 档：{json.dumps(tlist, ensure_ascii=False)}，全部动作系数都等于 "
+                 f"1.0，即在任何分支上都不改变仓位。若清空后回测**逐位不变**，它就是纯死配置，"
+                 f"应当删除以缩小可误解空间；若有差异，说明它通过分支顺序间接影响了别的规则，"
+                 f"需要查明是哪一条。")
+        proposals.append({
+            "id": pid,
+            "kind": "structure",
+            "patch": patch,
+            "reason_tag": "ablation",
+            "direction": direction,
+            "question": q,
+            "rationale": r + " 这是存在性审计，不产生任何新数值。",
+            "base_patch": tlist,
+        })
+
+    # ── M2 orphan：末段键名从未在源码中出现（工作区不完整时直接跳过，见 _workspace_complete）
+    seen_names = set()
+    for path, v in (_walk_leaves(cfg) if complete else []):
+        parts = path.split(".")
+        name = parts[-1]
+        if name in seen_names or not KEY_RE.match(name):
+            continue
+        seen_names.add(name)
+        # 只查"末段键名"，因为上层 dict 通常是整体读取（如 weights.xxx 靠 .get 取）
+        if name in src:
+            continue
+        orphans.append({
+            "path": path,
+            "value": v if not isinstance(v, (list, dict)) else type(v).__name__,
+            "note": "该键名在 src/ tools/ 中一次都没出现 —— 可能从未接线，或已被重命名留下死配置",
+        })
+
+    # ── M3 shadow
+    for path, tlist in sorted(tiers.items()):
+        for i, j in _shadowed(tlist):
+            shadows.append({
+                "path": path, "front": i, "back": j,
+                "note": f"第 {j} 档（{json.dumps(tlist[j], ensure_ascii=False)}）的条件被第 {i} 档"
+                        f"（{json.dumps(tlist[i], ensure_ascii=False)}）完全覆盖，按 break 语义永不命中",
+            })
+
+    # 沿用旧提案的时间戳：同一个问题没变就不该每天产生一条"新"提交。
+    # 只有内容（question/patch/direction）真正变化时才算新提案，这也是
+    # "本轮新提出 N 条"这个多重比较计数不被时间戳污染的前提。
+    prev = {p.get("id"): p for p in (_load_proposals().get("proposals") or [])}
+    for p in proposals:
+        q = prev.get(p["id"])
+        if q and q.get("patch") == p["patch"] and q.get("direction") == p["direction"]:
+            p["first_seen"] = q.get("first_seen") or q.get("generated") or today_str()
+
+    return {
+        "generated": today_str(),
+        "count": len(proposals),
+        "scanned_tiers": len(tiers),
+        "proposals": proposals,
+        "orphans": orphans,
+        "shadows": shadows,
+        "complete": complete,
+        "missing_modules": missing,
+    }
+
+
+def render_mine_md(scan: dict) -> str:
+    L = ["# 候选矿工报告", "",
+         f"- 生成日期：`{scan['generated']}`",
+         f"- 扫描的非空 tier 机制：**{scan['scanned_tiers']}** 个",
+         f"- 新提案：**{scan['count']}** 条（已去重：账本裁决过 / 候选池已有 / 已上线）",
+         f"- 孤儿配置：{len(scan['orphans'])} 条　不可达档：{len(scan['shadows'])} 条",
+         f"- 工作区自检：{'通过' if scan.get('complete', True) else '**不完整，孤儿检测已跳过**'}", ""]
+    L += ["## 提案（需 `mine --accept` 才转正）", ""]
+    if not scan["proposals"]:
+        L += ["_无。候选池已覆盖当前所有可静态识别的结构问题。_", ""]
+    for p in scan["proposals"]:
+        L += [f"### `{p['id']}`　[{p['reason_tag']}]", "",
+              f"- 问题：{p['question']}",
+              f"- patch：`{json.dumps(p['patch'], ensure_ascii=False)}`", "",
+              f"{p['rationale']}", ""]
+    if scan["orphans"]:
+        L += ["## 孤儿配置（无提案，仅告警）", "",
+              "| 路径 | 当前值 | 说明 |", "|---|---|---|"]
+        for o in scan["orphans"]:
+            L.append(f"| `{o['path']}` | `{o['value']}` | {o['note']} |")
+        L.append("")
+    if scan["shadows"]:
+        L += ["## 不可达档（无提案，仅告警）", ""]
+        for s in scan["shadows"]:
+            L += [f"- `{s['path']}`：{s['note']}"]
+        L.append("")
+    return "\n".join(L)
+
+
+def cmd_mine(a) -> int:
+    if a.accept or a.accept_auto:
+        prop = _load_proposals()
+        allp = prop.get("proposals") or []
+        items = {p["id"]: p for p in allp}
+        if a.accept_auto:
+            # 自动转正的边界：只放行"不会放大敞口"的提案。
+            # 理由：这类提案即使全部通过五道闸门，也只会开 PR（autonomy.structure=review），
+            # 不可能改到 main；而 boost 类一旦上线就放大回撤，必须有人看过原始数字。
+            wanted = [p["id"] for p in allp if p.get("direction") != "boost"]
+        else:
+            wanted = [x.strip() for x in a.accept.split(",") if x.strip()]
+        missing = [x for x in wanted if x not in items]
+        if missing:
+            print(f"[mine] proposals.yaml 里没有：{missing}", flush=True)
+            return 2
+        if not wanted:
+            print("[mine] 没有需要转正的提案", flush=True)
+            return 0
+        text = CANDS_F.read_text(encoding="utf-8")
+        add = []
+        for cid in wanted:
+            p = items[cid]
+            add += ["", f"- id: {cid}", f"  kind: {p['kind']}",
+                    f"  since: \"{today_str()}\"",
+                    f"  expires: \"{(datetime.now(TZ) + timedelta(days=180)).strftime('%Y-%m-%d')}\"",
+                    "  patch:",
+                    *[f"    {k}: {json.dumps(v, ensure_ascii=False)}" for k, v in p["patch"].items()],
+                    f"  question: {json.dumps(p['question'], ensure_ascii=False)}",
+                    "  rationale: >",
+                    *[f"    {ln}" for ln in p["rationale"].split("\n")],
+                    "  mined: true",
+                    f"  source: {p.get('reason_tag', 'mine')}"]
+        CANDS_F.write_text(text.rstrip("\n") + "\n" + "\n".join(add) + "\n", encoding="utf-8")
+        # 转正后从 proposals 移除，避免下次再被接受一次；但把 id 记进 accepted，留多重比较痕迹
+        keep = [p for p in allp if p["id"] not in wanted]
+        prop["proposals"] = keep
+        prop["count"] = len(keep)
+        prop.setdefault("accepted", []).extend(
+            [{"id": i, "date": today_str(), "auto": bool(a.accept_auto)} for i in wanted])
+        PROPOSALS_F.write_text(
+            yaml.safe_dump(prop, allow_unicode=True, sort_keys=False, width=200), encoding="utf-8")
+        print(f"[mine] 已转正 {len(wanted)} 条到 candidates.yaml：{wanted}", flush=True)
+        return 0
+
+    from src.config import load_config
+    cfg = load_config(str(ROOT / "config.yaml"))
+    scan = scan_proposals(cfg)
+
+    if a.list:
+        for p in scan["proposals"]:
+            print(f"{p['id']:26s} {p['kind']:10s} {json.dumps(p['patch'], ensure_ascii=False)}")
+        print(f"--- {scan['count']} 条提案 / 孤儿 {len(scan['orphans'])} / 不可达 {len(scan['shadows'])}")
+        return 0
+
+    if not a.dry_run:
+        PROPOSALS_F.write_text(
+            yaml.safe_dump(scan, allow_unicode=True, sort_keys=False, width=200), encoding="utf-8")
+        MINE_MD.write_text(render_mine_md(scan), encoding="utf-8")
+    print(f"[mine] 扫描 {scan['scanned_tiers']} 个机制 → 新提案 {scan['count']} 条"
+          f"（孤儿 {len(scan['orphans'])} / 不可达 {len(scan['shadows'])}）", flush=True)
+    for p in scan["proposals"]:
+        print(f"  + {p['id']:26s} {json.dumps(p['patch'], ensure_ascii=False)}", flush=True)
+    for o in scan["orphans"]:
+        print(f"  ! 孤儿配置 {o['path']} = {o['value']}", flush=True)
+    for s in scan["shadows"]:
+        print(f"  ! 不可达档 {s['path']} 第{s['back']}档", flush=True)
+    if not a.dry_run:
+        print(f"\n[mine] 已写 {PROPOSALS_F.name} / {MINE_MD.name}"
+              f"（转正：python tools/evolve.py mine --accept ID）", flush=True)
+    return 0
+
+
 # ────────────────────────────── seed / state ──────────────────────────────
 def cmd_seed(_a) -> int:
     seed = load_yaml(SEED_F).get("entries") or []
@@ -821,6 +1165,60 @@ def cmd_passes(a) -> int:
     return 0
 
 
+def cmd_health(_a) -> int:
+    """体检：候选池还剩多少可裁、上次什么时候裁过、是不是在空转。
+
+    存在的理由很直接：第一百七十三轮之前，这个工作流连续空转了不知道多少周都没人发现，
+    因为"success"和"什么都没做"在 GitHub 的界面上长得一模一样。
+    退出码 0=有活干，10=空闲（供工作流决定要不要开 issue）。
+    """
+    policy = load_yaml(POLICY_F)
+    raw = load_yaml(CANDS_F)
+    cands = raw if isinstance(raw, list) else (raw.get("candidates") or [])
+    ledger = read_ledger()
+    cooldown = int((policy.get("limits") or {}).get("cooldown_days", 365))
+    autonomy = policy.get("autonomy") or {}
+
+    pending, blocked = [], []
+    for c in cands:
+        cid, patch = c.get("id"), c.get("patch") or {}
+        if expired(c):
+            blocked.append((cid, "expired"))
+            continue
+        if autonomy.get(c.get("kind"), "review") == "never":
+            blocked.append((cid, "policy_never"))
+            continue
+        if known_verdict(fingerprint(patch), ledger, cooldown)[1]:
+            blocked.append((cid, "already_verdict"))
+            continue
+        pending.append(cid)
+
+    last = ""
+    verdicts = [r for r in ledger if is_verdict(str(r.get("decision", "")))]
+    if verdicts:
+        last = str(max(verdicts, key=lambda r: r.get("ts", "")).get("ts", ""))[:10]
+    days = 999
+    if last:
+        try:
+            days = (datetime.now(TZ) - datetime.strptime(last, "%Y-%m-%d").replace(tzinfo=TZ)).days
+        except ValueError:
+            pass
+
+    print(f"[health] 候选池 {len(cands)} 条：待裁 {len(pending)} / 已裁或被挡 {len(blocked)}")
+    print(f"[health] 账本 {len(ledger)} 条，最近一次裁决 {last or '从未'}（{days} 天前）")
+    print(f"[health] 待裁：{pending if pending else '无'}")
+    if blocked:
+        print(f"[health] 被挡：{blocked}")
+    if pending:
+        print("PENDING:" + ",".join(pending))
+        return 0
+    hint = "矿工也挖不出新提案 => 要么加新机制，要么加新数据维度；否则这个周频任务就是纯空转"         if not (_load_proposals().get("proposals")) else "proposals.yaml 里还有等人工确认的 boost 类提案"
+    print(f"IDLE: 候选池已耗尽（{hint}）")
+    if days > 21:
+        print(f"[health][warn] 已经 {days} 天没有新裁决了")
+    return 10
+
+
 def cmd_state(_a) -> int:
     policy = load_yaml(POLICY_F)
     state = read_state()
@@ -861,6 +1259,15 @@ def main() -> int:
 
     sub.add_parser("seed", help="回填历史裁决").set_defaults(func=cmd_seed)
     sub.add_parser("state", help="重写 STATE.md").set_defaults(func=cmd_state)
+    sub.add_parser("health", help="体检：待裁候选数 / 是否空转（空闲时退出码 10）").set_defaults(func=cmd_health)
+
+    p_mine = sub.add_parser("mine", help="从配置×源码×账本挖结构性提案（不跑回测）")
+    p_mine.add_argument("--accept", default="", help="把 proposals.yaml 里的指定 id 转正到 candidates.yaml（逗号分隔）")
+    p_mine.add_argument("--accept-auto", action="store_true",
+                        help="转正全部非 boost 方向的提案（减仓/中性，不会放大敞口）")
+    p_mine.add_argument("--list", action="store_true", help="只打印提案，不写文件")
+    p_mine.add_argument("--dry-run", action="store_true", help="扫描但不写 proposals.yaml / 报告")
+    p_mine.set_defaults(func=cmd_mine)
 
     p_pass = sub.add_parser("passes", help="打印最近一次裁决里 PASS 的候选 id")
     p_pass.add_argument("--kind", default="")
