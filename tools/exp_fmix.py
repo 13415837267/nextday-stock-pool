@@ -370,8 +370,11 @@ def main(days: int = 1500) -> None:
         if best is None:
             break
         mu, c, kk, kmax, sel = best
-        if mu <= base_mu and step > 0:
-            break
+        if step > 0 and mu <= base_mu:
+            # 仍记录这一层(证明"叠不动"), 但不替换 mask —— 后续步骤在全池层面已无增量
+            pass
+        # 强制前沿: 无条件在当前子集上再砍一层, 让"叠层是否还提升"由数字自己说
+        improved = (mu > base_mu) or step == 0
         mask = sel
         n = int(mask.sum())
         m_ = ret[mask]
@@ -392,6 +395,41 @@ def main(days: int = 1500) -> None:
                          "pctile": round(pct, 1)})
         remaining = [x for x in remaining if x != c]
     out["frontier"] = frontier
+
+    # ---- 新因子能否改进主策略: 宽池 + vwap_z Q1 与"严池形态""低开入场"逐层取交集
+    print("\n=== vwap_z 与主策略条件的交集(宽池·闸门开) ===", flush=True)
+    sub = panel.loc[wide & gate].copy()
+    q1 = sub["vwap_z"].quantile(0.2)
+    strict_m = (sub["pct"].between(-6.0, -3.0).to_numpy()
+                & (sub["vol_ratio"] <= 0.8).to_numpy()
+                & (sub["close_pos"] <= 0.4).to_numpy())
+    # 入场缺口: T+1 开盘相对 T 收盘的跳空(实盘 09:25 可知)
+    gap_in = (sub["buy_open_adj"] / sub["close_adj"] - 1).to_numpy() * 100
+    layers = [
+        ("宽池", np.ones(len(sub), bool)),
+        ("+ vwap_z Q1", (sub["vwap_z"] <= q1).to_numpy()),
+        ("+ 严池形态", strict_m),
+        ("+ vwap_z & 严池", strict_m & (sub["vwap_z"] <= q1).to_numpy()),
+        ("+ vwap_z & 缺口<=0", (sub["vwap_z"] <= q1).to_numpy() & (gap_in <= 0)),
+        ("+ 三者交集", strict_m & (sub["vwap_z"] <= q1).to_numpy() & (gap_in <= 0)),
+        ("+ 三者 & 缺口<=-1", strict_m & (sub["vwap_z"] <= q1).to_numpy() & (gap_in <= -1)),
+    ]
+    r_ = sub["ret"].to_numpy()
+    inter = []
+    for name, m in layers:
+        if m.sum() < 30:
+            print("%-22s n<30, 跳过" % name)
+            continue
+        x = r_[m]
+        t_ = float(x.mean() / (x.std() / np.sqrt(len(x)))) if x.std() else float("nan")
+        print("%-22s n=%8d 笔/日=%7.2f 单笔=%+.3f%% 胜率=%5.1f%% t=%5.2f"
+              % (name, len(x), len(x) / max(1, sub["trade_date"].nunique()),
+                 x.mean() * 100, (x > 0).mean() * 100, t_), flush=True)
+        inter.append({"layer": name, "n": int(len(x)),
+                      "per_day": round(len(x) / max(1, sub["trade_date"].nunique()), 2),
+                      "ret_pct": round(float(x.mean()) * 100, 3),
+                      "win_pct": round(float((x > 0).mean()) * 100, 1), "t": round(t_, 2)})
+    out["intersect"] = inter
     # 主策略锚点(第 170 轮 1500 日窗口口径), 便于横向比较
     out["anchor"] = {"n": 353, "per_day": 0.25, "ret_pct": 1.435,
                      "note": "官方主策略(评分排序+缺口过滤+池深降档), 1.25x 前口径"}
