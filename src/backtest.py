@@ -345,10 +345,26 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     knife_tiers = ex.get("knife_tiers") or []           # 阴跌刀口保护(第一百零三轮): [{mkt_above, res_below, mult}]
     mkt_floor_tiers = ex.get("mkt_floor_tiers") or []   # 全市场恐慌日回满仓: [{mkt_below, floor}]
     mkt_boost_tiers = ex.get("mkt_boost_tiers") or []   # 第一百七十三轮: 恐慌日超配 [{mkt_below, mult}]
+    # 第一百七十五轮: 波动率状态加仓 [{vol_above, vol_below, mult}]。
+    # 与 mkt_boost_tiers 的区别是**维度**: 后者看单日跌幅(事件), 前者看 20 日波动率(状态)。
+    # 状态与事件不重合 —— 一段持续阴跌里每天都跌 0.3%, 单日跌幅够不上 -1%, 但波动率已抬到高位。
+    vol_boost_tiers = ex.get("vol_boost_tiers") or []
+    # 第一百七十五轮: 缺口深度加仓 [{gap_below, gap_above, mult}]。
+    # 依据来自跳过信号的反事实诊断: 开盘缺口 > -1.0%(未达承接线) 被剔除的 702 笔,
+    # 若买了单笔 -0.606% (t=-4.12, 高度显著为负); 而 gap 在 [-2.5,-1.0] 成交的票 +1.44%。
+    # 分离度 2.05pp —— 缺口是这批因子中最强的单变量。既然门槛两侧差这么大,
+    # 门槛内部是否继续单调就是自然的下一步: 越深低开越值得重仓。
+    gap_boost_tiers = ex.get("gap_boost_tiers") or []
+    # 第一百七十五轮: 池深加仓 [{min, max, mult}] —— 与市场维度正交的"策略自身维度"。
+    # 200 笔样本按当日合格池深分档: 10~20 只 +0.63% / 20~40 只 +0.84% / 40 只以上 +2.21%。
+    # 现有 pool_n_tiers 只做"池浅降仓"(第 99 轮), 从没做过"池深加仓" —— 而池深恰恰是
+    # "今天有多少票同时被打成缩量阴线"的直接度量, 是策略自己看到的恐慌强度,
+    # 与全市场涨跌幅(mkt_boost)测的是不同东西: 普跌时池深大但幅度可能只有 -0.8%。
+    pool_n_boost_tiers = ex.get("pool_n_boost_tiers") or []
     # 信号日"市场典型个股涨跌"(全市场 pct 中位数): 只用 T 日收盘后的横截面, 无未来函数。
     # 用于把"大盘一起跌"(系统性错杀, 次日修复有共振)与"大盘平稳而个股独跌"(个股有事)分开。
     mkt_ret_map: dict[str, float] = {}
-    if knife_tiers or mkt_floor_tiers or mkt_boost_tiers:
+    if knife_tiers or mkt_floor_tiers or mkt_boost_tiers or vol_boost_tiers:
         for _d in main_dates:
             _dd = by_date.get(_d)
             if _dd is None:
@@ -380,6 +396,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
 
         _rks = _seq.rolling(_rank_win, min_periods=max(40, _rank_win // 5)).apply(_rk_last, raw=True)
         mkt_rank_map = {str(k): float(v) for k, v in _rks.items() if np.isfinite(v)}
+    # 第一百七十五轮: 市场 20 日波动率(百分点)。只用截至信号日收盘的序列, 无未来函数。
+    mkt_vol_map: dict[str, float] = {}
+    _vol_win = int(ex.get("vol_boost_win", 20) or 20)
+    if vol_boost_tiers and mkt_ret_map:
+        _vseq = pd.Series([mkt_ret_map.get(_d, np.nan) for _d in main_dates],
+                          index=list(main_dates), dtype="float64")
+        _vol = _vseq.rolling(_vol_win, min_periods=max(10, _vol_win // 2)).std()
+        mkt_vol_map = {str(k): float(v) for k, v in _vol.items() if np.isfinite(v)}
     min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
     gate_scale = bool(ex.get("score_gate_pool_scale", False))   # 第一百轮: 门槛按池内z分理论上限缩放
     gate_ref = float(ex.get("score_gate_ref_pool", 40) or 40)    # 缩放基准池深(该池深下门槛=min_top1_score)
@@ -747,6 +771,30 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 第一百七十四轮: 同一分支支持分位档(rank_below / rank_above, 0~1)。
             # 分位模式不要求个股 pct 存在(它只用市场横截面), 但绝对阈值模式仍保留
             # 原 `_pct_sig is not None` 的语义, 以保证不配 mkt_rank_win 时逐位等价。
+            # 池深加仓: 策略自身维度(今天有多少票同时符合形态), 独立叠乘。
+            if pool_n_boost_tiers:
+                _pn = int(p.get("_pool_n") or 0)
+                for _t in pool_n_boost_tiers:
+                    if _pn < int(_t.get("min", 0)):
+                        continue
+                    _pm = _t.get("max")
+                    if _pm is not None and _pn > int(_pm):
+                        continue
+                    pick_frac *= float(_t.get("mult", 1.0))
+                    break
+
+            # 缺口深度加仓: 与 market 维度正交(个股 vs 全市场), 独立叠乘。
+            if gap_boost_tiers and p.get("_gap") is not None:
+                _g = float(p["_gap"]) * 100.0
+                for _t in gap_boost_tiers:
+                    if _g > float(_t.get("gap_below", -1.5)):
+                        continue
+                    _ga = _t.get("gap_above")
+                    if _ga is not None and _g < float(_ga):
+                        continue
+                    pick_frac *= float(_t.get("mult", 1.0))
+                    break
+
             if mkt_boost_tiers:
                 _mr = mkt_ret_map.get(p["signal_date"])
                 for _t in mkt_boost_tiers:
@@ -771,6 +819,19 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                         continue
                     pick_frac *= float(_t.get("mult", 1.0))
                     break
+
+            # 第一百七十五轮: 波动率状态加仓(与上面的事件加仓独立叠乘)。
+            if vol_boost_tiers:
+                _mv = mkt_vol_map.get(p["signal_date"])
+                if _mv is not None:
+                    for _t in vol_boost_tiers:
+                        if _mv < float(_t.get("vol_above", 0.0)):
+                            continue
+                        _vb = _t.get("vol_below")
+                        if _vb is not None and _mv > float(_vb):
+                            continue
+                        pick_frac *= float(_t.get("mult", 1.0))
+                        break
             # 融资可用额度按"本笔目标仓位"重算: pick_frac>1 时杠杆额度须同步放大,
             # 否则 min(pick_frac*equity*lev, cash+margin_avail) 会被 (lev-1)*equity 卡死,
             # 超配永远不生效。pick_frac<=1 时 _lev_eff==lev, 与旧口径逐位一致。
