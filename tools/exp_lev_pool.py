@@ -135,6 +135,11 @@ def main(days: int = 1500, only: list[str] | None = None) -> None:
         print("        分档: " + "  ".join(f"{k}x n={v['n']} {v['mean_pct']:+.3f}%"
                                           for k, v in sorted(tau.items(), reverse=True)), flush=True)
         print("        耗时 %.0fs" % (time.time() - t1), flush=True)
+        # 增量落盘: 单组 20~30 分钟, 5 组接近 job 上限, 中途超时也要保住已完成的部分。
+        os.makedirs(OUT, exist_ok=True)
+        with open(os.path.join(OUT, "exp_lev_pool.json"), "w", encoding="utf-8") as f:
+            json.dump({"days": days, "rows": rows, "done": True, "partial": len(rows) < len(GROUPS)},
+                      f, ensure_ascii=False, indent=1)
 
     print("\n=== 分年收益 ===")
     years = sorted({y for x in rows for y in x["year"]})
