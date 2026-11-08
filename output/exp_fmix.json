@@ -5299,5 +5299,113 @@
   "per_day": 0.25,
   "ret_pct": 1.435,
   "note": "官方主策略(评分排序+缺口过滤+池深降档), 1.25x 前口径"
- }
+ },
+ "oos": {
+  "cut": "20240927",
+  "rules": [
+   {
+    "factor": "vwap_z",
+    "lo": -Infinity,
+    "hi": -0.30914928317070006,
+    "train_n": 46559,
+    "train_ret": -0.087
+   },
+   {
+    "factor": "ivol_q",
+    "lo": -Infinity,
+    "hi": 0.4212258458137512,
+    "train_n": 9298,
+    "train_ret": 0.078
+   },
+   {
+    "factor": "mom20",
+    "lo": 5.774261951446533,
+    "hi": Infinity,
+    "train_n": 1860,
+    "train_ret": 0.387
+   },
+   {
+    "factor": "ivol20",
+    "lo": 1.9852730751037597,
+    "hi": Infinity,
+    "train_n": 372,
+    "train_ret": 0.817
+   }
+  ],
+  "steps": [
+   {
+    "step": 1,
+    "factor": "vwap_z",
+    "lo": -Infinity,
+    "hi": -0.30914928317070006,
+    "train_n": 46559,
+    "train_ret": -0.087,
+    "test_n": 62061,
+    "test_ret": 0.177,
+    "test_t": 12.61
+   },
+   {
+    "step": 2,
+    "factor": "ivol_q",
+    "lo": -Infinity,
+    "hi": 0.4212258458137512,
+    "train_n": 9298,
+    "train_ret": 0.078,
+    "test_n": 16695,
+    "test_ret": 0.078,
+    "test_t": 4.22
+   },
+   {
+    "step": 3,
+    "factor": "mom20",
+    "lo": 5.774261951446533,
+    "hi": Infinity,
+    "train_n": 1860,
+    "train_ret": 0.387,
+    "test_n": 4683,
+    "test_ret": 0.466,
+    "test_t": 10.83
+   },
+   {
+    "step": 4,
+    "factor": "ivol20",
+    "lo": 1.9852730751037597,
+    "hi": Infinity,
+    "train_n": 372,
+    "train_ret": 0.817,
+    "test_n": 1372,
+    "test_ret": 0.679,
+    "test_t": 7.93
+   }
+  ]
+ },
+ "oos_simple": [
+  {
+   "name": "vwap_z<=Q1(训练段)",
+   "train_n": 46559,
+   "train_ret": -0.087,
+   "test_n": 62061,
+   "test_ret": 0.177,
+   "test_win": 49.2,
+   "test_t": 12.61
+  },
+  {
+   "name": "+ 缺口<=0",
+   "train_n": 28674,
+   "train_ret": -0.037,
+   "test_n": 37901,
+   "test_ret": 0.343,
+   "test_win": 52.4,
+   "test_t": 19.3
+  },
+  {
+   "name": "+ 缺口<=-1",
+   "train_n": 6341,
+   "train_ret": -0.078,
+   "test_n": 8875,
+   "test_ret": 1.118,
+   "test_win": 61.8,
+   "test_t": 23.4
+  }
+ ]
 }
