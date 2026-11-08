@@ -71,6 +71,19 @@ def prepare(cfg: dict, days: int) -> pd.DataFrame:
     panel["vol_trend"] = panel["vol_ma5"] / panel["vol_ma20"].replace(0, np.nan)   # 5日量 / 20日量
     panel["amp_ratio"] = panel["amp_pct"] / panel["amp_ma20"].replace(0, np.nan)   # 振幅扩张倍数
     panel["accel"] = panel["mom3"] - panel["mom20"] / 20.0 * 3.0                   # 短端相对中端提速
+    # ---- VWAP 族(本轮新信息): 当日成交均价 = 成交额/成交量。
+    #   数据源 fields=all 确实返回 avg_price, 但 panel 缓存只存 16 列(_KEEP)没有它;
+    #   实测 amount/vol 与 avg_price 完全一致(1812492376.93/150481965 = 12.0446),
+    #   故无需重拉历史, 直接从已缓存字段反推。
+    #   与 close_pos 的区别: close_pos 用当日最高最低(极值), vwap_dev 用成交量加权均价,
+    #   后者才是"全体成交者的成本线" —— 收盘在均价上方=尾盘承接, 下方=尾盘出货。
+    _av = panel["amount"] / panel["vol"].replace(0, np.nan)
+    panel["vwap"] = _av
+    panel["vwap_dev"] = (panel["close"] / _av.replace(0, np.nan) - 1) * 100          # 收盘相对均价%
+    panel["vwap_gap"] = (_av / panel["pre_close"].replace(0, np.nan) - 1) * 100      # 均价相对昨收%
+    panel["vwap_z"] = ((panel["close"] - _av)
+                       / (panel["high"] - panel["low"]).replace(0, np.nan))          # 标准化(-1~1)
+
     # ---- 形态结构: 上影占比 / 下影占比 / 连续下跌
     body_hi = panel[["open", "close"]].max(axis=1)
     panel["upper_tail"] = (panel["high"] - body_hi) / panel["pre_close"].replace(0, np.nan) * 100
@@ -132,6 +145,10 @@ FACTORS = [
     ("up_share", "上影占振幅", 1),
     ("down3", "连跌3日", 1),
     ("gap_t", "当日跳空%", 1),
+    # 本轮新增: VWAP 族(收盘相对成交均价)
+    ("vwap_dev", "收盘相对VWAP%", 1),
+    ("vwap_gap", "VWAP相对昨收%", 1),
+    ("vwap_z", "VWAP标准化", 1),
     # 本轮新增: 横截面分位(当日全池 rank)
     ("vr_q", "量比分位", 1),
     ("turn_q", "换手分位", 1),
@@ -188,90 +205,105 @@ def bucket_table(df: pd.DataFrame, col: str, nq: int = 5) -> dict:
             "spread": round(top["ret"] - bottom["ret"], 3) if top and bottom else None}
 
 
+def grid_table(sub: pd.DataFrame, a: str, b: str, nq: int = 3) -> dict:
+    """a × b 的等频 nq×nq 网格, 输出格内单笔净收益(%)与样本数。"""
+    lo_a, hi_a = sub[a].quantile([1 / nq, 2 / nq])
+    lo_b, hi_b = sub[b].quantile([1 / nq, 2 / nq])
+    ia = np.where(sub[a] <= lo_a, 0, np.where(sub[a] <= hi_a, 1, 2))
+    ib = np.where(sub[b] <= lo_b, 0, np.where(sub[b] <= hi_b, 1, 2))
+    ret = sub["ret"].to_numpy()
+    grid = np.full((nq, nq), np.nan)
+    cnt = np.zeros((nq, nq), int)
+    for i in range(nq):
+        for j in range(nq):
+            m = (ia == i) & (ib == j)
+            cnt[i, j] = int(m.sum())
+            if m.sum() >= 100:
+                grid[i, j] = float(ret[m].mean()) * 100
+    return {"lit": [[None if np.isnan(grid[i, j]) else round(grid[i, j], 3)
+                     for j in range(nq)] for i in range(nq)],
+            "n": cnt.tolist()}
+
+
+def report(sub: pd.DataFrame, title: str, out: dict, tag: str) -> None:
+    print(f"\n=== {title} (n={len(sub):,}, 单笔 {sub['ret'].mean() * 100:+.3f}%, "
+          f"胜率 {(sub['ret'] > 0).mean() * 100:.1f}%) ===", flush=True)
+    print("%-14s %-16s | %7s %7s %7s %7s %5s"
+          % ("因子", "含义", "IC", "Q1%", "Q5%", "极差", "单调"))
+    print("-" * 78)
+    rows = {}
+    for col, cn, _ in FACTORS:
+        t = bucket_table(sub, col)
+        rows[col] = t
+        if t.get("skip"):
+            print("%-14s %-16s | 样本不足" % (col, cn))
+            continue
+        q1 = t["buckets"][0]["ret"]
+        q5 = t["buckets"][-1]["ret"]
+        print("%-14s %-16s | %7.4f %7.3f %7.3f %7.2f %5.2f %s"
+              % (col, cn, t["ic"], q1, q5, t["spread"], t["mono"],
+                 "★" if abs(t["mono"]) >= 0.9 else ""))
+    out["factors"][tag] = rows
+
+
 def main(days: int = 1500) -> None:
     cfg = load_config()
     panel = prepare(cfg, days)
     panel = add_cross_rank(panel)
 
-    # ---- 基础池 + 放宽 dip 形态
     base = ((panel["bars"] >= 250).to_numpy()
             & (panel["is_st"] == 0).to_numpy()
             & (panel["is_paused"] == 0).to_numpy()
             & (panel["amount"] >= 1e8).to_numpy()
             & panel["buy_ok"].to_numpy()
-            & panel["ret"].between(-0.30, 0.30).to_numpy())     # 剔除复权断点脏值
-    pool = (base
-            & panel["pct"].between(-9.0, -1.0).to_numpy()
-            & (panel["vol_ratio"] <= 1.5).to_numpy())
-    df = panel.loc[pool].copy()
-    print(f"\n事件池: {len(df):,} 笔 / {df['trade_date'].nunique()} 日 "
-          f"= {len(df) / max(1, df['trade_date'].nunique()):.2f} 笔/日", flush=True)
-    print(f"池内 T+1开盘买→T+2开盘卖 净收益: {df['ret'].mean() * 100:+.3f}%  "
-          f"胜率 {(df['ret'] > 0).mean() * 100:.1f}%", flush=True)
+            & panel["ret"].between(-0.30, 0.30).to_numpy())
+    # 宽池: 只要求"下跌 + 不显著放量", 用于测因子的纯区分力
+    wide = base & panel["pct"].between(-9.0, -1.0).to_numpy() \
+        & (panel["vol_ratio"] <= 1.5).to_numpy()
+    # 严池: 主策略 dip 形态原样(缩量阴线 + 收在低位), 只是不叠评分与缺口过滤
+    strict = base & panel["pct"].between(-6.0, -3.0).to_numpy() \
+        & (panel["vol_ratio"] <= 0.8).to_numpy() \
+        & (panel["close_pos"] <= 0.4).to_numpy()
 
-    # ---- 闸门分组
     reg = apply_regime(regime_base(panel, cfg), cfg)
     ok = reg["trade_ok"].astype(bool)
-    gate = df["trade_date"].map(ok).fillna(True).astype(bool)
-    df_g = df.loc[gate.to_numpy()]
-    print(f"闸门开: {len(df_g):,} 笔 ({len(df_g) / max(1, len(df)) * 100:.0f}%), "
-          f"单笔 {df_g['ret'].mean() * 100:+.3f}%", flush=True)
+    gate = panel["trade_date"].map(ok).fillna(True).astype(bool).to_numpy()
 
-    out = {"window": {"days": days, "start": str(df["trade_date"].min()),
-                      "end": str(df["trade_date"].max())},
-           "pool": {"n": int(len(df)), "per_day": round(len(df) / df["trade_date"].nunique(), 2),
-                    "ret_pct": round(float(df["ret"].mean()) * 100, 3),
-                    "win_pct": round(float((df["ret"] > 0).mean()) * 100, 1)},
-           "factors": {}, "grid": {}}
+    out = {"window": {"days": days, "start": str(panel["trade_date"].min()),
+                      "end": str(panel["trade_date"].max())},
+           "pools": {}, "factors": {}, "grid": {}}
 
-    # ---- 单因子分层(两组各跑一遍)
-    print("\n%-14s %-16s | %6s %7s %7s %7s | %6s %7s"
-          % ("因子", "含义", "n", "IC", "Q1%", "Q5%", "极差", "单调"))
-    print("-" * 88)
-    for col, cn, _ in FACTORS:
-        for tag, sub in (("all", df), ("gate", df_g)):
-            t = bucket_table(sub, col)
-            out["factors"].setdefault(col, {"cn": cn})[tag] = t
-        ta = out["factors"][col]["all"]
-        if ta.get("skip"):
-            print("%-14s %-16s | %6d  样本不足" % (col, cn, ta["n"]))
+    for pname, m in (("wide", wide), ("strict", strict)):
+        sub_all = panel.loc[m]
+        sub_g = panel.loc[m & gate]
+        out["pools"][pname] = {
+            "n": int(len(sub_all)),
+            "per_day": round(len(sub_all) / max(1, sub_all["trade_date"].nunique()), 2),
+            "ret_pct": round(float(sub_all["ret"].mean()) * 100, 3),
+            "win_pct": round(float((sub_all["ret"] > 0).mean()) * 100, 1),
+            "gate_n": int(len(sub_g)),
+            "gate_ret_pct": round(float(sub_g["ret"].mean()) * 100, 3),
+        }
+        report(sub_all, f"{pname} · 全样本", out, pname)
+        report(sub_g, f"{pname} · 闸门开", out, pname + "_gate")
+        print(f"\n[{pname}] 笔数 {len(sub_all):,} / {sub_all['trade_date'].nunique()} 日 "
+              f"= {out['pools'][pname]['per_day']} 笔/日", flush=True)
+
+    # ---- 显式组合网格: 有经济学含义的三对, 各自在严池与宽池上跑
+    PAIRS = [("vwap_dev", "vol_ratio"), ("vwap_dev", "close_pos"), ("vwap_dev", "gap_t")]
+    for pname, m in (("wide", wide), ("strict", strict)):
+        sub = panel.loc[m & gate]
+        if len(sub) < 500:
+            print(f"\n[{pname}] 闸门开后样本 {len(sub)} 不足, 跳过网格")
             continue
-        q1 = ta["buckets"][0]["ret"]
-        q5 = ta["buckets"][-1]["ret"]
-        print("%-14s %-16s | %6d %7.3f %7.3f %7.3f %7.2f | %6.2f %7s"
-              % (col, cn, ta["n"], ta["ic"], q1, q5, ta["spread"], ta["mono"],
-                 "★" if abs(ta["mono"]) >= 0.9 else ""))
-
-    # ---- 交互网格: 取 |单调性| 最高的两个因子做 3x3
-    cand = [c for c, _, _ in FACTORS
-            if not out["factors"][c]["all"].get("skip")]
-    cand.sort(key=lambda c: -abs(out["factors"][c]["all"]["mono"]))
-    picks = cand[:2]
-    if len(picks) == 2:
-        a, b = picks
-        print(f"\n=== 交互网格 {a} × {b} (3×3, 格内单笔净收益%) ===", flush=True)
-        for tag, sub in (("all", df), ("gate", df_g)):
-            lo_a, hi_a = sub[a].quantile([0.33, 0.67])
-            lo_b, hi_b = sub[b].quantile([0.33, 0.67])
-            ia = np.where(sub[a] <= lo_a, 0, np.where(sub[a] <= hi_a, 1, 2))
-            ib = np.where(sub[b] <= lo_b, 0, np.where(sub[b] <= hi_b, 1, 2))
-            grid = np.full((3, 3), np.nan)
-            cnt = np.zeros((3, 3), int)
+        for a, b in PAIRS:
+            g = grid_table(sub, a, b)
+            print(f"\n=== [{pname}·闸门开] {a} × {b} (行=低→高) ===")
             for i in range(3):
-                for j in range(3):
-                    m = (ia == i) & (ib == j)
-                    cnt[i, j] = int(m.sum())
-                    if m.sum() >= 30:
-                        grid[i, j] = float(sub["ret"].to_numpy()[m].mean()) * 100
-            print(f"[{tag}] " + "（行=" + a + " 低→高, 列=" + b + " 低→高）")
-            for i in range(3):
-                print("   " + " ".join(("%8.3f" % grid[i, j]) if not np.isnan(grid[i, j])
+                print("   " + " ".join(("%8.3f" % g["lit"][i][j]) if g["lit"][i][j] is not None
                                        else "     n/a" for j in range(3))
-                      + "   n=" + "/".join(str(int(cnt[i, j])) for j in range(3)))
-            out["grid"][tag] = {"a": a, "b": b,
-                                "ret": [[None if np.isnan(grid[i, j]) else round(grid[i, j], 3)
-                                         for j in range(3)] for i in range(3)],
-                                "n": cnt.tolist()}
+                      + "   n=" + "/".join(str(x) for x in g["n"][i]))
+            out["grid"][f"{pname}:{a}x{b}"] = {"a": a, "b": b, **g}
 
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, "exp_fmix.json"), "w", encoding="utf-8") as f:
