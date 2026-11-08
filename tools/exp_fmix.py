@@ -300,12 +300,12 @@ def main(days: int = 1500) -> None:
     tmap = panel["trade_date"].map(trend).fillna(True).astype(bool).to_numpy()
     rank = sorted([c for c, _, _ in FACTORS if not out["factors"]["wide"][c].get("skip")],
                   key=lambda c: -abs(out["factors"]["wide"][c]["mono"]))[:6]
-    print("\n=== 市场状态 × 因子 (宽池·闸门开, 只列 |单调性| 前 6) ===")
+    print("\n=== 市场状态 × 因子 (宽池, 不叠闸门; 只列 |单调性| 前 6) ===")
     print("%-14s | %-28s | %-28s" % ("因子", "趋势向上 Q1→Q5 / 极差 / 单调", "趋势向下 Q1→Q5 / 极差 / 单调"))
     for col in rank:
         line = []
         for lab, mm in (("up", wide & tmap), ("dn", wide & ~tmap)):
-            sub = panel.loc[mm & gate]
+            sub = panel.loc[mm]
             t = bucket_table(sub, col)
             out.setdefault("state", {}).setdefault(col, {})[lab] = t
             if t.get("skip"):
@@ -332,6 +332,69 @@ def main(days: int = 1500) -> None:
                                        else "     n/a" for j in range(3))
                       + "   n=" + "/".join(str(x) for x in g["n"][i]))
             out["grid"][f"{pname}:{a}x{b}"] = {"a": a, "b": b, **g}
+
+    # ---- 层数前沿: 从宽池逐层 AND 收紧, 看单笔收益能爬到哪, 以及是不是噪声
+    print("\n=== 层数前沿: 宽池逐层收紧(每层取五分位里最好的一档) ===", flush=True)
+    cols = [c for c, _, _ in FACTORS if out["factors"]["wide"][c].get("skip") is not True]
+    sub = panel.loc[wide & gate]          # 用闸门开的日子(可交易)
+    ret = sub["ret"].to_numpy()
+    n_all = len(sub)
+    days = sub["trade_date"].nunique()
+    mask = np.ones(n_all, bool)
+    remaining = list(cols)
+    frontier = []
+    print("%3s %-16s %-8s %9s %8s %8s %7s %s"
+          % ("层", "因子", "取哪档", "n", "笔/日", "单笔%", "t值", "同n随机对照 5/50/95分位"))
+    rng = np.random.default_rng(42)
+    for step in range(6):
+        base_mu = ret[mask].mean() * 100
+        best = None
+        for c in remaining:
+            v = sub[c].to_numpy()
+            vv = v[mask]
+            if np.isnan(vv).all():
+                continue
+            q = pd.qcut(pd.Series(vv), 5, labels=False, duplicates="drop")
+            qa = q.to_numpy()
+            idx = np.where(mask)[0]
+            for k in np.unique(qa):
+                if np.isnan(k):
+                    continue
+                sel = np.zeros(n_all, bool)
+                sel[idx[qa == k]] = True
+                if sel.sum() < 100:
+                    continue
+                mu = ret[sel].mean()
+                if best is None or mu > best[0]:
+                    best = (mu, c, int(k) + 1, int(q.max()) + 1, sel)
+        if best is None:
+            break
+        mu, c, kk, kmax, sel = best
+        if mu <= base_mu and step > 0:
+            break
+        mask = sel
+        n = int(mask.sum())
+        m_ = ret[mask]
+        tval = float(m_.mean() / (m_.std() / np.sqrt(n))) if m_.std() else float("nan")
+        # 随机对照: 从同池随机抽 n 个
+        sims = np.array([ret[rng.choice(n_all, n, replace=False)].mean() * 100
+                         for _ in range(200)])
+        pct = float((sims < m_.mean() * 100).mean() * 100)
+        print("%3d %-16s Q%-7d %9d %8.2f %8.3f %7.2f  %.3f/%.3f/%.3f (P=%2.0f%%)"
+              % (step + 1, c, kk, n, n / max(1, days), m_.mean() * 100, tval,
+                 np.percentile(sims, 5), np.percentile(sims, 50), np.percentile(sims, 95), pct))
+        frontier.append({"step": step + 1, "factor": c, "bucket": f"Q{kk}/{kmax}",
+                         "n": n, "per_day": round(n / max(1, days), 2),
+                         "ret_pct": round(float(m_.mean()) * 100, 3), "t": round(tval, 2),
+                         "rand_p5": round(float(np.percentile(sims, 5)), 3),
+                         "rand_p50": round(float(np.percentile(sims, 50)), 3),
+                         "rand_p95": round(float(np.percentile(sims, 95)), 3),
+                         "pctile": round(pct, 1)})
+        remaining = [x for x in remaining if x != c]
+    out["frontier"] = frontier
+    # 主策略锚点(第 170 轮 1500 日窗口口径), 便于横向比较
+    out["anchor"] = {"n": 353, "per_day": 0.25, "ret_pct": 1.435,
+                     "note": "官方主策略(评分排序+缺口过滤+池深降档), 1.25x 前口径"}
 
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, "exp_fmix.json"), "w", encoding="utf-8") as f:
