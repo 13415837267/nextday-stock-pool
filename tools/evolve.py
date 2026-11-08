@@ -282,6 +282,10 @@ def cmd_run(a) -> int:
     autonomy = policy.get("autonomy") or {}
     cooldown = int((policy.get("limits") or {}).get("cooldown_days", 365))
     max_cand = a.max or int((policy.get("limits") or {}).get("max_candidates_per_run", 2))
+    # `--only` 是人工显式点名：多重比较的责任已由点名者承担，不该再被配额挡掉。
+    # 配额存在的目的是防止"候选池一长就自动跑一堆假设"，而 --only 恰恰相反。
+    if a.only:
+        max_cand = 999
 
     print(f"[evolve] run_id={run_id} policy=v{policy.get('version')} 账本 {len(ledger)} 条", flush=True)
 
