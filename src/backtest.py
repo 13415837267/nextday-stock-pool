@@ -349,6 +349,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     # 与 mkt_boost_tiers 的区别是**维度**: 后者看单日跌幅(事件), 前者看 20 日波动率(状态)。
     # 状态与事件不重合 —— 一段持续阴跌里每天都跌 0.3%, 单日跌幅够不上 -1%, 但波动率已抬到高位。
     vol_boost_tiers = ex.get("vol_boost_tiers") or []
+    # 第一百七十五轮: 缺口深度加仓 [{gap_below, gap_above, mult}]。
+    # 依据来自跳过信号的反事实诊断: 开盘缺口 > -1.0%(未达承接线) 被剔除的 702 笔,
+    # 若买了单笔 -0.606% (t=-4.12, 高度显著为负); 而 gap 在 [-2.5,-1.0] 成交的票 +1.44%。
+    # 分离度 2.05pp —— 缺口是这批因子中最强的单变量。既然门槛两侧差这么大,
+    # 门槛内部是否继续单调就是自然的下一步: 越深低开越值得重仓。
+    gap_boost_tiers = ex.get("gap_boost_tiers") or []
     # 信号日"市场典型个股涨跌"(全市场 pct 中位数): 只用 T 日收盘后的横截面, 无未来函数。
     # 用于把"大盘一起跌"(系统性错杀, 次日修复有共振)与"大盘平稳而个股独跌"(个股有事)分开。
     mkt_ret_map: dict[str, float] = {}
@@ -759,6 +765,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 第一百七十四轮: 同一分支支持分位档(rank_below / rank_above, 0~1)。
             # 分位模式不要求个股 pct 存在(它只用市场横截面), 但绝对阈值模式仍保留
             # 原 `_pct_sig is not None` 的语义, 以保证不配 mkt_rank_win 时逐位等价。
+            # 缺口深度加仓: 与 market 维度正交(个股 vs 全市场), 独立叠乘。
+            if gap_boost_tiers and p.get("_gap") is not None:
+                _g = float(p["_gap"]) * 100.0
+                for _t in gap_boost_tiers:
+                    if _g > float(_t.get("gap_below", -1.5)):
+                        continue
+                    _ga = _t.get("gap_above")
+                    if _ga is not None and _g < float(_ga):
+                        continue
+                    pick_frac *= float(_t.get("mult", 1.0))
+                    break
+
             if mkt_boost_tiers:
                 _mr = mkt_ret_map.get(p["signal_date"])
                 for _t in mkt_boost_tiers:
