@@ -1,0 +1,48 @@
+{
+ "window": [
+  "20200827",
+  "20261106"
+ ],
+ "days": 1500,
+ "cover": {
+  "main_days": 352,
+  "sat_days": 179,
+  "both": 53,
+  "main_only": 299,
+  "sat_only": 126,
+  "none": 1022,
+  "main_pct": 23.5,
+  "sat_pct": 11.9,
+  "union_pct": 31.9
+ },
+ "sat_on_main_empty": {
+  "n": 292,
+  "mean": 1.612,
+  "median": 0.095,
+  "win": 51.0
+ },
+ "sat_on_main_active": {
+  "n": 100,
+  "mean": 0.651,
+  "median": -0.1,
+  "win": 48.0
+ },
+ "sat_all": {
+  "n": 392,
+  "mean": 1.366,
+  "median": 0.04,
+  "win": 50.3
+ },
+ "main_all": {
+  "n": 352,
+  "mean": 1.439,
+  "median": 0.6,
+  "win": 56.2
+ },
+ "main_in_both": {
+  "n": 53,
+  "mean": 0.435,
+  "median": -0.28,
+  "win": 39.6
+ }
+}

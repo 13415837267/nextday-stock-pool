@@ -1359,6 +1359,51 @@ function planMain(d) {
   });
 }
 
+/* ---- 第一百七十六轮: 明日计划 · 双方案(主抄底 / 副追高) ----
+   数据来自 latest.json 的 plans 段(盘后由 daily_run 生成), 不跨文件拼装 ——
+   主副两套策略的"当日最高分票"必须在同一份数据、同一时刻算出, 否则会出现
+   "主策略用的是昨天面板、副策略用的是今天"的错配。 */
+function plansDual(d) {
+  const pl = d.plans;
+  if (!pl || (!pl.main && !pl.alt)) return "";
+  const card = (o, label, tip) => {
+    if (!o) {
+      return `<div class="panel"><b>${esc(label)}</b><br><span class="muted">今日无达标候选 —— ${esc(tip)}</span></div>`;
+    }
+    const ok = o.system_ok !== false;
+    const rows = [];
+    rows.push(`<div class="big" style="color:${ok ? "var(--up)" : "var(--muted)"};font-size:19px">`
+      + `${esc(o.name || "")} <span class="muted" style="font-size:13px">${esc(o.code || "")}</span></div>`);
+    rows.push(`<div class="row"><b>评分：</b><b>${o.score ?? "-"}</b> `
+      + `<span class="muted" style="font-size:12px">${esc(o.score_kind || "")}</span></div>`);
+    if (o.signal) rows.push(`<div class="row"><b>今日形态：</b>${esc(o.signal)}</div>`);
+    (o.observe || []).forEach(r => rows.push(`<div class="row"><b>观察：</b>${esc(r)}</div>`));
+    (o.abort || []).forEach(r => rows.push(`<div class="row"><b>放弃：</b>${esc(r)}</div>`));
+    if (o.peers && o.peers.length) {
+      rows.push(`<div class="row"><b>同批备选：</b>${o.peers.map(x => esc((x.name || x.code) + "（" + x.code + "）")).join("、")} `
+        + `<span class="muted" style="font-size:12px">（分散用，系统口径 4 只各 25%）</span></div>`);
+    }
+    rows.push(`<div class="row"><b>卖出：</b>${esc(o.exit || "")}</div>`);
+    if (o.position_note) rows.push(`<div class="row" style="color:var(--muted);font-size:12px">${esc(o.position_note)}</div>`);
+    rows.push(`<div class="row" style="color:var(--muted);font-size:12px">${esc(label)}</div>`);
+    return `<div class="panel">${rows.join("")}</div>`;
+  };
+  const manual = (pl.manual && pl.manual.steps) || [];
+  return `<div class="plan-grid" style="margin-top:12px">
+    <div class="t1-box" style="grid-column:1/-1">
+      <div class="k muted" style="font-size:12px">明日计划 · 双方案（${esc(pl.as_of || "")} 盘后生成 · 人工观察入场 · 非下单指令）</div>
+      ${pl.note ? `<div class="row" style="margin-top:6px"><b>${esc(pl.note)}</b></div>` : ""}
+      <div class="plan-grid" style="margin-top:10px">
+        ${card(pl.main, (pl.main && pl.main.strategy_cn) || "主方案 · 抄底", "主策略评分未达门槛或风控空仓")}
+        ${card(pl.alt, (pl.alt && pl.alt.strategy_cn) || "副方案 · 追高", pl.alt_note || "低波池不足或大盘闸门关闭")}
+      </div>
+      ${manual.length ? `<div class="row" style="margin-top:10px"><b>人工执行步骤：</b>`
+        + manual.map(x => esc(x)).join("　→　") + `</div>` : ""}
+      <div class="row" style="color:var(--muted);font-size:12px">${esc((pl.manual && pl.manual.caveat) || "")}</div>
+    </div>
+  </div>`;
+}
+
 function poolMain(d) {
   const td = d.t1_decision || {};
   const picks = d.picks || [];
@@ -1548,7 +1593,7 @@ async function renderStrategy() {
     const d = await jgetOnce(isMain ? U.latest : U.satellite);
     if (seq !== RENDER_SEQ) return;
     (isMain ? headMain : headSat)(d);
-    planBox.innerHTML = isMain ? planMain(d) : planSat(d);
+    planBox.innerHTML = isMain ? (planMain(d) + plansDual(d)) : planSat(d);
   } catch (e) {
     if (seq === RENDER_SEQ) planBox.innerHTML = `<div class="loading">计划加载失败：${esc(e.message)}</div>`;
   }
