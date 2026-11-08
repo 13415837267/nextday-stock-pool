@@ -1384,6 +1384,16 @@ function plansDual(d) {
         + `<span class="muted" style="font-size:12px">（分散用，系统口径 4 只各 25%）</span></div>`);
     }
     rows.push(`<div class="row"><b>卖出：</b>${esc(o.exit || "")}</div>`);
+    // 第一百七十七轮: 缺口速查(1500日实成交逐笔)。人工盯盘最常问"高开还买不买",
+    // 四档全正 —— 深低开只是更肥, 不是唯一正期望; 所以这张表只用来"知道在赚什么钱", 不用来挑单。
+    if (o.gap_ladder && o.gap_ladder.length) {
+      rows.push(`<div class="row" style="font-size:12px"><b>缺口速查</b>`
+        + `<span class="muted">（1500日 ${o.gap_ladder.reduce((s, x) => s + x.n, 0)} 笔实成交 · 2日持有 · 含双边成本）</span><br>`
+        + o.gap_ladder.map(x => `<span style="display:inline-block;margin-right:10px">`
+          + `${esc(x.band)}：${x.n}笔 <span class="${x.mean >= 0 ? "up" : "down"}">${x.mean >= 0 ? "+" : ""}${x.mean.toFixed(2)}%</span>`
+          + ` <span class="muted">胜率${x.win}%</span></span>`).join("")
+        + `</div>`);
+    }
     if (o.position_note) rows.push(`<div class="row" style="color:var(--muted);font-size:12px">${esc(o.position_note)}</div>`);
     rows.push(`<div class="row" style="color:var(--muted);font-size:12px">${esc(label)}</div>`);
     return `<div class="panel">${rows.join("")}</div>`;
