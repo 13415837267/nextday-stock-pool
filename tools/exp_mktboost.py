@@ -90,19 +90,37 @@ def seg_split(trades):
     return out
 
 
-def main(days: int = 1500, only: list[str] | None = None) -> None:
+def build_groups(spec: str):
+    """解析 "B=-1.0:1.2,-0.8:1.5" -> 组定义;  可选 "L=2.0" 前缀指定杠杆。"""
+    lev = 1.25
+    out = []
+    for part in spec.split(";"):
+        part = part.strip()
+        if part.startswith("L="):
+            lev = float(part[2:])
+            continue
+        if part.startswith("B="):
+            for x in part[2:].split(","):
+                thr, mult = x.split(":")
+                out.append((f"b{abs(float(thr)):.1f}x{float(mult):.2f}_L{lev:g}".replace(".", ""),
+                            lev, [{"mkt_below": float(thr), "mult": float(mult)}]))
+    return out
+
+
+def main(days: int = 1500, only: list[str] | None = None, spec: str = "") -> None:
     cfg0 = load_config()
     print(f"\n[prepare] days={days}", flush=True)
     t0 = time.time()
     ctx = prepare_context(cfg0, days)
     print(f"[prepare] done in {time.time() - t0:.0f}s\n", flush=True)
 
+    groups = build_groups(spec) if spec else GROUPS
     rows = []
     print("%-10s %5s %11s %9s %8s %6s %6s %5s %7s %8s"
           % ("组", "lev", "总收益%", "年化%", "回撤%", "卡玛", "夏普", "笔数", "单笔%", "均杠杆"))
     print("-" * 92, flush=True)
 
-    for name, lev, boost in GROUPS:
+    for name, lev, boost in groups:
         if only and name not in only:
             continue
         cfg = copy.deepcopy(cfg0)
@@ -140,5 +158,8 @@ def main(days: int = 1500, only: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     d = int(sys.argv[1]) if len(sys.argv) > 1 else 1500
-    o = sys.argv[2].split(",") if len(sys.argv) > 2 and sys.argv[2] else None
-    main(d, o)
+    a2 = sys.argv[2] if len(sys.argv) > 2 else ""
+    if "=" in a2:
+        main(d, None, a2)
+    else:
+        main(d, a2.split(",") if a2 else None, "")
