@@ -60,6 +60,9 @@ GROUPS = [
     ("p45x15",  1.25, [{"min": 45, "mult": 1.5}]),
     ("p40x12",  1.25, [{"min": 40, "mult": 1.25}]),
     ("p40x20",  1.25, [{"min": 40, "mult": 2.0}]),
+    # 落地验证组: boost=None 表示**不动 config**, 直接用 config.yaml 里的值跑。
+    # 用来确认"实验里注入的参数"与"写进 config 的参数"得到逐位相同的数字。
+    ("cfg",     1.25, None),
 ]
 
 
@@ -154,7 +157,8 @@ def main(days: int = 1500, only: list[str] | None = None) -> None:
             continue
         cfg = copy.deepcopy(cfg0)
         cfg["execution"]["leverage"] = lev
-        cfg["execution"]["pool_n_boost_tiers"] = boost
+        if boost is not None:
+            cfg["execution"]["pool_n_boost_tiers"] = boost
         t1 = time.time()
         r = run_backtest(cfg, days, ctx)
         m = r["metrics"]

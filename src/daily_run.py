@@ -74,6 +74,12 @@ def _config_fp(cfg: dict) -> str:
         "score_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("score_tiers") or [])],  # 第九十六轮: 分档下注
         "gap_above": [(t.get("above"), t.get("mult")) for t in (e.get("gap_above_tiers") or [])],  # 第九十七轮: 高开降仓
         "pool_tiers": [(t.get("min"), t.get("mult")) for t in (e.get("pool_n_tiers") or [])],  # 第九十九轮: 池深分档
+        # 第一百七十五轮: 加仓档必须进指纹 —— 它直接改变成交后的仓位, 属于"会改变成交判定的字段"
+        # (第一百七十三轮的 mkt_boost_tiers 当初漏了, 一并补上)。
+        "mkt_boost": [(t.get("mkt_above"), t.get("mkt_below"), t.get("mult"))
+                      for t in (e.get("mkt_boost_tiers") or [])],
+        "pool_boost": [(t.get("min"), t.get("max"), t.get("mult"))
+                       for t in (e.get("pool_n_boost_tiers") or [])],
         "gap_floor": [(t.get("below"), t.get("min_pool"), t.get("floor")) for t in (e.get("gap_floor_tiers") or [])],  # 第一百零一轮: 深低开下限
         "max_block": (cfg.get("regime") or {}).get("max_block_days"),  # 第九十五轮: 强制复参与上限
         "blocked_frac": e.get("blocked_frac"),          # 第一百零二轮: 风控日参与系数
@@ -140,6 +146,55 @@ def _gap_floor_mult(gap: float, pool_n, ex: dict) -> tuple[float, str]:
         except (KeyError, TypeError, ValueError):
             continue
     return 0.0, ""
+
+
+def _boost_mult(pool_n, mkt_ret: float, ex: dict) -> tuple[float, str]:
+    """加仓乘数(第一百七十五轮, 与回测 do_buy 的 mkt_boost_tiers / pool_n_boost_tiers 同口径)。
+
+    两个维度独立叠乘, 都可以把仓位推过 100%(允许透支, 受 leverage 与 margin_rate 约束):
+      · 市场维度 `mkt_boost_tiers`: 信号日全市场涨跌中位数落在 [mkt_above, mkt_below]
+        —— 系统性错杀但还没到趋势崩塌(第一百七十三轮), 乘 mult;
+      · 策略维度 `pool_n_boost_tiers`: 当日达标票数 >= min —— 池越深说明越多同风格票
+        同时被打成缩量阴线, 这是策略自己看到的恐慌强度(第一百七十五轮)。
+    与 `pool_n_tiers` 的分工必须写清: 后者是"池浅降仓"(第 99 轮), 本函数是"池深加仓",
+    方向相反 —— 它们是同一组数字的两端, 不是同一个规则的两个写法。
+    """
+    mult, notes = 1.0, []
+    try:
+        _m = float(mkt_ret)
+    except (TypeError, ValueError):
+        _m = 0.0
+    for t in (ex.get("mkt_boost_tiers") or []):
+        try:
+            _hi = t.get("mkt_below")
+            _lo = t.get("mkt_above")
+            if _hi is not None and _m > float(_hi):
+                continue
+            if _lo is not None and _m < float(_lo):
+                continue
+            _k = float(t.get("mult", 1.0))
+        except (TypeError, ValueError):
+            continue
+        if _k != 1.0:
+            mult *= _k
+            notes.append(f"全市场{_m:+.1f}%错杀→{_k:.0%}仓")
+        break
+    for t in (ex.get("pool_n_boost_tiers") or []):
+        try:
+            _n = int(pool_n or 0)
+            if _n < int(t.get("min", 0)):
+                continue
+            _mx = t.get("max")
+            if _mx is not None and _n > int(_mx):
+                continue
+            _k = float(t.get("mult", 1.0))
+        except (TypeError, ValueError):
+            continue
+        if _k != 1.0:
+            mult *= _k
+            notes.append(f"达标{_n}只(池深)→{_k:.0%}仓")
+        break
+    return mult, "·".join(notes)
 
 
 def _market_median_pct(by_date: dict, date: str) -> float:
@@ -245,6 +300,17 @@ def _position_note(ex: dict) -> str:
     for _t in (ex.get("mkt_floor_tiers") or []):
         pos += (f"; 恐慌日回满仓: 全市场涨跌中位数 ≤{float(_t['mkt_below']):g}% → 撤销评分/池深折价回"
                 f"{float(_t.get('floor', 1.0)):.0%}仓")
+        break
+    for _t in (ex.get("mkt_boost_tiers") or []):
+        _hi, _lo = _t.get("mkt_below"), _t.get("mkt_above")
+        _rng = (f"[{float(_lo):g}%, {float(_hi):g}%]" if _lo is not None
+                else f"≤{float(_hi):g}%" if _hi is not None else "全区间")
+        pos += (f"; 恐慌加仓: 信号日全市场涨跌中位数落在 {_rng} → 仓位×{float(_t.get('mult', 1.0)):g}"
+                f"(超过100%的部分按融资利率计息)")
+        break
+    for _t in (ex.get("pool_n_boost_tiers") or []):
+        pos += (f"; 池深加仓: 当日达标票 ≥{int(_t.get('min', 0))} 只 → 仓位×"
+                f"{float(_t.get('mult', 1.0)):g}(池越深=越多票同步被错杀)")
         break
     if float(ex.get("blocked_frac", 0) or 0) > 0 and ex.get("block_gap_below"):
         pos += (f"; 风控日: 只在竞价缺口 ≤{float(ex['block_gap_below']):g}% 时按"
@@ -711,8 +777,9 @@ def main():
             _fl, _ft = _gap_floor_mult(gap, p.get("pool_n"), ex)   # 第一百零一轮: 深低开下限
             _mkt = _market_median_pct(by_date, rec["publish_date"])
             _km, _kt, _mf, _mft = _mkt_context(p.get("pct"), _mkt, ex)   # 第一百零三轮: 市场语境
+            _bm, _bt = _boost_mult(p.get("pool_n"), _mkt, ex)            # 第一百七十五轮: 加仓档
             _base = bfrac * _cf
-            _pos = round(max(_base * _sm * _gm * _pm * _km, _base * _fl, _base * _mf)
+            _pos = round(max(_base * _sm * _gm * _pm * _km * _bm, _base * _fl, _base * _mf)
                          * ex.get("alloc_frac_pct", 100.0), 1)
             if _fl and _pm < _fl:
                 _pt = (f"{_pt}·{_ft}" if _pt else _ft)
@@ -724,7 +791,7 @@ def main():
                 "position_pct": _pos,
                 "pos_note": ("·".join(x for x in [
                     (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
-                    _gt, _pt, _kt, _mft] if x) or None),
+                    _gt, _pt, _kt, _mft, _bt] if x) or None),
                 "gap_pct": round(gap, 2),
                 "pool_n": p.get("pool_n"),
                 "chain": chain,
@@ -826,8 +893,9 @@ def main():
             _fl, _ft = _gap_floor_mult(gap, p.get("pool_n"), ex)   # 第一百零一轮
             _mkt = _market_median_pct(by_date, rec["publish_date"])
             _km, _kt, _mf, _mft = _mkt_context(p.get("pct"), _mkt, ex)   # 第一百零三轮
+            _bm, _bt = _boost_mult(p.get("pool_n"), _mkt, ex)            # 第一百七十五轮
             _base = bfrac * _cf
-            _pos_final = round(max(_base * _sm * _gm * _pm * _km, _base * _fl, _base * _mf)
+            _pos_final = round(max(_base * _sm * _gm * _pm * _km * _bm, _base * _fl, _base * _mf)
                                * ex.get("alloc_frac_pct", 100.0), 1)
             if _fl and _pm < _fl:
                 _pt = (f"{_pt}·{_ft}" if _pt else _ft)
@@ -841,7 +909,7 @@ def main():
                 "position_pct": _pos_final,
                 "pos_note": ("·".join(x for x in [
                     (f"评分{float(p['score']):.2f}→{_sm:.0%}" if (p.get("score") is not None and _sm != 1.0) else ""),
-                    _gt, _pt, _kt, _mft] if x) or None),
+                    _gt, _pt, _kt, _mft, _bt] if x) or None),
                 "gap_pct": round(gap, 2),
                 "pool_n": p.get("pool_n"),
                 "chain": chain,
