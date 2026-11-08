@@ -368,8 +368,14 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     #   实盘含义: 自有资金 1 份 + 融资 (lev-1) 份; 单票集中度/标的资格由券商约束, 回测不建模。
     lev = float(ex.get("leverage", 1.0) or 1.0)
     lev_rate = float(ex.get("margin_rate", 0.055) or 0.0)
+    # 第一百七十三轮: 闲置现金收益。策略年均只有约 24% 的交易日有持仓, 其余时间现金
+    # 完全空转(收益 0)。实盘上这部分钱可以买国债逆回购/货币 ETF, 年化约 1.5~2%。
+    # 这里按"正现金余额 × 年化 / 252"逐日计提, 不改变任何买卖判定(纯增益)。
+    # 缺省 0.0 = 旧口径逐位等价。
+    cash_yield = float(ex.get("cash_yield", 0.0) or 0.0)
     cash = float(bt_cfg["initial_capital"])
     interest_total = 0.0
+    yield_total = 0.0
     curve: dict[str, float] = {}
     trades: list[dict] = []
     pending_buy: tuple[str, list[dict]] | None = None   # (buy_date, picks)
@@ -935,6 +941,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         # 次日开盘: 前一交易日收盘卖出回笼的资金此时方可投入(T+2收盘卖模式)
         cash += pending_cash
         pending_cash = 0.0
+        # 闲置现金计息(第一百七十三轮, 可选; cash_yield=0 时逐位等价):
+        # 只对正余额计提 —— 透支部分已由下面的融资利息单独扣, 两者不可叠加。
+        if cash_yield > 0 and cash > 0:
+            _y = cash * cash_yield / 252.0
+            cash += _y
+            yield_total += _y
         # 融资利息: 对透支额按年化逐日计提(自然日近似为交易日 252)
         if cash < 0 and lev_rate > 0:
             _int = -cash * lev_rate / 252.0
