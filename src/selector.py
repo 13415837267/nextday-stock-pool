@@ -142,8 +142,13 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     #   研究结论(第172轮): 26 个因子里极差最大(0.52pp), 但 2024-09 之前为负、之后转正,
     #   属时段依赖, 故只作可选门槛(selection.dip_vwap_dev_max), 默认不启用。
     _vwap = panel["amount"] / panel["vol"].replace(0, np.nan)
-    put("vwap_dev", (panel["close"] / _vwap.replace(0, np.nan) - 1) * 100)
-    del _vwap, _pc
+    _dev = panel["close"] / _vwap.replace(0, np.nan) - 1
+    # 数据卫生: 个别标的的 amount 与 vol 单位不一致(如 vol 记"手"), 会让均价差 100 倍、
+    # 偏离度算成 -99%。收盘价相对当日均价偏离超过 60% 在正常交易中不可能出现(涨跌停
+    # 也就 ±20%), 一律置 NaN 而不是留成极端值 —— 门槛是"偏离越小越好", 负得离谱的
+    # 脏值会被当成"最好的票"保留下来, 这是必须堵的方向。
+    put("vwap_dev", _dev.where(_dev.abs() <= 0.6) * 100)
+    del _vwap, _dev, _pc
     # 扩展微观结构特征(均仅用截至T日数据, 供可选条件/因子使用):
     put("prev_pct", g["pct"].transform(lambda s: s.shift(1)))                             # T-1日涨幅%
     panel["down2"] = ((panel["pct"] < 0) & (panel["prev_pct"] < 0)).astype("int8")        # 连续两日阴线
