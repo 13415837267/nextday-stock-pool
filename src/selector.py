@@ -133,7 +133,22 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     del hl_rng
     body_low = panel[["open", "close"]].min(axis=1)
     panel["low_tail"] = (body_low - panel["low"]) / _pc * 100                            # 下影线长度%
-    del body_low, _pc
+    del body_low
+    # VWAP 偏离(第一百七十二轮): 当日成交均价 = 成交额/成交量。
+    #   数据源 fields='all' 有 avg_price, 但面板缓存只存 16 列没有它; 实测 amount/vol
+    #   与 avg_price 逐位一致(1812492376.93/150481965 = 12.0446), 故从已缓存字段反推,
+    #   无需重拉历史。与 close_pos 的区别: close_pos 用最高最低(极值), vwap_dev 用成交量
+    #   加权均价 —— 后者才是"全体成交者的成本线", 收盘在其下方=尾盘仍在出货。
+    #   研究结论(第172轮): 26 个因子里极差最大(0.52pp), 但 2024-09 之前为负、之后转正,
+    #   属时段依赖, 故只作可选门槛(selection.dip_vwap_dev_max), 默认不启用。
+    _vwap = panel["amount"] / panel["vol"].replace(0, np.nan)
+    _dev = panel["close"] / _vwap.replace(0, np.nan) - 1
+    # 数据卫生: 个别标的的 amount 与 vol 单位不一致(如 vol 记"手"), 会让均价差 100 倍、
+    # 偏离度算成 -99%。收盘价相对当日均价偏离超过 60% 在正常交易中不可能出现(涨跌停
+    # 也就 ±20%), 一律置 NaN 而不是留成极端值 —— 门槛是"偏离越小越好", 负得离谱的
+    # 脏值会被当成"最好的票"保留下来, 这是必须堵的方向。
+    put("vwap_dev", _dev.where(_dev.abs() <= 0.6) * 100)
+    del _vwap, _dev, _pc
     # 扩展微观结构特征(均仅用截至T日数据, 供可选条件/因子使用):
     put("prev_pct", g["pct"].transform(lambda s: s.shift(1)))                             # T-1日涨幅%
     panel["down2"] = ((panel["pct"] < 0) & (panel["prev_pct"] < 0)).astype("int8")        # 连续两日阴线
@@ -332,6 +347,8 @@ def _select_one(
             trend &= df["amp_pct"] <= sel_cfg["dip_amp_max"]
         if sel_cfg.get("dip_close_pos_max") is not None:    # 收盘位置上限: 阴线收太高=尾盘仍在出货
             trend &= df["close_pos"] <= sel_cfg["dip_close_pos_max"]
+        if sel_cfg.get("dip_vwap_dev_max") is not None:     # 收盘相对成交均价上限(第一百七十二轮, 默认不启用)
+            trend &= df["vwap_dev"] <= sel_cfg["dip_vwap_dev_max"]
         if sel_cfg.get("dip_low_tail_min") is not None:     # 下影线下限: 盘中已有恐慌承接
             trend &= df["low_tail"] >= sel_cfg["dip_low_tail_min"]
         if sel_cfg.get("dip_prev_pct_min") is not None:     # T-1日涨幅下限(排除前日已大跌)
