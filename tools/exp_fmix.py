@@ -83,6 +83,11 @@ def prepare(cfg: dict, days: int) -> pd.DataFrame:
     panel["vwap_gap"] = (_av / panel["pre_close"].replace(0, np.nan) - 1) * 100      # 均价相对昨收%
     panel["vwap_z"] = ((panel["close"] - _av)
                        / (panel["high"] - panel["low"]).replace(0, np.nan))          # 标准化(-1~1)
+    # 时序版: 同一只票自己的历史分位(vs 横截面分位), 回答"今天是这只票少见的位置吗"
+    _roll = g["vwap_dev"]
+    _m60 = _roll.transform(lambda x: x.rolling(60, min_periods=40).mean())
+    _s60 = _roll.transform(lambda x: x.rolling(60, min_periods=40).std())
+    panel["vwap_ts"] = ((panel["vwap_dev"] - _m60) / _s60.replace(0, np.nan))
 
     # ---- 形态结构: 上影占比 / 下影占比 / 连续下跌
     body_hi = panel[["open", "close"]].max(axis=1)
@@ -149,6 +154,7 @@ FACTORS = [
     ("vwap_dev", "收盘相对VWAP%", 1),
     ("vwap_gap", "VWAP相对昨收%", 1),
     ("vwap_z", "VWAP标准化", 1),
+    ("vwap_ts", "VWAP时序z(60日)", 1),
     # 本轮新增: 横截面分位(当日全池 rank)
     ("vr_q", "量比分位", 1),
     ("turn_q", "换手分位", 1),
@@ -288,6 +294,28 @@ def main(days: int = 1500) -> None:
         report(sub_g, f"{pname} · 闸门开", out, pname + "_gate")
         print(f"\n[{pname}] 笔数 {len(sub_all):,} / {sub_all['trade_date'].nunique()} 日 "
               f"= {out['pools'][pname]['per_day']} 笔/日", flush=True)
+
+    # ---- 市场状态拆分: 同一因子在趋势向上/向下时方向是否一致(状态条件化)
+    trend = (reg["mkt_idx"] >= reg["mkt_ma"])
+    tmap = panel["trade_date"].map(trend).fillna(True).astype(bool).to_numpy()
+    rank = sorted([c for c, _, _ in FACTORS if not out["factors"]["wide"][c].get("skip")],
+                  key=lambda c: -abs(out["factors"]["wide"][c]["mono"]))[:6]
+    print("\n=== 市场状态 × 因子 (宽池·闸门开, 只列 |单调性| 前 6) ===")
+    print("%-14s | %-28s | %-28s" % ("因子", "趋势向上 Q1→Q5 / 极差 / 单调", "趋势向下 Q1→Q5 / 极差 / 单调"))
+    for col in rank:
+        line = []
+        for lab, mm in (("up", wide & tmap), ("dn", wide & ~tmap)):
+            sub = panel.loc[mm & gate]
+            t = bucket_table(sub, col)
+            out.setdefault("state", {}).setdefault(col, {})[lab] = t
+            if t.get("skip"):
+                line.append("样本不足")
+                continue
+            line.append("%+.3f→%+.3f / %.2f / %+.2f  (n=%d)"
+                        % (t["buckets"][0]["ret"], t["buckets"][-1]["ret"],
+                           t["spread"], t["mono"], t["n"]))
+        print("%-14s | %-40s | %-40s" % (col, line[0], line[1]))
+    out["state_meta"] = {"trend_up_days": int(trend.sum()), "all_days": int(len(trend))}
 
     # ---- 显式组合网格: 有经济学含义的三对, 各自在严池与宽池上跑
     PAIRS = [("vwap_dev", "vol_ratio"), ("vwap_dev", "close_pos"), ("vwap_dev", "gap_t")]
