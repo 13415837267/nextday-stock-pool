@@ -355,6 +355,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     # 分离度 2.05pp —— 缺口是这批因子中最强的单变量。既然门槛两侧差这么大,
     # 门槛内部是否继续单调就是自然的下一步: 越深低开越值得重仓。
     gap_boost_tiers = ex.get("gap_boost_tiers") or []
+    # 第一百七十五轮: 池深加仓 [{min, max, mult}] —— 与市场维度正交的"策略自身维度"。
+    # 200 笔样本按当日合格池深分档: 10~20 只 +0.63% / 20~40 只 +0.84% / 40 只以上 +2.21%。
+    # 现有 pool_n_tiers 只做"池浅降仓"(第 99 轮), 从没做过"池深加仓" —— 而池深恰恰是
+    # "今天有多少票同时被打成缩量阴线"的直接度量, 是策略自己看到的恐慌强度,
+    # 与全市场涨跌幅(mkt_boost)测的是不同东西: 普跌时池深大但幅度可能只有 -0.8%。
+    pool_n_boost_tiers = ex.get("pool_n_boost_tiers") or []
     # 信号日"市场典型个股涨跌"(全市场 pct 中位数): 只用 T 日收盘后的横截面, 无未来函数。
     # 用于把"大盘一起跌"(系统性错杀, 次日修复有共振)与"大盘平稳而个股独跌"(个股有事)分开。
     mkt_ret_map: dict[str, float] = {}
@@ -765,6 +771,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 第一百七十四轮: 同一分支支持分位档(rank_below / rank_above, 0~1)。
             # 分位模式不要求个股 pct 存在(它只用市场横截面), 但绝对阈值模式仍保留
             # 原 `_pct_sig is not None` 的语义, 以保证不配 mkt_rank_win 时逐位等价。
+            # 池深加仓: 策略自身维度(今天有多少票同时符合形态), 独立叠乘。
+            if pool_n_boost_tiers:
+                _pn = int(p.get("pool_n") or 0)
+                for _t in pool_n_boost_tiers:
+                    if _pn < int(_t.get("min", 0)):
+                        continue
+                    _pm = _t.get("max")
+                    if _pm is not None and _pn > int(_pm):
+                        continue
+                    pick_frac *= float(_t.get("mult", 1.0))
+                    break
+
             # 缺口深度加仓: 与 market 维度正交(个股 vs 全市场), 独立叠乘。
             if gap_boost_tiers and p.get("_gap") is not None:
                 _g = float(p["_gap"]) * 100.0
