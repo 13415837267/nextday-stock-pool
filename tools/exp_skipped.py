@@ -78,41 +78,56 @@ def main(days: int = 1500) -> None:
     print(f"[diag] 跳过记录 {len(skips)} 条", flush=True)
 
     ff = fee_factor(cfg["execution"])
-    per_code = ctx["per_code"]
+    bd = ctx["by_date"]
+    cal = sorted(bd)                      # 全局交易日, 字典序即时间序
+    cal_i = {d: i for i, d in enumerate(cal)}
+
+    def px(d: str, code: str, col: str = "open_adj") -> float | None:
+        df = bd.get(d)
+        if df is None:
+            return None
+        m = df[df["ts_code"] == code]
+        if m.empty:
+            return None
+        try:
+            v = float(m.iloc[0][col])
+        except Exception:
+            return None
+        return v if np.isfinite(v) and v > 0 else None
 
     rows = []
-    miss = 0
+    miss: dict[str, int] = defaultdict(int)
     for t in skips:
         code, d = t["code"], t.get("buy_date") or ""
-        sub = per_code.get(code)
-        if sub is None or d not in sub.index:
-            miss += 1
-            continue
-        idx = sub.index
-        pos = idx.get_loc(d)
+        note = t.get("note") or ""
         # 一字涨停/停牌当天本来就买不到, 这类"反事实"没有意义, 单独归类
-        if "停牌" in (t.get("note") or "") or "一字" in (t.get("note") or ""):
-            rows.append({"kind": bucket(t.get("note")), "ret": None, "buy": d})
+        if "停牌" in note or "一字" in note:
+            rows.append({"kind": bucket(note), "ret": None, "buy": d})
             continue
-        if pos + 1 >= len(idx):
-            miss += 1
+        i = cal_i.get(d)
+        if i is None:
+            miss["日期不在日历(停牌日)"] += 1
             continue
-        d2 = idx[pos + 1]
-        try:
-            b = sub.at[d, "open_adj"]
-            s = sub.at[d2, "open_adj"]
-        except Exception:
-            miss += 1
+        b = px(d, code)
+        if b is None:
+            miss["T+1 取不到价"] += 1
             continue
-        if not (np.isfinite(b) and np.isfinite(s)) or b <= 0:
-            miss += 1
+        # T+2 = 下一个有该票行情的交易日(最多顺延 5 日, 与正式卖出逻辑一致)
+        s_, d2 = None, None
+        for j in range(i + 1, min(i + 7, len(cal))):
+            v = px(cal[j], code)
+            if v is not None:
+                s_, d2 = v, cal[j]
+                break
+        if s_ is None:
+            miss["T+2 取不到价"] += 1
             continue
-        ret = s / b * ff - 1.0
-        rows.append({"kind": bucket(t.get("note")), "ret": float(ret), "buy": d,
-                     "gap": t.get("note", "")})
+        rows.append({"kind": bucket(note), "ret": float(s_ / b * ff - 1.0), "buy": d,
+                     "gap": note})
 
-    print(f"[diag] 可重算 {len([x for x in rows if x['ret'] is not None])} 条, 无法重算 {miss} 条\n",
-          flush=True)
+    print(f"[diag] 可重算 {sum(1 for x in rows if x['ret'] is not None)} 条, "
+          f"停牌/一字 {sum(1 for x in rows if x['ret'] is None)} 条, "
+          f"取价失败 {sum(miss.values())} 条 {dict(miss) if miss else ''}\n", flush=True)
 
     by: dict[str, list] = defaultdict(list)
     for x in rows:
