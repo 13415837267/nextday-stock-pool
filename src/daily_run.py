@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 6,          # 181: 副策略入场闸门加 0.3% 缓冲(闸门开 != 允许开新仓)
+        "plan_ver": 7,          # 183: 计划卡补具体买卖日期(信号/买入/卖出), 副策略位注改现行口径
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -462,7 +462,7 @@ def _score_band(score) -> dict | None:
 
 def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                  ex: dict, t1: dict, regime_info: dict, names: dict | None = None,
-                 reg=None) -> dict:
+                 reg=None, cal: list | None = None) -> dict:
     """生成"明日计划"双方案卡片: 给人工盯盘执行, 不是自动下单指令。
 
     为什么单独一块而不是复用 picks:
@@ -476,6 +476,30 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
       2) 观察清单里每条能追到 config 已回测参数的, 标"回测口径"; 追不到的(分时确认、
          盘口承接)一律标"未回测"—— 不许把经验包装成统计结论。
     """
+    # 第一百八十三轮: 计划卡补"具体哪一天" —— 旧卡片只写"T+2 收盘卖""持 10 个交易日后卖",
+    # 用户看到的是相对日, 得自己数日历; 副策略尤其明显(持 10 日 = 两整周)。
+    # 口径: 用真实交易日历 cal 往后数 offset 个交易日; 日历不够长(信号日=日历末日)时
+    # 按工作日推算并在 note 里注明"遇节假日顺延", 不假装精确。
+    _sig = str(signal_date).replace("-", "")
+
+    def _d(offset: int) -> tuple[str, bool]:
+        """返回 (日期 YYYY-MM-DD, 是否落在真实交易日历内)。"""
+        if offset <= 0:
+            return _fmt(_sig), True
+        if cal:
+            try:
+                i = cal.index(_sig)
+            except ValueError:
+                i = -1
+            if i >= 0 and i + offset < len(cal):
+                return _fmt(cal[i + offset]), True
+        try:
+            import pandas as _pd
+            return (_pd.bdate_range(start=_fmt(_sig), periods=offset + 1)[offset]
+                    .strftime("%Y-%m-%d"), False)
+        except Exception:  # noqa: BLE001
+            return "", False
+
     plans = {"as_of": signal_date, "main": None, "alt": None,
              "manual": {
                  "steps": [
@@ -518,6 +542,16 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                 "开盘跌幅 <= -5%: 深破位, 修复概率显著下降 [未回测, 经验规则]",
             ],
             "exit": "T+2 当日 14:55 收盘卖出(持满整个 T+2 交易日)",
+            # 第一百八十三轮: 具体日期(信号日 / 买入日 / 卖出日), 页面画时间轴用。
+            "dates": {
+                "signal": _d(0)[0],
+                "buy": _d(1)[0],
+                "exit": _d(2)[0],
+                "hold_trading_days": 1,
+                "exact": bool(_d(2)[1]),
+                "note": ("T 日收盘出信号 → T+1 开盘买入 → T+2 收盘卖出, 占用 2 个交易日"
+                         + ("" if _d(2)[1] else "（日历未发布, 日期按工作日推算, 遇节假日顺延）")),
+            },
             "system_ok": bool(t1.get("allow_buy")),
             "position_pct": (t1.get("position_pct") if t1.get("allow_buy") else 0.0),
             # 第一百七十七轮: 缺口速查表 —— 人工盯盘最常问的是"明天高开还要不要买",
@@ -591,7 +625,7 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                   f"（= 收盘 {s.get('close')} × (1-{float(P.get('pullback_pct') or 0):g}%)）, "
                   f"{int(P.get('pullback_days') or 1)} 个交易日内触及即成交; 开盘低于限价按开盘价成交"
                   " [不是追开盘价: 1500 日实测按开盘价买只有 19.01%, 挂回踩单 32.38%]")
-                 if _gate_ok else
+                 if _entry_ok else
                  (f"今日闸门关闭, 不挂单; 若明日开闸, 参考限价为 "
                   f"{round(float(s.get('close') or 0) * (1 - float(P.get('pullback_pct') or 0) / 100), 2)}（收盘 × (1-"
                   f"{float(P.get('pullback_pct') or 0):g}%)）, 须按开闸当日收盘重算"))
@@ -607,6 +641,19 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             "exit": (f"持有 {P.get('hold_days')} 个交易日后收盘卖; 移动止损 "
                      f"{float(P.get('trail') or 0) * 100:g}% / 固定止损 "
                      f"{float(P.get('stop') or 0) * 100:g}% [回测口径]"),
+            # 第一百八十三轮: 副策略最需要"具体日期" —— "持 10 个交易日"是两整周, 用户
+            # 无法从卡片上知道哪天该卖。这里给 T 日 / T+1 买入 / T+1+N 卖出三个真实日期。
+            "dates": (lambda _h: {
+                "signal": _d(0)[0],
+                "buy": _d(1)[0],
+                "exit": _d(1 + _h)[0],
+                "hold_trading_days": _h,
+                "exact": bool(_d(1 + _h)[1]),
+                "note": (f"T 日收盘出信号 → T+1 开盘买入 → 持满 {_h} 个交易日, "
+                         f"第 {_h + 1} 个交易日收盘卖出"
+                         + ("" if _d(1 + _h)[1] else "（日历未发布, 日期按工作日推算, 遇节假日顺延）")
+                         + "；期间触发移动止损/固定止损/大盘闸门则当日收盘提前离场"),
+            })(max(1, int(P.get("hold_days") or 1))),
             # 第一百七十九轮: 回踩限价 —— 计划卡必须给出"挂哪个价、挂几天", 否则用户
             # 只能按开盘价追, 回测的 32% 在实盘就落不到(回测口径是限价成交)。
             # 第一百八十轮: 闸门关闭时**不得**给挂单价与仓位。旧实现无条件输出
@@ -620,11 +667,13 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             } if _entry_ok and float(P.get("pullback_pct") or 0) > 0 and s.get("close") else None),
             "system_ok": _entry_ok,
             "position_pct": (round(100.0 / max(1, int(P.get("max_pos") or 1)), 1) if _entry_ok else 0.0),
-            # 第一百七十六轮: 只买第 1 名的代价(1500 日实测, 同引擎同成本)
+            # 第一百八十三轮: 这段此前一直写着"单吊 9.09%、4 只并发 18.99%" —— 那是第 176 轮
+            # 的旧口径(无限价、无闸门、无入场缓冲), 与当前定稿(单吊 + 1% 限价 + 闸门 + 0.3% 缓冲)
+            # 完全对不上, 页面在自相矛盾。换成现行实测数字。
             "position_note": (
-                "系统口径是一次买满 4 只、每只 25%; 只买第 1 名(单吊) 1500 日年化 9.09% / "
-                "回撤 -43.71%, 每日 1 只滚动 8.10% / -17.87%, 都不如 4 只并发的 18.99% / -18.67%"
-                " —— 差距来自资金利用率与分散, 不是选股(第 1 名的单笔并不更强)。"),
+                "系统口径 = 单吊 1 只、100% 仓位（第 180 轮定稿）。1500 日实测: 单吊 42.2% / "
+                "回撤 -21.63% / 卡玛 1.95 / 106 笔; 若换成 4 只并发（max_pos=4, buys_per_day=4）"
+                "则 32.8% / -14.6% / 卡玛 2.25 —— 卡玛更高但年化低 9.4pp。两者都跑赢基准 42.9%。"),
             # 第一百八十轮: 同批也要给挂单价。回测口径是 4 只各 25%, 只标名字等于
             # 让用户只挂第 1 只 —— 那样拿到的是单吊收益(1500 日 10.15%/-46.43%), 不是 32.38%。
             "peers": [{"code": x.get("code"),
@@ -1467,7 +1516,7 @@ def main():
     # 第一百七十六轮: 明日计划双方案(主抄底 / 副追高)。放在 latest 之前算好,
     # 异常在其中被吞掉并写 alt_error, 不影响主流程出池。
     _plans = _build_plans(cfg, by_date[signal_date], _fmt(signal_date), verified, ranked,
-                          ex, t1_decision, regime_info, names, reg)
+                          ex, t1_decision, regime_info, names, reg, cal)
 
     latest = {
         "update_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
