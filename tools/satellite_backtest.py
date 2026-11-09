@@ -477,7 +477,11 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                          if P["min_score"] > 0
                          else f" · 候选池展示≤{P['pool_show']}只 / 只买前 {P['buys_per_day']} 名")
                       + (f" / 止损 {P['stop'] * 100:g}%" if P["stop"] < 0 else "")
-                      + (" · 大盘 MA20 闸门" if P["gate"] else "")
+                      # 第一百八十一轮: 入场缓冲要写进 rules —— 否则页面只看到"MA20 闸门",
+                      # 会以为闸门一开就能买, 与实际的"还要站上 +0.3%"对不上。
+                      + ((f" · 大盘 MA20 闸门(入场需站上 MA20+{P['gate_entry_buf']:g}%)"
+                          if P["gate_entry_buf"] > 0 else " · 大盘 MA20 闸门")
+                         if P["gate"] else "")
                       + f" · 单边成本 {_half * 100:g}%"),
         },
         "metrics": {
