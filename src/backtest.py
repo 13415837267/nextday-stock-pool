@@ -404,7 +404,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                           index=list(main_dates), dtype="float64")
         _vol = _vseq.rolling(_vol_win, min_periods=max(10, _vol_win // 2)).std()
         mkt_vol_map = {str(k): float(v) for k, v in _vol.items() if np.isfinite(v)}
-    min_top1_score = ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
+    _env_ms = os.environ.get("BT_MIN_SCORE")   # 第一百七十八轮: 评分绝对门槛实验开关
+    min_top1_score = float(_env_ms) if _env_ms else ex.get("min_top1_score")     # 可选: 当日top1评分低于该值则放弃买入(质量门槛)
     gate_scale = bool(ex.get("score_gate_pool_scale", False))   # 第一百轮: 门槛按池内z分理论上限缩放
     gate_ref = float(ex.get("score_gate_ref_pool", 40) or 40)    # 缩放基准池深(该池深下门槛=min_top1_score)
     # 第九十六轮: 评分分档下注 [{min: 1.5, mult: 1.0}, {min: 1.1, mult: 0.6}, ...] 降序匹配
@@ -637,6 +638,30 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         # 按评分排序最多买 max_buy_per_day 只; 风控触发日按 blocked_frac 降仓参与(0=空仓)
         max_n = int(ex.get("max_buy_per_day", 0))
         if max_n > 0:
+            # 第一百七十八轮: 择股口径可选 —— score(默认, 按盘后评分) / gap(按 T+1 开盘缺口深浅)。
+            # 依据: 横截面 IC 体检(exp_factor_ic)显示现行评分在可买样本里 IC≈0(t=+0.15),
+            # 而缺口单调有效(<=-4% +0.99% / -4~-3 +0.82% / -3~-2 +0.55% / -2~-1 +0.32%)。
+            # 缺口是 T+1 集合竞价结束即可见的信息, 与"盘后出候选、次日人工观察入场"的
+            # 工作流一致, 不含未来函数(买入本就发生在看到开盘价之后)。
+            _po = os.environ.get("BT_PICK_ORDER") or str(ex.get("pick_order") or "score")
+            if _po == "gap":
+                qualified.sort(key=lambda p: float(p.get("_gap") or 0.0))   # 越负(越深)越前
+            elif _po == "gap_band":
+                # 缺口区间择优(第一百七十八轮): 优先挑缺口落在 [lo, hi] 的候选, 区间内按评分降序。
+                # 依据: 收益集中在 -3%~-1% 这一段(+0.55%/+0.32%), 而 <=-4% 是"暴雷/崩塌"
+                # (单笔虽高但方差巨大, 且这类日子稀少 -> 笔数腰斩、回撤翻倍, 实测 TOPK=5 gap
+                # 排序 109.52%/-34.78%)。区间筛选保留"低开承接"证据, 剔除极端破位。
+                _band = ex.get("pick_gap_band") or [-3.0, -1.0]
+                _envb = os.environ.get("BT_GAP_BAND")
+                if _envb:
+                    _band = [float(x) for x in _envb.split(",")]
+                _lo, _hi = float(_band[0]), float(_band[1])
+
+                def _key(p):
+                    g = float(p.get("_gap") or 0.0) * 100.0
+                    _in = (_lo <= g <= _hi)
+                    return (0 if _in else 1, -float(p.get("score") or 0.0))
+                qualified.sort(key=_key)
             qualified = qualified[:max_n]
         frac = ex.get("alloc_frac_pct", 5.0) / 100.0
         if not day_ok:

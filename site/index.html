@@ -1394,6 +1394,26 @@ function plansDual(d) {
           + ` <span class="muted">胜率${x.win}%</span></span>`).join("")
         + `</div>`);
     }
+    // 第一百七十八轮: 评分档位 —— 两个窗口一起给。1500 日单调、全史不单调,
+    // 单给任何一个都会让用户以为"评分越高越赚", 而横截面 IC 检验(t=+0.28)否定了这一点。
+    if (o.score_band) {
+      const b = o.score_band;
+      if (b.below_gate) {
+        rows.push(`<div class="row" style="font-size:12px"><b>评分档位</b> `
+          + `<span class="down">${esc(b.band)}</span> · <span class="muted">`
+          + `1500 日回测里这一档从未成交 —— 系统门槛就是 1.0, 低于它一票否决。`
+          + `所以"评分最高"在这里意味着"连门槛都没过", 不是"质量最好的那只"。</span></div>`);
+      } else {
+        rows.push(`<div class="row" style="font-size:12px"><b>评分档位</b> `
+          + `<span class="muted">${esc(b.band)}</span> · `
+          + `<span class="muted">1500日</span> ${b.n15}笔 <span class="${b.m15 >= 0 ? "up" : "down"}">${b.m15 >= 0 ? "+" : ""}${b.m15.toFixed(2)}%</span>`
+          + ` <span class="muted">胜率${b.w15}%</span> · `
+          + `<span class="muted">全史</span> ${b.nall}笔 <span class="${b.mall >= 0 ? "up" : "down"}">${b.mall >= 0 ? "+" : ""}${b.mall.toFixed(2)}%</span>`
+          + ` <span class="muted">胜率${b.wall}%</span><br>`
+          + `<span class="muted">评分是当日同池的横截面 z 分, 不是 0~100 分; 实测它排不出谁更好`
+          + `(IC≈0), 只用来卡质量下限。真正决定这一笔的是次日开盘缺口。</span></div>`);
+      }
+    }
     if (o.position_note) rows.push(`<div class="row" style="color:var(--muted);font-size:12px">${esc(o.position_note)}</div>`);
     rows.push(`<div class="row" style="color:var(--muted);font-size:12px">${esc(label)}</div>`);
     return `<div class="panel">${rows.join("")}</div>`;

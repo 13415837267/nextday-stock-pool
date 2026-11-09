@@ -428,6 +428,37 @@ _GAP_LADDER = [
     {"band": "> 0（高开）", "n": 132, "mean": 1.20, "win": 54.5},
 ]
 
+# 第一百七十八轮: 评分档位速查(实成交逐笔, T+1开→T+2收, 含双边成本)。
+# lo/hi 是 score 区间(横截面 z 分), 两个窗口的样本与均值分开列 —— 因为**它们不一致**:
+#   1500 日单调(0.69/1.25/1.62/2.12), 全史不单调(1.46/1.02/0.87/1.64, 1.5~1.8 反而最差)。
+# 不一致本身就是结论: 评分排序**没有稳定预测力**(横截面 IC +0.0026, t=+0.28, 第 1 名
+# 甚至低于全池均值)。所以本表只回答"这一笔落在哪个质量档", 不作为挑单或加仓依据。
+_SCORE_BANDS = [
+    {"lo": 1.0, "hi": 1.2, "n15": 65, "m15": 0.686, "w15": 47.7, "nall": 148, "mall": 1.464, "wall": 49.3},
+    {"lo": 1.2, "hi": 1.5, "n15": 97, "m15": 1.245, "w15": 56.7, "nall": 223, "mall": 1.019, "wall": 55.2},
+    {"lo": 1.5, "hi": 1.8, "n15": 89, "m15": 1.620, "w15": 57.3, "nall": 184, "mall": 0.866, "wall": 53.8},
+    {"lo": 1.8, "hi": 99.0, "n15": 101, "m15": 1.950, "w15": 60.4, "nall": 170, "mall": 1.639, "wall": 60.0},
+]
+
+
+def _score_band(score) -> dict | None:
+    """把当日评分映射到历史档位(不改变任何执行)。"""
+    try:
+        s = float(score)
+    except (TypeError, ValueError):
+        return None
+    if s < 1.0:
+        # 低于 min_top1_score 的票系统本来就不买(1499 日零成交)。卡片仍要能说清"它在门槛下",
+        # 而不是留空 —— 否则用户看到"评分 0.95"却没有任何参照。
+        return {"band": "< 1.0（低于质量门槛）", "n15": 0, "m15": None, "w15": None,
+                "nall": 0, "mall": None, "wall": None, "below_gate": True}
+    for b in _SCORE_BANDS:
+        if b["lo"] <= s < b["hi"]:
+            return {"band": f"{b['lo']:g} ~ {b['hi']:g}" if b["hi"] < 90 else f"≥ {b['lo']:g}",
+                    "n15": b["n15"], "m15": b["m15"], "w15": b["w15"],
+                    "nall": b["nall"], "mall": b["mall"], "wall": b["wall"]}
+    return None
+
 
 def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                  ex: dict, t1: dict, regime_info: dict, names: dict | None = None) -> dict:
@@ -475,6 +506,9 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             "code": mp.get("code"), "name": mp.get("name"),
             "close": mp.get("close"), "pct": mp.get("pct"),
             "score": mp.get("score"), "score_kind": "横截面 z 分(当日同池比较, 非 0~100)",
+            # 第一百七十八轮: 评分档位体检 —— 实成交逐笔, 两个窗口分开列。
+            # 必须一起给: 1500 日单调、全史不单调, 单给任何一个都会误导。
+            "score_band": _score_band(mp.get("score")),
             "signal": mp.get("reasons"),
             "observe": _observe,
             "abort": [
