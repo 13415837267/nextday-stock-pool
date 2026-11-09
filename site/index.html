@@ -1193,7 +1193,11 @@ function planSat(d) {
     rows.push(`<b>选股：</b>低波前 ${lowPct}% · 距 5 日线 <b>${Number(sig.dist_ma5 ?? 0).toFixed(2)}%</b>`
       + (sig.ivol20 != null ? ` · 20日特质波动 ${Number(sig.ivol20).toFixed(2)}` : "")
       + (sig.pct != null ? ` · 今日 ${sig.pct > 0 ? "+" : ""}${sig.pct}%` : ""));
-    rows.push(`<b>买入口径：</b>9:25 集合竞价按开盘价买入 <b>${each}%</b> 仓位（资金分 ${mx} 份）；竞价缺口 <b>${P.gap_min}%~+${P.gap_max}%</b> 之外不成交，一字涨停/停牌买不到`);
+    const _pb = Number(P.pullback_pct || 0), _pbd = Number(P.pullback_days || 1);
+    const _lim = (_pb > 0 && sig.close) ? (Number(sig.close) * (1 - _pb / 100)).toFixed(2) : null;
+    rows.push(`<b>买入口径：</b>` + (_lim
+      ? `挂限价买单 <b>${_lim}</b>（= 今日收盘 ${sig.close} × (1-${_pb}%)），<b>${_pbd}</b> 个交易日内盘中触及即成交，开盘价更低则按开盘价；未触及到期撤单。每只 <b>${each}%</b> 仓位（资金分 ${mx} 份）；竞价缺口 <b>${P.gap_min}%~+${P.gap_max}%</b> 之外不成交，一字涨停/停牌买不到`
+      : `9:25 集合竞价按开盘价买入 <b>${each}%</b> 仓位（资金分 ${mx} 份）；竞价缺口 <b>${P.gap_min}%~+${P.gap_max}%</b> 之外不成交，一字涨停/停牌买不到`));
   } else if (poss.length) {
     title = `📦 明日不新买 · 继续持有 ${poss.length} 只`;
     color = "var(--gold)";
@@ -1220,9 +1224,11 @@ function planSat(d) {
   }
 
   return planCard({
-    kicker: `T+1（${rpDate(d.updated)} 的下一交易日）执行判定卡 · 低波池内追风险调整动量 · 9:25 竞价结束后照此执行`,
+    kicker: `T+1（${rpDate(d.updated)} 的下一交易日）执行判定卡 · 低波池内追风险调整动量 · 9:25 前挂好限价单`,
     color, title, rows,
-    buy: sig ? `9:25 集合竞价按开盘价买入 ${each}% 仓位（缺口 ${P.gap_min}%~+${P.gap_max}% 之外不成交）`
+    buy: sig ? (_lim
+      ? `9:25 前挂限价 ${_lim}（${_pbd} 个交易日内有效）· ${each}% 仓位 · 开盘更低按开盘价`
+      : `9:25 集合竞价按开盘价买入 ${each}% 仓位（缺口 ${P.gap_min}%~+${P.gap_max}% 之外不成交）`)
       : (poss.length >= mx ? `持仓已满（${mx}/${mx}），不再买入` : "无符合条件的票，不买入"),
     sell: poss.length ? `每只持满 ${holdN} 个交易日收盘卖${P.stop_pct ? `；跌破 ${P.stop_pct}% 止损` : ""}${P.trail_pct ? `；自高点回撤 ${P.trail_pct}% 即卖` : ""}；卖出当日收盘后才出下一个信号`
       : "无持仓需卖出",
@@ -1377,6 +1383,12 @@ function plansDual(d) {
     rows.push(`<div class="row"><b>评分：</b><b>${o.score ?? "-"}</b> `
       + `<span class="muted" style="font-size:12px">${esc(o.score_kind || "")}</span></div>`);
     if (o.signal) rows.push(`<div class="row"><b>今日形态：</b>${esc(o.signal)}</div>`);
+    // 第一百七十九轮: 回踩限价 —— 副方案的核心不是"买哪只", 是"挂什么价"。
+    if (o.order) {
+      rows.push(`<div class="row" style="background:rgba(255,193,7,.12);padding:6px 8px;border-radius:4px">`
+        + `<b>挂单价 ${o.order.limit}</b> <span class="muted">= 收盘 ${o.order.base} × (1-${o.order.pct}%) · `
+        + `${o.order.days} 个交易日内盘中触及即成交 · 开盘更低则按开盘价</span></div>`);
+    }
     (o.observe || []).forEach(r => rows.push(`<div class="row"><b>观察：</b>${esc(r)}</div>`));
     (o.abort || []).forEach(r => rows.push(`<div class="row"><b>放弃：</b>${esc(r)}</div>`));
     if (o.peers && o.peers.length) {
