@@ -343,6 +343,44 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             rec["fills"].append({"code": s2["code"], "name": nm, "ret_pct": None})
             pending.remove(o)
 
+        # ---------- 1.5) 开盘: 持满止盈挂单成交(第一百八十二轮) ----------
+        # 挂单价在"持满当日收盘"锁定(cl*(1+X%)), 从次日起逐日检查:
+        #   开盘已过线 -> 开盘价成交(比挂单更好); 盘中触及 -> 挂单价成交; 都没到 -> 继续等。
+        # 只处理"持满"这一种退出理由 —— 止损/移动止损/闸门一旦触发仍然当日收盘就走,
+        # 不因为挂了止盈单而拖延风控。到期未成交的保底卖出在下方收盘段处理。
+        for p in list(positions):
+            _lx = p.get("_lim_exit")
+            if not _lx:
+                continue
+            r = _row(day, p["code"])
+            if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
+                continue
+            op = float(r["open"])
+            ratio = float(r["open_adj"]) / op if op else 1.0
+            op_adj = float(r["open_adj"])
+            high_adj = float(r["high"]) * ratio
+            if op_adj >= _lx - 1e-9:
+                _px = op_adj
+            elif high_adj >= _lx - 1e-9:
+                _px = _lx
+            else:
+                continue
+            _ret = (_px / p["entry_px"] - 1) * 100
+            cash += _sell_net(d, p["units"] * _px)
+            last_px[p["code"]] = float(r["close_adj"])
+            trades.append({"code": p["code"], "name": p["name"],
+                           "signal_date": p["signal_date"], "entry_date": p["entry_date"],
+                           "exit_date": d, "entry_px": round(p["entry_px_raw"], 3),
+                           "exit_px": round(_px / ratio, 3) if ratio else round(_px, 3),
+                           "gap_pct": p.get("gap_pct"),
+                           "hold_days": j - p["entry_j"],
+                           "ret_pct": round(_ret, 2),
+                           "note": "持满止盈 %+.1f%%" % P["exit_limit_pct"],
+                           "entry_px_adj": round(p["entry_px"], 4),
+                           "exit_px_adj": round(_px, 4)})
+            ev.append(f"卖出 {p['name']}（持满止盈挂单成交）")
+            positions.remove(p)
+
         # ---------- 2) 收盘: 逐只卖出判定 ----------
         for p in list(positions):
             if p.get("_pending_exit"):
@@ -362,6 +400,18 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                 _ma = float(r.get("ma%d" % P["exit_ma"]) or 0)
                 if _ma > 0 and cl < _ma:
                     ex, why = True, "跌破 MA%d" % P["exit_ma"]
+            if ex and why.startswith("持满") and P["exit_limit_pct"] > 0:
+                # 第一百八十二轮: 持满不收盘甩卖 —— 首次持满挂"收盘×(1+X%)"止盈单,
+                # 到期仍未触及才按收盘价保底卖出。止损/移动止损/闸门不走这条路。
+                if not p.get("_lim_exit"):
+                    p["_lim_exit"] = cl * (1 + P["exit_limit_pct"] / 100.0)
+                    p["_lim_exp"] = j + P["exit_limit_days"]
+                    ev.append(f"{p['name']} 持满，挂止盈 %.2f（+%.1f%%），%d 日有效"
+                              % (p["_lim_exit"], P["exit_limit_pct"], P["exit_limit_days"]))
+                    continue
+                if j < int(p["_lim_exp"]):
+                    continue                      # 止盈单还在有效期内, 继续持
+                why = "持满止盈未达 %d 日" % P["exit_limit_days"]
             if ex:
                 # 第一百六十二轮: 收盘封死跌停 -> 卖不出。实盘只能次日开盘挂单。
                 # 判定用未复权收盘价 vs 跌停价(交易所口径), 与复权无关。
