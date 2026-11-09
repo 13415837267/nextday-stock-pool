@@ -193,6 +193,8 @@ def main():
                 or (tape.get("params") or {}).get("buys_per_day") != P["buys_per_day"]
                 or (tape.get("params") or {}).get("dist_ma5_max") != P["dist_ma5_max"]
                 or (tape.get("params") or {}).get("sort_by") != P["sort_by"]
+                # 第一百八十轮: 持仓闸门开关也是"披露口径", 老账本没有该字段 -> 补写一次
+                or (tape.get("params") or {}).get("gate_exit") != P["gate_exit"]
                 or "min_score" not in (tape.get("params") or {})
                 or "min_pool" not in (tape.get("params") or {})):
             same_day = _snap.get("date") == today
@@ -217,7 +219,8 @@ def main():
                         "ivol_cap": round(P["ivol_cap"], 3), "hold_days": P["hold_days"],
                         "max_pos": P["max_pos"], "buys_per_day": P["buys_per_day"],
                         "dist_ma5_max": P["dist_ma5_max"],
-                        "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"]})
+                        "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"],
+                        "gate_exit": bool(P["gate_exit"]), "gate_exit_mode": P["gate_exit_mode"]})
             tape["params"] = _pr
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
             print("  升级候选池快照(候选池 %d 只 / 评分阈值 %g / 基础票池 %d 只), 状态机未动"
