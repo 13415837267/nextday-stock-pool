@@ -245,6 +245,9 @@ def main():
               "stop_pct": round(P["stop"] * 100, 2), "market_gate": P["gate"],
               # 第一百五十五轮: 移动止损随参数发布, 页面"自高点回撤 X% 即卖"与配置同源
               "trail_pct": round(P["trail"] * 100, 2),
+              # 第一百八十轮: 持仓闸门随参数发布 —— 否则页面只看到"大盘闸门"(开新仓),
+              # 不知道"闸门关闭时还会清老仓", 账面回撤会被误读成"没风控"。
+              "gate_exit": bool(P["gate_exit"]), "gate_exit_mode": P["gate_exit_mode"],
               "cost_pct": round(P["cost"] * 100, 3),
               # 池口径随参数一起发布: 页面 legend 的"候选池 N 只 / 样本下限 M 只"必须
               # 跟配置一致, 不能在页面里写死 20 —— 改了 config 页面不跟着变就成了假披露。
