@@ -60,7 +60,8 @@
   "pullback_days": 3,
   "pullback_mode": "low",
   "gate_exit": true,
-  "gate_exit_mode": "all"
+  "gate_exit_mode": "all",
+  "gate_entry_buffer": 0.3
  },
  "positions": [],
  "pool": {
@@ -152,6 +153,7 @@
   "ivol_cap": 0.0,
   "date": "20261109",
   "gate_ok": false,
+  "entry_ok": false,
   "picked": "",
   "pick_note": "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
  },
