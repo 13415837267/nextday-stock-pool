@@ -331,6 +331,16 @@ def main():
         tape["signal"] = None
         tape["signals"] = None
 
+    # 第一百八十轮: 大盘闸门提前算 —— 持仓清仓判定与"明日是否开新仓"必须用同一个值,
+    # 否则会出现"实盘因闸门不开新仓、但老仓位不清"的行为, 与回测口径不一致。
+    gate_ok, gate_note = True, ""
+    if P["gate"]:
+        reg = ctx.get("reg")
+        if reg is not None and today in reg.index:
+            gate_ok = bool(reg.loc[today, "trade_ok"])
+        if not gate_ok:
+            gate_note = "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
+
     # ---------- 2) 收盘: 逐只卖出判定 ----------
     for pos in list(positions):
         code_today = pos["code"]
@@ -343,7 +353,7 @@ def main():
             # 移动止损: 先按当日收盘刷新持仓期最高价, 再判定(创新高当日不会触发)
             pos["hwm"] = round(max(float(pos.get("hwm") or pos["entry_px"]), cl), 4)
             held = dates.index(today) - dates.index(pos["entry_date"]) if pos["entry_date"] in dates else 0
-            ex, why = should_exit(held, ret, cfg, hwm=pos["hwm"], close=cl)
+            ex, why = should_exit(held, ret, cfg, hwm=pos["hwm"], close=cl, gate_ok=gate_ok)
             if ex:
                 proceeds = float(pos["shares"]) * cl * (1 - HALF)
                 cash += proceeds
@@ -359,14 +369,7 @@ def main():
                       % (code_today, pos.get("name", ""), clr, ret, why), flush=True)
     tape["positions"] = positions
 
-    # ---------- 3) 收盘: 选明日信号(先过大盘闸门) ----------
-    gate_ok, gate_note = True, ""
-    if P["gate"]:
-        reg = ctx.get("reg")
-        if reg is not None and today in reg.index:
-            gate_ok = bool(reg.loc[today, "trade_ok"])
-        if not gate_ok:
-            gate_note = "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
+    # ---------- 3) 收盘: 选明日信号(大盘闸门已在上面算好) ----------
     if len(positions) < P["max_pos"] and not gate_ok:
         tape["signal"] = None
         tape["signals"] = None
