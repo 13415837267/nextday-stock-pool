@@ -83,6 +83,12 @@ DEFAULT = {
     "bp_high_max": -1.0,      # 距 20 日最高点回撤上限(%): -1 即"离高点不超过 1%", 太贴高点就算追高
     "bp_vol_max": 1.0,        # 量比上限(缩量回调)
     "bp_mom_min": 0.0,        # 20 日动量下限(%)
+    # 第一百八十三轮: "涨停次日" mode —— A 股最经典的右侧短线。
+    #   选股: 当日收盘封涨停、但**开盘未封**(盘中打开过) -> 次日竞价还能买到;
+    #   买入: T+1 开盘; 卖出: 持 H 个交易日收盘。
+    #   与"追突破"不同: 突破测的是"涨 3% + 贴新高", 涨停测的是"封板 + 打开", 是两个不同的资金行为。
+    "lu_amt_max_yi": 0.0,     # 成交额上限(亿): 0=不限; 小票封板弹性更大
+    "lu_turn_min": 0.0,       # 换手率下限(%): 0=不限
     "hold_days": 10,          # 持有交易日数(第一百五十轮 40->10, 见 config.yaml 注释)
     "min_score": 20.0,        # 评分阈值(0=不设): 评分 < 阈值不进候选池, 一个都不达标则空仓
     "max_ivol": 0,            # 兼容旧口径: 直接给 ivol 上限(0=不用); min_score>0 时以评分为准
@@ -222,6 +228,8 @@ def daily_params(cfg: dict) -> dict:
             "bp_high_max": float(s.get("bp_high_max", -1.0)),
             "bp_vol_max": float(s.get("bp_vol_max", 1.0)),
             "bp_mom_min": float(s.get("bp_mom_min", 0.0)),
+            "lu_amt_max": float(s.get("lu_amt_max_yi") or 0.0) * 1e8,
+            "lu_turn_min": float(s.get("lu_turn_min") or 0.0),
             "dip_pct_min": float(s.get("dip_pct_min", -6.0)),
             "dip_pct_max": float(s.get("dip_pct_max", -3.0)),
             "dip_vol_max": float(s.get("dip_vol_max", 0.8)),
@@ -275,6 +283,16 @@ def _masks(day, cfg: dict):
             & day["dist_high20"].between(P["bp_high_min"], P["bp_high_max"]).to_numpy() \
             & (day["vol_ratio"] <= P["bp_vol_max"]).to_numpy() \
             & (day["close_pos"] >= 0.3).to_numpy()
+    if P["mode"] == "limit_up":
+        # 收盘封涨停 + 开盘未封 + 非停牌; 可选: 成交额上限 / 换手下限
+        _lu = ((day["close"] >= day["high_limit"] - 1e-6)
+               & (day["open"] < day["high_limit"] - 1e-6)
+               & (day["pre_close"] > 0)).to_numpy()
+        m_final = m_final & _lu
+        if P["lu_amt_max"] > 0:
+            m_final = m_final & (day["amount"] <= P["lu_amt_max"]).to_numpy()
+        if P["lu_turn_min"] > 0:
+            m_final = m_final & (day["turnover_rate"] >= P["lu_turn_min"]).to_numpy()
     if P["mode"] == "trend_lowvol":
         m_final = m_final & ((day["close_adj"] > day["ma5"]) & (day["ma5"] > day["ma10"])
                              & (day["ma10"] > day["ma20"]) & (day["ma20"] > day["ma20_prev"])
