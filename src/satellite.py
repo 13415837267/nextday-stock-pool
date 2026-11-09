@@ -116,6 +116,9 @@ DEFAULT = {
     "stop_pct": 0.0,          # 止损(%): 0=关闭; 收盘相对买入价跌破即卖
     "trail_pct": 0.0,         # 移动止损(%): 0=关闭; 收盘相对持仓期最高收盘回撤超过即卖
     "gate_exit": False,       # 持仓层闸门: 大盘跌破 MA20 时, 已持仓也当日收盘卖出
+    # 第一百八十一轮: 入场缓冲(%) —— 指数须站上 MA20×(1+该值) 才开新仓。0=关闭(旧口径)。
+    #   与 gate_exit 分工: gate_exit 管"什么时候必须走", 本字段管"什么时候才允许来"。
+    "gate_entry_buffer": 0.0,
     "market_gate": False,     # 大盘闸门: 指数在 MA20 上方才开新仓
     "min_pool": 20,           # 基础票池样本下限, 不足则不出票(与池深无关)
     # 第一百七十九轮: 回踩限价买入 —— 全轮唯一动到"买入价"的旋钮。
@@ -188,6 +191,9 @@ def daily_params(cfg: dict) -> dict:
             "gate_exit": bool(s.get("gate_exit")),
             # 清仓口径: "all"=闸门关闭即全部清仓; "loser"=只清浮亏的(留住仍在走强的)
             "gate_exit_mode": str(s.get("gate_exit_mode") or "all"),
+            # 第一百八十一轮: 入场缓冲 —— 指数须站上 MA20×(1+buf%) 才允许开新仓(只影响入场,
+            # 清仓仍按 trade_ok)。依据见 config.yaml 同名字段注释。
+            "gate_entry_buf": float(s.get("gate_entry_buffer") or 0.0),
             "gate": bool(s["market_gate"]),
             "min_pool": int(s["min_pool"]),
             "pool_show": int(s["pool_show"] or POOL_SHOW),
@@ -416,6 +422,24 @@ def entry_gate(gap_pct: float, cfg: dict) -> tuple[bool, str]:
     if gap_pct > P["gap_max"]:
         return False, "高开 %.2f%%, 不追" % gap_pct
     return True, ""
+
+
+def entry_ok_series(reg, cfg: dict):
+    """入场闸门序列(第一百八十一轮)。返回 None = 不启用, 沿用原 trade_ok。
+
+    与 trade_ok 的唯一区别: 指数须站上 MA20×(1+gate_entry_buffer%)。
+    宽度与恐慌熔断条件保持不变 —— 缓冲带只解决"买在临界点", 不能顺手放松风控。
+    逐元素运算, 只用当日及之前的均线, 无未来函数; 回测与实盘账本共用本函数。
+    """
+    b = float((cfg.get("satellite") or {}).get("gate_entry_buffer") or 0.0)
+    if b <= 0 or reg is None:
+        return None
+    bmin = float((cfg.get("regime") or {}).get("breadth_min", 0.25))
+    ok = reg["mkt_idx"] >= reg["mkt_ma"] * (1 + b / 100.0)
+    ok = ok & (reg["breadth"] >= bmin)
+    if "panic" in reg.columns:
+        ok = ok & (~reg["panic"].astype(bool))
+    return ok
 
 
 def should_exit(held_days: int, ret_pct: float, cfg: dict,
