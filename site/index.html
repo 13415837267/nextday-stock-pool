@@ -1378,6 +1378,8 @@ function plansDual(d) {
     }
     const ok = o.system_ok !== false;
     const rows = [];
+    if (!ok) rows.push(`<div class="row" style="background:rgba(120,120,120,.12);padding:6px 8px;border-radius:4px">`
+      + `<b>今日不挂单</b> <span class="muted">· 系统口径空仓（见下方"系统口径"一条），下面只列候选，不是买入指令</span></div>`);
     rows.push(`<div class="big" style="color:${ok ? "var(--up)" : "var(--muted)"};font-size:19px">`
       + `${esc(o.name || "")} <span class="muted" style="font-size:13px">${esc(o.code || "")}</span></div>`);
     rows.push(`<div class="row"><b>评分：</b><b>${o.score ?? "-"}</b> `
@@ -1391,9 +1393,15 @@ function plansDual(d) {
     }
     (o.observe || []).forEach(r => rows.push(`<div class="row"><b>观察：</b>${esc(r)}</div>`));
     (o.abort || []).forEach(r => rows.push(`<div class="row"><b>放弃：</b>${esc(r)}</div>`));
+    // 第一百八十轮: 同批 4 只各 25% 是回测口径 —— 只给主票挂单价, 用户就只会挂 1 只,
+    // 拿到的是单吊收益(1500 日 10.15%/-46.43%), 不是 32.38%。所以每只都要给挂单价。
     if (o.peers && o.peers.length) {
-      rows.push(`<div class="row"><b>同批备选：</b>${o.peers.map(x => esc((x.name || x.code) + "（" + x.code + "）")).join("、")} `
-        + `<span class="muted" style="font-size:12px">（分散用，系统口径 4 只各 25%）</span></div>`);
+      const bt = o.batch || {};
+      const items = o.peers.map(x => esc((x.name || x.code) + "（" + x.code + "）")
+        + (x.limit != null ? ` 挂 <b>${x.limit}</b>` : ""));
+      rows.push(`<div class="row"><b>同批 ${1 + o.peers.length} 只${bt.slots ? `（系统口径 ${bt.n_buy}/${bt.slots} 只、每只 ${bt.each_pct}%）` : ""}：</b>`
+        + `${items.join("、")}`
+        + `<span class="muted" style="font-size:12px">　四只一起挂才是回测口径；只买第 1 只是另一个策略（年化 10.15%/回撤 −46.43%）</span></div>`);
     }
     rows.push(`<div class="row"><b>卖出：</b>${esc(o.exit || "")}</div>`);
     // 第一百七十七轮: 缺口速查(1500日实成交逐笔)。人工盯盘最常问"高开还买不买",
@@ -1597,8 +1605,9 @@ async function renderReplaySat() {
     没有第二次运行 —— 所以回放的区间收益与「副策略 → 回测绩效」的净值曲线必然对得上。</p>
 
     <p><b>与主策略回放的差异只有策略本身：</b>① 单吊 100% 仓，每天最多 1 只，没有"多票并行"；
-    ② 出场只有两个条件 —— 持满 <b>${(d.meta?.rules || "").match(/持 (\d+)/)?.[1] || "-"}</b> 个交易日，
-    或收盘相对买入价跌破止损线；③ 开新仓前先过<b>大盘 MA20 闸门</b>，指数在均线下方一律空仓。
+    ② 出场三个条件 —— 持满 <b>${(d.meta?.rules || "").match(/持 (\d+)/)?.[1] || "-"}</b> 个交易日、
+    收盘跌破止损线/移动止损线，或<b>大盘闸门关闭时强制清仓</b>（第一百八十轮把这条从回测
+    搬进了实盘共用的 <code>should_exit</code>，此前实盘并不执行）；③ 开新仓前先过<b>大盘 MA20 闸门</b>，指数在均线下方一律空仓。
     这三条决定了"空仓天数"远多于主策略，是设计而不是漏跑。</p>
 
     <p><b>别用 ${m.days} 天推断长期期望：</b>同一套规则在 1500 个交易日为
@@ -1619,11 +1628,11 @@ async function renderStrategy() {
   const seq = ++RENDER_SEQ;
   const key = STRAT, isMain = key === "main";
   setSub("plan-sub", isMain ? "深低开承接 · 每日仅执行评分第 1 名 1 笔，T+2 收盘清仓"
-    : "低波池内追风险调整动量（选强）· 最多 4 只并发 · 挂昨日收盘 −1% 限价 · 持 10 个交易日");
+    : "低波池内追风险调整动量（选强）· 单吊 100% · 挂昨日收盘 −1% 限价 · 持 10 个交易日");
   document.getElementById("pool-title").textContent = "当日候选池";
   document.getElementById("exec-title").textContent = "逐笔执行记录";
   setSub("pool-sub", isMain ? "仅沪深主板 · 有信号日只发 1 只；无信号日按备用漏斗补位（至多 3 只）"
-    : "低波前 10% 里按 20 日动量由强到弱排序取前 4 名（<b>追强不追价</b>：挂昨日收盘 −1% 的限价单，3 个交易日内触及才成交，第 179 轮）；最多同时持 4 只、每只 25%");
+    : "低波前 10% 里按 20 日动量由强到弱排序取第 1 名（追强不追价：挂昨日收盘 −1% 的限价单，3 个交易日内触及才成交）；单吊 100% 仓位，大盘闸门关闭时连老仓一起清");
   setSub("exec-sub", isMain ? "逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）"
     : "逐笔明细：买入哪只、什么价、卖出哪只、什么价（v3 自 2026-11-05 起）");
   setSub("bt-sub", "加载中...");

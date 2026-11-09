@@ -286,11 +286,22 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                 continue
             ratio = float(r["open_adj"]) / op if op else 1.0
             low_adj = float(r["low"]) * ratio
+            high_adj = float(r["high"]) * ratio
             gap = (op / float(r["pre_close"]) - 1) * 100 if float(r["pre_close"]) else 0.0
             ok, why = entry_gate(gap, cfg)
             fill_adj = fill_raw = None
             if ok:
-                if _PB <= 0 or float(r["open_adj"]) <= o["_lim"] + 1e-9:
+                if _PB_MODE == "breakout":
+                    # 右侧买入: 只在价格**向上突破**信号日收盘 +pb% 时成交(停损买单)。
+                    # 开盘已高开过线 -> 按开盘价(更差), 否则按限价; 全天最高都没到线 -> 不成交。
+                    if float(r["open_adj"]) >= o["_lim"] - 1e-9:
+                        fill_adj, fill_raw = float(r["open_adj"]), op
+                    elif high_adj >= o["_lim"] - 1e-9:
+                        fill_adj, fill_raw = o["_lim"], o["_lim"] / ratio
+                elif _PB_MODE == "lowopen" and gap <= 0:
+                    # 低开即买: 开盘已比昨收便宜, 不再等更深; 只有高开才挂限价等回踩。
+                    fill_adj, fill_raw = float(r["open_adj"]), op
+                elif _PB <= 0 or float(r["open_adj"]) <= o["_lim"] + 1e-9:
                     fill_adj, fill_raw = float(r["open_adj"]), op      # 开盘价已在限价之下 -> 开盘成交
                 elif _PB_MODE != "open" and low_adj <= o["_lim"] + 1e-9:
                     fill_adj, fill_raw = o["_lim"], o["_lim"] / ratio  # 盘中回踩触及 -> 限价成交
@@ -337,12 +348,10 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             last_px[p["code"]] = cl
             p["hwm"] = max(float(p.get("hwm") or p["entry_px"]), cl)
             ret = (cl / p["entry_px"] - 1) * 100
-            ex, why = should_exit(j - p["entry_j"], ret, cfg, hwm=p.get("hwm"), close=cl)
-            # 持仓层风控(第一百五十二轮): 两个可选旋钮, 都在收盘判定、收盘成交, 与止损同口径。
-            if not ex and P["gate_exit"] and not gate_today:
-                # loser 口径: 只砍浮亏的, 留住还在走强的(闸门是"风险偏好下降", 不是"所有票都完蛋")
-                if P["gate_exit_mode"] != "loser" or ret < 0:
-                    ex, why = True, "大盘转弱清仓"
+            # 第一百八十轮: 大盘闸门已搬进 should_exit(与实盘账本同一套判定), 这里只传状态。
+            ex, why = should_exit(j - p["entry_j"], ret, cfg, hwm=p.get("hwm"),
+                                  close=cl, gate_ok=gate_today)
+            # 持仓层风控(第一百五十二轮): exit_ma 仍在引擎内(实盘未启用该旋钮, config 为 0)
             if not ex and P["exit_ma"] and j - p["entry_j"] >= 1:
                 _ma = float(r.get("ma%d" % P["exit_ma"]) or 0)
                 if _ma > 0 and cl < _ma:
@@ -388,7 +397,9 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                         if _PB > 0:
                             # 限价基准必须锁在**信号日收盘**(T 日已知), 不能读 T+1 行情
                             _r0 = _row(day, cand["code"])
-                            cand["_lim"] = (float(_r0["close_adj"]) * (1 - _PB / 100.0)
+                            cand["_lim"] = (float(_r0["close_adj"]) *
+                                            (1 + _PB / 100.0 if _PB_MODE == "breakout"
+                                             else 1 - _PB / 100.0)
                                             if _r0 is not None else None)
                     sig = cands if P["buys_per_day"] > 1 else cands[0]
                 elif cands:
@@ -454,8 +465,11 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             "rules": (f"最多 {P['max_pos']} 只并发 · 每日最多买 {P['buys_per_day']} 只 · 持 {P['hold_days']} 个交易日收盘卖"
                       + (f" · 只在跌破 MA5 {abs(P['dist_ma5_max']):g}% 时买" if P["dist_ma5_max"] else "")
                       + (f" · 低波前 {P['ivol_pct'] * 100:g}%" if P["ivol_pct"] else "")
-                      + (f" · 候选池≤{P['pool_show']}只(评分≥{P['min_score']:g})"
-                         if P["min_score"] > 0 else f" · 候选池≤{P['pool_show']}只")
+                      # 第一百八十轮: 候选池是"展示几只", 执行是"买前几名" —— 单吊时两者不同,
+                      # 旧文案只写"候选池≤4只", 与"最多 1 只并发"并排看会自相矛盾。
+                      + (f" · 候选池展示≤{P['pool_show']}只 / 只买前 {P['buys_per_day']} 名(评分≥{P['min_score']:g})"
+                         if P["min_score"] > 0
+                         else f" · 候选池展示≤{P['pool_show']}只 / 只买前 {P['buys_per_day']} 名")
                       + (f" / 止损 {P['stop'] * 100:g}%" if P["stop"] < 0 else "")
                       + (" · 大盘 MA20 闸门" if P["gate"] else "")
                       + f" · 单边成本 {_half * 100:g}%"),

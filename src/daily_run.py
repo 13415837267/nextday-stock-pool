@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 3,          # 179: 副方案加 order; 179补: 标题/放弃理由随限价口径改写
+        "plan_ver": 4,          # 180: 副方案闸门关闭时置空 order/0 仓位, peers 补挂单价, 新增 batch
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -543,7 +543,10 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                 _sday = _sctx["by_date"].get(signal_date.replace("-", ""), day)
         except Exception:  # noqa: BLE001 补面板失败不阻断, 退回当日面板
             _sday = day
-        sl = _sat_pick(_sday, cfg, (), 4)
+        # 第一百八十轮: 取几只必须跟 max_pos 一致。此前硬编码 4, 单吊时会把
+        # 第 2~4 名当"同批"列出来, 与"单吊"直接矛盾。
+        _mp = int((cfg.get("satellite") or {}).get("max_pos") or 4)
+        sl = _sat_pick(_sday, cfg, (), max(1, _mp))
     except Exception as _e:  # noqa: BLE001  副策略异常不能拖垮主流程
         sl, _SAT_CN, _sat_params = [], {}, None
         plans["alt_error"] = f"{type(_e).__name__}: {_e}"
@@ -566,8 +569,8 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             "signal": (f"20日动量{s.get('mom20')}% / 特质波动{s.get('ivol20')}"
                        f" / 距5日线{s.get('dist_ma5')}%"),
             "observe": [
-                (f"系统口径: {'大盘闸门已开, 可参与' if _gate_ok else '大盘闸门关闭(指数在MA20下), 系统不开新仓'}"
-                 " [回测口径]"),
+                (f"系统口径: 大盘闸门已开, 可参与 [回测口径]" if _gate_ok
+                 else "系统口径: 大盘闸门关闭(指数在MA20下), 系统不开新仓 —— 今日不挂单、不建仓 [回测口径]"),
                 f"竞价缺口须在 [{P.get('gap_min')}%, +{P.get('gap_max')}%] 内"
                 " [回测口径: 低开破位不接、高开过多不追]",
                 (f"挂单口径: 限价 {round(float(s.get('close') or 0) * (1 - float(P.get('pullback_pct') or 0) / 100), 2)}"
@@ -588,23 +591,35 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                      f"{float(P.get('stop') or 0) * 100:g}% [回测口径]"),
             # 第一百七十九轮: 回踩限价 —— 计划卡必须给出"挂哪个价、挂几天", 否则用户
             # 只能按开盘价追, 回测的 32% 在实盘就落不到(回测口径是限价成交)。
+            # 第一百八十轮: 闸门关闭时**不得**给挂单价与仓位。旧实现无条件输出
+            # order/25%, 与 observe 第 1 条"系统不开新仓"直接冲突 —— 2026-11-09 线上
+            # 就是 system_ok=false 仍挂 11.93/25%, 照做等于在指数破 MA20 时建仓。
             "order": ({
                 "limit": round(float(s.get("close") or 0) * (1 - float(P.get("pullback_pct") or 0) / 100), 2),
                 "pct": float(P.get("pullback_pct") or 0),
                 "days": int(P.get("pullback_days") or 1),
                 "base": s.get("close"),
-            } if float(P.get("pullback_pct") or 0) > 0 and s.get("close") else None),
+            } if _gate_ok and float(P.get("pullback_pct") or 0) > 0 and s.get("close") else None),
             "system_ok": _gate_ok,
-            "position_pct": round(100.0 / max(1, int(P.get("max_pos") or 1)), 1),
+            "position_pct": (round(100.0 / max(1, int(P.get("max_pos") or 1)), 1) if _gate_ok else 0.0),
             # 第一百七十六轮: 只买第 1 名的代价(1500 日实测, 同引擎同成本)
             "position_note": (
                 "系统口径是一次买满 4 只、每只 25%; 只买第 1 名(单吊) 1500 日年化 9.09% / "
                 "回撤 -43.71%, 每日 1 只滚动 8.10% / -17.87%, 都不如 4 只并发的 18.99% / -18.67%"
                 " —— 差距来自资金利用率与分散, 不是选股(第 1 名的单笔并不更强)。"),
+            # 第一百八十轮: 同批也要给挂单价。回测口径是 4 只各 25%, 只标名字等于
+            # 让用户只挂第 1 只 —— 那样拿到的是单吊收益(1500 日 10.15%/-46.43%), 不是 32.38%。
             "peers": [{"code": x.get("code"),
                        "name": (names or {}).get(x.get("code")) or x.get("name") or x.get("code"),
-                       "rank_pct": x.get("rank_pct"), "mom20": x.get("mom20")}
+                       "rank_pct": x.get("rank_pct"), "mom20": x.get("mom20"),
+                       "limit": (round(float(x.get("close") or 0) * (1 - float(P.get("pullback_pct") or 0) / 100), 2)
+                                 if _gate_ok and float(P.get("pullback_pct") or 0) > 0 and x.get("close") else None)}
                       for x in sl[1:4]],
+            # 系统口径的完整下单清单: 多少人多少份, 卡上必须自己说清, 不能靠用户推
+            "batch": {"slots": int(P.get("max_pos") or 1),
+                      "each_pct": (round(100.0 / max(1, int(P.get("max_pos") or 1)), 1) if _gate_ok else 0.0),
+                      "n_cands": len(sl),
+                      "n_buy": (min(len(sl), int(P.get("max_pos") or 1)) if _gate_ok else 0)},
         }
     elif "alt_error" not in plans:
         plans["alt_note"] = "当日副策略无达标候选(池子不足或大盘闸门关闭)"
