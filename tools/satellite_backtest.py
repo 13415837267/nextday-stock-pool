@@ -145,7 +145,8 @@ def _build_replay(dates: list, nav: pd.Series, trades: list[dict],
 
 
 def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
-        stamp_2023: bool | None = None) -> dict:
+        stamp_2023: bool | None = None,
+        entry_ok: pd.Series | None = None) -> dict:
     # 第 162 轮: 两个执行摩擦开关默认从 config 读, 脚本可显式覆盖(用于对照实验)。
     if defer_on_limit_down is None:
         defer_on_limit_down = bool((cfg.get("satellite") or {}).get("defer_on_limit_down", False))
@@ -218,6 +219,11 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                "alloc": round(min(len(positions) / P["max_pos"], 1.0) * 100, 1),
                "pool_n": None, "holding": bool(positions),
                "fills": [], "skipped": [], "note": ""}
+        # 第一百八十一轮: 入场闸门与清仓闸门分离(仅实验路径, 默认 None = 两者同源)。
+        #   动机: 单吊 120 笔里 28 笔"买入当日就被大盘闸门清仓", 说明信号日 gate_ok 但
+        #   T+1 收盘就破位 —— 买在了临界点。允许外层传一条更严的入场序列(如"连续 2 日
+        #   trade_ok"), 清仓仍用当日 gate_today, 从而只过滤入场、不放松风控。
+        _entry_today = gate_today if entry_ok is None else bool(entry_ok.get(d, gate_today))
         ev = []
 
         # ---------- 0) 开盘: 昨日跌停未能卖出的挂单(第一百六十二轮) ----------
@@ -382,7 +388,7 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
 
         # ---------- 3) 收盘: 出明日信号(先过大盘闸门) ----------
         if len(positions) < P["max_pos"]:
-            if not gate_today:
+            if not _entry_today:
                 blocked += 1
                 ev.append("大盘闸门关闭（指数在 MA20 下方），不开新仓")
             else:
