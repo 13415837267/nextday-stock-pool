@@ -1139,7 +1139,7 @@ function headSat(d) {
   document.getElementById("meta").textContent =
     `信号日 ${rpDate(d.updated)} · 更新于 ${rpDate(d.updated)} 收盘后 · 低波池内追风险调整动量（最多 ${mx} 只 · 虚拟本金 10 万，独立记账）`;
   const b = [replayBadge()];
-  b.push(`<span class="badge ${p.gate_ok ? "ok" : "stop"}">大盘闸门 ${p.gate_ok ? "开 · 可开新仓" : "关 · 不开新仓"}</span>`);
+  b.push(`<span class="badge ${(p.entry_ok ?? p.gate_ok) ? "ok" : "stop"}">大盘闸门 ${(p.entry_ok ?? p.gate_ok) ? "开 · 可开新仓" : "关 · 不开新仓"}</span>`);
   if ((p.rows || []).length) b.push(`<span class="badge gold">候选池 ${p.rows.length}/${p.show || P.pool_show || 3} 只</span>`);
   else b.push(`<span class="badge">候选池 0 只·无符合条件的票</span>`);
   if (P.dist_ma5_max != null) b.push(`<span class="badge">追高线 5日线+${Number(P.dist_ma5_max).toFixed(1)}%</span>`);
@@ -1204,7 +1204,7 @@ function planSat(d) {
     const lastNote = ((d.daily || []).slice(-1)[0] || {}).note || "";
     if (lastNote) rows.push(`<b>判定：</b>${esc(lastNote)}`);
   } else {
-    title = `⛔ 明日空仓（${p.gate_ok === false ? "大盘闸门关闭" : "无符合条件的票"}）`;
+    title = `⛔ 明日空仓（${(p.entry_ok ?? p.gate_ok) === false ? "大盘闸门关闭" : "无符合条件的票"}）`;
     color = "var(--muted)";
     const lastNote = ((d.daily || []).slice(-1)[0] || {}).note || "";
     rows.push(`<b>判定：</b>${esc(lastNote || "候选池不足 / 无票通过筛选")}`);
@@ -1293,9 +1293,9 @@ function poolSat(d) {
   return funnelBar(funnel) +
     poolTable(rows.map((x, i) => ({ ...row(x),
       reason: i === 0
-        ? `风险调整动量 ${x.ra ?? "-"}（20日 ${x.mom20}%）最强${p.gate_ok ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}`
+        ? `风险调整动量 ${x.ra ?? "-"}（20日 ${x.mom20}%）最强${(p.entry_ok ?? p.gate_ok) ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}`
         : `候补第 ${i + 1} 名（动量 ${x.mom20}%），最多同时持 ${mx} 只，满员时不买` })), "距5日线%") +
-    `<div class="legend">候选池 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20日动量÷特质波动 排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，展示前 ${show} 只）· 最多同时持 <b>${mx}</b> 只、每日最多买 <b>${by}</b> 只 · 基础票池 ${base} 只（样本下限 ${minPool} 只）· 大盘闸门 ${p.gate_ok ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+    `<div class="legend">候选池 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20日动量÷特质波动 排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，展示前 ${show} 只）· 最多同时持 <b>${mx}</b> 只、每日最多买 <b>${by}</b> 只 · 基础票池 ${base} 只（样本下限 ${minPool} 只）· 大盘闸门 ${(p.entry_ok ?? p.gate_ok) ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
 }
 
 /* ---- 单吊执行记录 ---- */
