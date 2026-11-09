@@ -128,6 +128,13 @@ DEFAULT = {
     #   回撤 -18.7%->-14.2% / -38.5%->-20.2%, 卡玛 1.02->3.90 / 0.39->2.82, 6/6 年全改善。
     #   机制: 低波票 10 日毛收益只有 1.7%, 买价低 2% 相当于把整笔收益翻倍; 而"跌 2% 才买"
     #   是 T+1 盘中可执行的条件(挂单在那里), 不是前视 —— 成交与否由市场给, 不是自己挑。
+    # 第一百八十二轮: 持满后的**卖出端限价** —— 与第一百七十九轮的买入端限价对称。
+    #   持满 hold_days 当日不再收盘甩卖, 而是挂"当日收盘 × (1+X%)"的止盈单, days 日内有效;
+    #   开盘已高于挂单价按开盘价成交(更好), 到期未触及按当日收盘卖出(保底)。
+    #   动机: 持满的 35 笔均值 +7.02%(2021 年 18 笔均值 +7.30%), 收益全部来自"走完 10 日"的票,
+    #   它们在第 10 日往往还在创新高 —— 收盘一刀切等于把最后一段让掉。0=关闭(旧口径)。
+    "exit_limit_pct": 0.0,
+    "exit_limit_days": 3,
     "pullback_pct": 0.0,      # 回踩幅度(%): 0=关闭
     "pullback_days": 1,       # 限价单有效交易日数
     "pullback_mode": "low",   # low=日内最低触及即成交; open=只在开盘已低于限价时成交(保守对照)
@@ -208,7 +215,9 @@ def daily_params(cfg: dict) -> dict:
             "dip_close_pos_max": float(s.get("dip_close_pos_max", 0.4)),
             "pullback_pct": float(s.get("pullback_pct") or 0.0),
             "pullback_days": max(1, int(s.get("pullback_days") or 1)),
-            "pullback_mode": str(s.get("pullback_mode") or "low")}
+            "pullback_mode": str(s.get("pullback_mode") or "low"),
+            "exit_limit_pct": float(s.get("exit_limit_pct") or 0.0),
+            "exit_limit_days": max(1, int(s.get("exit_limit_days") or 1))}
 
 
 def apply_cost(nav_before: float, turn: float, cost: float = 0.0030) -> float:
