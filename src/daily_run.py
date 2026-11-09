@@ -567,6 +567,11 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                  " [回测口径]"),
                 f"竞价缺口须在 [{P.get('gap_min')}%, +{P.get('gap_max')}%] 内"
                 " [回测口径: 低开破位不接、高开过多不追]",
+                (f"挂单口径: 限价 {round(float(s.get('close') or 0) * (1 - float(P.get('pullback_pct') or 0) / 100), 2)}"
+                 f"（= 收盘 {s.get('close')} × (1-{float(P.get('pullback_pct') or 0):g}%)）, "
+                 f"{int(P.get('pullback_days') or 1)} 个交易日内触及即成交; 开盘低于限价按开盘价成交"
+                 " [不是追开盘价: 1500 日实测按开盘价买只有 19.01%, 挂回踩单 32.38%]")
+                if float(P.get("pullback_pct") or 0) > 0 else "竞价后按开盘价买入",
             ],
             "abort": [
                 f"低开 <= {P.get('gap_min')}%: 破位不接 [回测口径]",
@@ -575,6 +580,14 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             "exit": (f"持有 {P.get('hold_days')} 个交易日后收盘卖; 移动止损 "
                      f"{float(P.get('trail') or 0) * 100:g}% / 固定止损 "
                      f"{float(P.get('stop') or 0) * 100:g}% [回测口径]"),
+            # 第一百七十九轮: 回踩限价 —— 计划卡必须给出"挂哪个价、挂几天", 否则用户
+            # 只能按开盘价追, 回测的 32% 在实盘就落不到(回测口径是限价成交)。
+            "order": ({
+                "limit": round(float(s.get("close") or 0) * (1 - float(P.get("pullback_pct") or 0) / 100), 2),
+                "pct": float(P.get("pullback_pct") or 0),
+                "days": int(P.get("pullback_days") or 1),
+                "base": s.get("close"),
+            } if float(P.get("pullback_pct") or 0) > 0 and s.get("close") else None),
             "system_ok": _gate_ok,
             "position_pct": round(100.0 / max(1, int(P.get("max_pos") or 1)), 1),
             # 第一百七十六轮: 只买第 1 名的代价(1500 日实测, 同引擎同成本)
