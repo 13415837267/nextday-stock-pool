@@ -118,6 +118,16 @@ DEFAULT = {
     "gate_exit": False,       # 持仓层闸门: 大盘跌破 MA20 时, 已持仓也当日收盘卖出
     "market_gate": False,     # 大盘闸门: 指数在 MA20 上方才开新仓
     "min_pool": 20,           # 基础票池样本下限, 不足则不出票(与池深无关)
+    # 第一百七十九轮: 回踩限价买入 —— 全轮唯一动到"买入价"的旋钮。
+    #   T 日收盘出信号, T+1 开盘前挂"信号日收盘 × (1-pb%)"的限价买单, 当日盘中触及即成交;
+    #   未触及则收盘撤单(pullback_days=1)。pb=0 等价于旧口径(次日开盘无条件买)。
+    #   1500 日 / 全史 3053 日双窗口: pb=2%/1 日 -> 年化 19.0%->55.2% / 15.1%->56.8%,
+    #   回撤 -18.7%->-14.2% / -38.5%->-20.2%, 卡玛 1.02->3.90 / 0.39->2.82, 6/6 年全改善。
+    #   机制: 低波票 10 日毛收益只有 1.7%, 买价低 2% 相当于把整笔收益翻倍; 而"跌 2% 才买"
+    #   是 T+1 盘中可执行的条件(挂单在那里), 不是前视 —— 成交与否由市场给, 不是自己挑。
+    "pullback_pct": 0.0,      # 回踩幅度(%): 0=关闭
+    "pullback_days": 1,       # 限价单有效交易日数
+    "pullback_mode": "low",   # low=日内最低触及即成交; open=只在开盘已低于限价时成交(保守对照)
     "pool_show": POOL_SHOW,   # 候选池只数上限(评分达标的前 N 名)
     "pool_alt": POOL_ALT,     # 备选排序深度(已废弃, 固定 0)
     # 第一百七十一轮: mode="dip" —— 把主策略验证过的"缩量阴线回调"形态搬到另一块板。
@@ -189,7 +199,10 @@ def daily_params(cfg: dict) -> dict:
             "dip_pct_min": float(s.get("dip_pct_min", -6.0)),
             "dip_pct_max": float(s.get("dip_pct_max", -3.0)),
             "dip_vol_max": float(s.get("dip_vol_max", 0.8)),
-            "dip_close_pos_max": float(s.get("dip_close_pos_max", 0.4))}
+            "dip_close_pos_max": float(s.get("dip_close_pos_max", 0.4)),
+            "pullback_pct": float(s.get("pullback_pct") or 0.0),
+            "pullback_days": max(1, int(s.get("pullback_days") or 1)),
+            "pullback_mode": str(s.get("pullback_mode") or "low")}
 
 
 def apply_cost(nav_before: float, turn: float, cost: float = 0.0030) -> float:
