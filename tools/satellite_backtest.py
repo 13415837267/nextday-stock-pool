@@ -186,6 +186,9 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
         reg.index = reg.index.astype(str)
 
     cash, positions = init, []
+    # 第一百七十九轮: 回踩限价挂单。pb=0 时不启用(pending 恒为空, 行为与旧口径逐位一致)。
+    _PB, _PBD, _PB_MODE = P["pullback_pct"], P["pullback_days"], P["pullback_mode"]
+    pending: list[dict] = []
     sig = None
     navs, trades, daily = [], [], []
     blocked = skipped = 0
@@ -246,46 +249,82 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             ev.append(f"卖出 {p['name']}（跌停顺延，开盘成交）")
             positions.remove(p)
 
-        # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 buys_per_day 笔, 上限 max_pos) ----------
+        # ---------- 1) 开盘: 限价挂单撮合(第一百七十九轮) ----------
+        # pb=0 时等价旧口径(T+1 开盘无条件买, _exp 当日失效); pb>0 时挂"信号日收盘-pb%"的
+        # 限价单, pullback_days 个交易日内有效, 到期未触及则放弃(信号衰减)。
         for _s in (sig if isinstance(sig, list) else ([sig] if sig else [])):
+            if _PB > 0:
+                _lim = _s.get("_lim")
+                if _lim is None:
+                    continue
+                _exp = j + _PBD - 1
+            else:
+                _lim = float("inf")          # 不回踩: 开盘价必然低于无穷大, 等价旧口径
+                _exp = j                     # 不回踩时挂单当日失效, 不跨日补买
+            pending.append({"_s": _s, "_lim": _lim, "_exp": _exp})
+        sig = None
+        for o in list(pending):
             if len(positions) >= P["max_pos"]:
                 break
-            sig = _s
-            r = _row(day, sig["code"])
-            nm = names.get(sig["code"], sig.get("name", ""))
+            if j > o["_exp"]:
+                pending.remove(o)
+                continue
+            s2 = o["_s"]
+            r = _row(day, s2["code"])
+            nm = names.get(s2["code"], s2.get("name", ""))
             if r is None or bool(r["is_paused"] == 1) or float(r["vol"]) <= 0:
-                skipped += 1
-                rec["skipped"].append({"code": sig["code"], "name": nm, "note": "停牌或无行情，买不到"})
-            elif float(r["open"]) >= float(r["high_limit"]) - 1e-9:
-                skipped += 1          # 一字涨停买不到
-                rec["skipped"].append({"code": sig["code"], "name": nm, "note": "一字涨停，买不到"})
-            else:
-                gap = (float(r["open"]) / float(r["pre_close"]) - 1) * 100 if float(r["pre_close"]) else 0.0
-                ok, why = entry_gate(gap, cfg)
-                if not ok:
+                if j >= o["_exp"]:
+                    pending.remove(o)
                     skipped += 1
-                    rec["skipped"].append({"code": sig["code"], "name": nm, "note": why})
-                else:
-                    px = float(r["open_adj"]) * (1 + _half)
-                    # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 持仓成本"估算:
-                    # 买入发生在开盘, 当日收盘价还不可知, 用成本不引入未来函数。
-                    nav_now = cash + sum(p["units"] * p["entry_px"] for p in positions)
-                    _slots = P["budget_slots"] or P["max_pos"]
-                    _cap = cash + max(0.0, (LEV - 1.0) * nav_now) if LEV > 1.0 else cash
-                    budget = min(nav_now / _slots * LEV, _cap * 0.995)
-                    if budget < 1000:
-                        skipped += 1
-                        rec["skipped"].append({"code": sig["code"], "name": nm, "note": "现金不足"})
-                    else:
-                        units = budget / px
-                        cash -= units * px
-                        positions.append({"code": sig["code"], "name": nm,
-                                          "signal_date": sig["date"], "entry_date": d, "entry_j": j,
-                                          "entry_px": px, "entry_px_raw": float(r["open"]),
-                                          "gap_pct": round(gap, 2), "units": units,
-                                          "hwm": px})
-                        rec["fills"].append({"code": sig["code"], "name": nm, "ret_pct": None})
-        sig = None
+                    rec["skipped"].append({"code": s2["code"], "name": nm, "note": "停牌或无行情，买不到"})
+                continue
+            op = float(r["open"])
+            if op >= float(r["high_limit"]) - 1e-9:
+                pending.remove(o)
+                skipped += 1
+                rec["skipped"].append({"code": s2["code"], "name": nm, "note": "一字涨停，买不到"})
+                continue
+            ratio = float(r["open_adj"]) / op if op else 1.0
+            low_adj = float(r["low"]) * ratio
+            gap = (op / float(r["pre_close"]) - 1) * 100 if float(r["pre_close"]) else 0.0
+            ok, why = entry_gate(gap, cfg)
+            fill_adj = fill_raw = None
+            if ok:
+                if _PB <= 0 or float(r["open_adj"]) <= o["_lim"] + 1e-9:
+                    fill_adj, fill_raw = float(r["open_adj"]), op      # 开盘价已在限价之下 -> 开盘成交
+                elif _PB_MODE != "open" and low_adj <= o["_lim"] + 1e-9:
+                    fill_adj, fill_raw = o["_lim"], o["_lim"] / ratio  # 盘中回踩触及 -> 限价成交
+            if fill_adj is None:
+                if not ok:
+                    pending.remove(o)
+                    skipped += 1
+                    rec["skipped"].append({"code": s2["code"], "name": nm, "note": why})
+                elif j >= o["_exp"]:
+                    pending.remove(o)
+                    skipped += 1
+                    rec["skipped"].append({"code": s2["code"], "name": nm, "note": "未回踩到限价，放弃"})
+                continue
+            px = fill_adj * (1 + _half)
+            # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 持仓成本"估算:
+            # 买入发生在开盘, 当日收盘价还不可知, 用成本不引入未来函数。
+            nav_now = cash + sum(p["units"] * p["entry_px"] for p in positions)
+            _slots = P["budget_slots"] or P["max_pos"]
+            _cap = cash + max(0.0, (LEV - 1.0) * nav_now) if LEV > 1.0 else cash
+            budget = min(nav_now / _slots * LEV, _cap * 0.995)
+            if budget < 1000:
+                pending.remove(o)
+                skipped += 1
+                rec["skipped"].append({"code": s2["code"], "name": nm, "note": "现金不足"})
+                continue
+            units = budget / px
+            cash -= units * px
+            positions.append({"code": s2["code"], "name": nm,
+                              "signal_date": s2["date"], "entry_date": d, "entry_j": j,
+                              "entry_px": px, "entry_px_raw": fill_raw,
+                              "gap_pct": round(gap, 2), "units": units,
+                              "hwm": px})
+            rec["fills"].append({"code": s2["code"], "name": nm, "ret_pct": None})
+            pending.remove(o)
 
         # ---------- 2) 收盘: 逐只卖出判定 ----------
         for p in list(positions):
@@ -346,6 +385,11 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                     for cand in cands:
                         cand["date"] = d
                         cand["name"] = names.get(cand["code"], "")
+                        if _PB > 0:
+                            # 限价基准必须锁在**信号日收盘**(T 日已知), 不能读 T+1 行情
+                            _r0 = _row(day, cand["code"])
+                            cand["_lim"] = (float(_r0["close_adj"]) * (1 - _PB / 100.0)
+                                            if _r0 is not None else None)
                     sig = cands if P["buys_per_day"] > 1 else cands[0]
                 elif cands:
                     ev.append("候选 %d 只 < 宽度门槛 %d，不出票" % (len(cands), P["min_cands"]))
