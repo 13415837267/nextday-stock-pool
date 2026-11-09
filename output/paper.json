@@ -2,8 +2,8 @@
  "meta": {
   "created": "2026-11-02",
   "version": 1,
-  "updated": "2026-11-09 13:46:09",
-  "n": 5
+  "updated": "2026-11-09 16:23:58",
+  "n": 6
  },
  "records": [
   {
@@ -136,8 +136,34 @@
    "floor_pct": null,
    "condition": "首选评分 0.95 < 门槛 1(横截面 z 分): 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)",
    "fallbacks": [],
-   "state": "planned",
+   "state": "void",
    "recorded_at": "2026-11-06 17:03:04",
+   "buy_px": null,
+   "sell_px": null,
+   "gap_pct": 1.99,
+   "ret_gross_pct": null,
+   "ret_net_pct": null,
+   "weighted_pct": null,
+   "exec": null,
+   "note": "风控未触发(缺口 +1.99% 未达 None%), 按规则空仓"
+  },
+  {
+   "signal_date": "20261109",
+   "buy_date": "20261110",
+   "sell_date": "20261111",
+   "code": "002727.SZ",
+   "name": "一心堂",
+   "rank": 1,
+   "score": 1.053,
+   "strategy": "dip",
+   "regime_ok": false,
+   "allow_buy": true,
+   "plan_pos_pct": 12.0,
+   "floor_pct": -2.5,
+   "condition": "风控中(连续第10日): 只接恐慌深跌 —— 开盘缺口≤-2.5%才买, 仓位按40%执行; 缺口不够深则当日空仓; 若竞价缺口 ≥0.5%→50% 则按该比例减仓(照常成交, 不弃单); 达标4只→30%仓(仅买评分第1名)(当日候选池偏窄=孤立回调、缺共振); 若竞价缺口 ≤-1% 且达标≥5只 → 撤销池深折价、",
+   "fallbacks": [],
+   "state": "planned",
+   "recorded_at": "2026-11-09 16:23:56",
    "buy_px": null,
    "sell_px": null,
    "gap_pct": null,
@@ -149,13 +175,13 @@
   }
  ],
  "stats": {
-  "n_signal": 5,
+  "n_signal": 6,
   "n_closed": 0,
   "n_holding": 0,
   "n_planned": 1,
-  "n_void": 4,
+  "n_void": 5,
   "void_reasons": {
-   "风控未触发": 4
+   "风控未触发": 5
   }
  }
 }
