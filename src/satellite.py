@@ -74,6 +74,15 @@ DEFAULT = {
     "bo_near_high": 1.0,      # 距 20 日新高的上限(%): dist_high20 >= -1 即贴近新高
     "bo_vol_ratio": 1.5,      # 量比下限
     "bo_close_pos": 0.8,      # 收盘在日内区间的位置下限(0.8 = 收在最强 20% 区间)
+    # 第一百八十三轮: "右侧趋势回调" mode —— 与"追新高(breakout)"不同, 它要求
+    # **趋势已成立(站上 MA20 且 20 日动量为正)、股价从 20 日高点回撤一段、当日缩量**。
+    # 买点是"上升趋势里的缩量回调", 不是"突破当天的最高价"。
+    # 第 183 轮实测: 追突破 H1~H3 全史级别负收益(单笔 -0.5~-1.9%), 是接盘;
+    # 而"趋势里回调"与主策略的"无趋势缩量阴线"是两件事, 必须分开测。
+    "bp_high_min": -12.0,     # 距 20 日最高点回撤下限(%): 跌得比这更深 -> 趋势已坏
+    "bp_high_max": -1.0,      # 距 20 日最高点回撤上限(%): -1 即"离高点不超过 1%", 太贴高点就算追高
+    "bp_vol_max": 1.0,        # 量比上限(缩量回调)
+    "bp_mom_min": 0.0,        # 20 日动量下限(%)
     "hold_days": 10,          # 持有交易日数(第一百五十轮 40->10, 见 config.yaml 注释)
     "min_score": 20.0,        # 评分阈值(0=不设): 评分 < 阈值不进候选池, 一个都不达标则空仓
     "max_ivol": 0,            # 兼容旧口径: 直接给 ivol 上限(0=不用); min_score>0 时以评分为准
@@ -209,6 +218,10 @@ def daily_params(cfg: dict) -> dict:
             "bo_near_high": float(s.get("bo_near_high") or 0.0),
             "bo_vol_ratio": float(s.get("bo_vol_ratio") or 0.0),
             "bo_close_pos": float(s.get("bo_close_pos") or 0.0),
+            "bp_high_min": float(s.get("bp_high_min", -12.0)),
+            "bp_high_max": float(s.get("bp_high_max", -1.0)),
+            "bp_vol_max": float(s.get("bp_vol_max", 1.0)),
+            "bp_mom_min": float(s.get("bp_mom_min", 0.0)),
             "dip_pct_min": float(s.get("dip_pct_min", -6.0)),
             "dip_pct_max": float(s.get("dip_pct_max", -3.0)),
             "dip_vol_max": float(s.get("dip_vol_max", 0.8)),
@@ -253,6 +266,15 @@ def _masks(day, cfg: dict):
         m_final = m_final & day["pct"].between(P["dip_pct_min"], P["dip_pct_max"]).to_numpy() \
             & (day["close_pos"] <= P["dip_close_pos_max"]).to_numpy() \
             & (day["vol_ratio"] <= P["dip_vol_max"]).to_numpy()
+    if P["mode"] == "bo_pullback":
+        # 右侧趋势回调: 趋势在(站上 MA20、20 日动量 > 0) + 从 20 日高点回撤 1~12%
+        # + 当日缩量 + 收盘不在日内最低。买"强势股的休息", 不买"突破那根阳线"。
+        m_final = m_final \
+            & (day["close_adj"] > day["ma20"]).to_numpy() \
+            & (day["mom20"] >= P["bp_mom_min"]).to_numpy() \
+            & day["dist_high20"].between(P["bp_high_min"], P["bp_high_max"]).to_numpy() \
+            & (day["vol_ratio"] <= P["bp_vol_max"]).to_numpy() \
+            & (day["close_pos"] >= 0.3).to_numpy()
     if P["mode"] == "trend_lowvol":
         m_final = m_final & ((day["close_adj"] > day["ma5"]) & (day["ma5"] > day["ma10"])
                              & (day["ma10"] > day["ma20"]) & (day["ma20"] > day["ma20_prev"])
