@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 4,          # 180: 副方案闸门关闭时置空 order/0 仓位, peers 补挂单价, 新增 batch
+        "plan_ver": 5,          # 180: 闸门置空 order/仓位 + peers 挂单价 + batch + observe 不再教挂单
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -573,10 +573,16 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                  else "系统口径: 大盘闸门关闭(指数在MA20下), 系统不开新仓 —— 今日不挂单、不建仓 [回测口径]"),
                 f"竞价缺口须在 [{P.get('gap_min')}%, +{P.get('gap_max')}%] 内"
                 " [回测口径: 低开破位不接、高开过多不追]",
-                (f"挂单口径: 限价 {round(float(s.get('close') or 0) * (1 - float(P.get('pullback_pct') or 0) / 100), 2)}"
-                 f"（= 收盘 {s.get('close')} × (1-{float(P.get('pullback_pct') or 0):g}%)）, "
-                 f"{int(P.get('pullback_days') or 1)} 个交易日内触及即成交; 开盘低于限价按开盘价成交"
-                 " [不是追开盘价: 1500 日实测按开盘价买只有 19.01%, 挂回踩单 32.38%]")
+                # 第一百八十轮: 闸门关闭时不能再教"怎么挂单" —— 旧实现第 1 条写
+                # "今日不挂单、不建仓", 第 3 条却给限价 12.17, 自相矛盾。
+                ((f"挂单口径: 限价 {round(float(s.get('close') or 0) * (1 - float(P.get('pullback_pct') or 0) / 100), 2)}"
+                  f"（= 收盘 {s.get('close')} × (1-{float(P.get('pullback_pct') or 0):g}%)）, "
+                  f"{int(P.get('pullback_days') or 1)} 个交易日内触及即成交; 开盘低于限价按开盘价成交"
+                  " [不是追开盘价: 1500 日实测按开盘价买只有 19.01%, 挂回踩单 32.38%]")
+                 if _gate_ok else
+                 (f"今日闸门关闭, 不挂单; 若明日开闸, 参考限价为 "
+                  f"{round(float(s.get('close') or 0) * (1 - float(P.get('pullback_pct') or 0) / 100), 2)}（收盘 × (1-"
+                  f"{float(P.get('pullback_pct') or 0):g}%)）, 须按开闸当日收盘重算"))
                 if float(P.get("pullback_pct") or 0) > 0 else "竞价后按开盘价买入",
             ],
             "abort": [
