@@ -419,13 +419,20 @@ def entry_gate(gap_pct: float, cfg: dict) -> tuple[bool, str]:
 
 
 def should_exit(held_days: int, ret_pct: float, cfg: dict,
-                hwm: float | None = None, close: float | None = None) -> tuple[bool, str]:
+                hwm: float | None = None, close: float | None = None,
+                gate_ok: bool | None = None) -> tuple[bool, str]:
     """是否卖出。held_days = 已持有交易日数(买入当日为 0)。
 
     第一百五十五轮加"移动止损"(trail_pct): 收盘价相对**持仓期最高收盘价**回撤超过阈值
     即卖。hwm/close 缺省时该条不生效, 所以旧调用方的行为与之前逐位一致。
 
-    判定顺序: 固定止损 -> 移动止损 -> 持满。三条都在收盘判定、收盘成交, 与止损同口径,
+    第一百八十轮把"持仓层大盘闸门"(gate_exit)从回测引擎搬进本函数:
+      此前 gate_exit 只写在 tools/satellite_backtest.py 的循环里, 而实盘账本
+      (tools/satellite_run.py)只调 should_exit —— 于是**回测会因大盘转弱清仓、实盘不会**,
+      两边绩效不可比。gate_ok=None 表示"调用方不提供大盘状态", 该条不生效
+      (旧调用方行为不变); gate_ok=False 才判定清仓。
+
+    判定顺序: 固定止损 -> 移动止损 -> 大盘闸门 -> 持满。全部收盘判定、收盘成交,
     不引入未来函数(hwm 只用当日及之前已实现的收盘价)。
     """
     P = daily_params(cfg)
@@ -434,6 +441,10 @@ def should_exit(held_days: int, ret_pct: float, cfg: dict,
     if (P["trail"] > 0 and hwm and close and float(hwm) > 0
             and float(close) / float(hwm) - 1 <= -P["trail"]):
         return True, "移动止损 %.0f%%(自高点)" % (P["trail"] * 100)
+    if P["gate_exit"] and gate_ok is False:
+        # loser 口径: 只砍浮亏的, 留住还在走强的(闸门是"风险偏好下降", 不是"所有票都完蛋")
+        if P["gate_exit_mode"] != "loser" or ret_pct < 0:
+            return True, "大盘转弱清仓"
     if held_days >= P["hold_days"]:
         return True, "持满 %d 个交易日" % P["hold_days"]
     return False, ""
