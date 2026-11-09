@@ -208,6 +208,13 @@ def main():
                 gate_ok = bool(reg.loc[today, "trade_ok"])
             # 同一天只升级展示格式时, 沿用旧快照里已有的判定/主选, 不重新推断
             snap["gate_ok"] = _snap.get("gate_ok", gate_ok) if same_day else gate_ok
+            # 第一百八十一轮: 入场口径随快照补写(旧快照没有该字段时页面会退回 gate_ok)
+            _entry0 = gate_ok
+            _b0 = float(P.get("gate_entry_buf") or 0.0)
+            if gate_ok and _b0 > 0 and reg is not None and today in reg.index:
+                _r0 = reg.loc[today]
+                _entry0 = bool(float(_r0["mkt_idx"]) >= float(_r0["mkt_ma"]) * (1 + _b0 / 100.0))
+            snap["entry_ok"] = bool(_entry0)
             snap["picked"] = (_snap.get("picked") if same_day else "") or (
                 (tape.get("signal") or {}).get("code")
                 or ((tape.get("positions") or [{}])[0] or {}).get("code") or "")
@@ -222,7 +229,8 @@ def main():
                         "max_pos": P["max_pos"], "buys_per_day": P["buys_per_day"],
                         "dist_ma5_max": P["dist_ma5_max"],
                         "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"],
-                        "gate_exit": bool(P["gate_exit"]), "gate_exit_mode": P["gate_exit_mode"]})
+                        "gate_exit": bool(P["gate_exit"]), "gate_exit_mode": P["gate_exit_mode"],
+                        "gate_entry_buffer": round(P["gate_entry_buf"], 2)})
             tape["params"] = _pr
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
             print("  升级候选池快照(候选池 %d 只 / 评分阈值 %g / 基础票池 %d 只), 状态机未动"
