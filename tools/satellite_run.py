@@ -195,6 +195,8 @@ def main():
                 or (tape.get("params") or {}).get("sort_by") != P["sort_by"]
                 # 第一百八十轮: 持仓闸门开关也是"披露口径", 老账本没有该字段 -> 补写一次
                 or (tape.get("params") or {}).get("gate_exit") != P["gate_exit"]
+                # 第一百八十一轮: 入场缓冲也是披露口径, 老账本没有该字段 -> 补写一次
+                or (tape.get("params") or {}).get("gate_entry_buffer") != round(P["gate_entry_buf"], 2)
                 or "min_score" not in (tape.get("params") or {})
                 or "min_pool" not in (tape.get("params") or {})):
             same_day = _snap.get("date") == today
@@ -251,6 +253,9 @@ def main():
               # 第一百八十轮: 持仓闸门随参数发布 —— 否则页面只看到"大盘闸门"(开新仓),
               # 不知道"闸门关闭时还会清老仓", 账面回撤会被误读成"没风控"。
               "gate_exit": bool(P["gate_exit"]), "gate_exit_mode": P["gate_exit_mode"],
+              # 第一百八十一轮: 入场缓冲随参数发布 —— 页面"闸门开=可买"要能解释
+              # "闸门开了但指数只高 0.1%, 仍不追"的情况。
+              "gate_entry_buffer": round(P["gate_entry_buf"], 2),
               "cost_pct": round(P["cost"] * 100, 3),
               # 池口径随参数一起发布: 页面 legend 的"候选池 N 只 / 样本下限 M 只"必须
               # 跟配置一致, 不能在页面里写死 20 —— 改了 config 页面不跟着变就成了假披露。
@@ -339,13 +344,25 @@ def main():
 
     # 第一百八十轮: 大盘闸门提前算 —— 持仓清仓判定与"明日是否开新仓"必须用同一个值,
     # 否则会出现"实盘因闸门不开新仓、但老仓位不清"的行为, 与回测口径不一致。
-    gate_ok, gate_note = True, ""
+    gate_ok, entry_ok, gate_note = True, True, ""
+    _buf = float(P.get("gate_entry_buf") or 0.0)
     if P["gate"]:
         reg = ctx.get("reg")
         if reg is not None and today in reg.index:
             gate_ok = bool(reg.loc[today, "trade_ok"])
+            entry_ok = gate_ok
+            if gate_ok and _buf > 0:
+                # 第一百八十一轮: 入场缓冲 —— 与 src.satellite.entry_ok_series 同一口径。
+                # 只在"闸门已开"之后再收紧, 所以不会放大风险, 只过滤"刚翻多就买"。
+                _rr = reg.loc[today]
+                entry_ok = bool(float(_rr["mkt_idx"]) >=
+                                float(_rr["mkt_ma"]) * (1 + _buf / 100.0))
         if not gate_ok:
             gate_note = "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
+        elif not entry_ok:
+            _r0 = reg.loc[today]
+            gate_note = ("大盘闸门虽开, 但指数只在 MA20 上方 %.2f%%(< %.2f%% 入场缓冲), "
+                         "今日不追新仓" % ((float(_r0["mkt_idx"]) / float(_r0["mkt_ma"]) - 1) * 100, _buf))
 
     # ---------- 2) 收盘: 逐只卖出判定 ----------
     for pos in list(positions):
@@ -376,7 +393,7 @@ def main():
     tape["positions"] = positions
 
     # ---------- 3) 收盘: 选明日信号(大盘闸门已在上面算好) ----------
-    if len(positions) < P["max_pos"] and not gate_ok:
+    if len(positions) < P["max_pos"] and not entry_ok:
         tape["signal"] = None
         tape["signals"] = None
         action, note = "none", gate_note
@@ -426,6 +443,7 @@ def main():
     sig_code = (tape.get("signal") or {}).get("code")
     snap["picked"] = sig_code or held_code or ""
     snap["gate_ok"] = bool(gate_ok)
+    snap["entry_ok"] = bool(entry_ok)   # 第一百八十一轮: 闸门开 != 允许开新仓
     snap["pick_note"] = note
     tape["pool"] = snap
 

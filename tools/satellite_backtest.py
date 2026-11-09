@@ -37,8 +37,8 @@ sys.path.insert(0, str(ROOT))
 
 from src.backtest import prepare_context  # noqa: E402
 from src.config import load_config  # noqa: E402
-from src.satellite import (STRATEGY_CN, daily_params, entry_gate, pick_list,  # noqa: E402
-                           rank_qualified, should_exit)
+from src.satellite import (STRATEGY_CN, daily_params, entry_gate, entry_ok_series,  # noqa: E402
+                           pick_list, rank_qualified, should_exit)
 
 HALF = 0.0015          # 单边成本, 与 tools/satellite_run.py 同一常数
 REPLAY_DAYS = 250      # 回放区间: 最近约 12 个月交易日(与主策略 replay 的区间长度一致)
@@ -520,7 +520,9 @@ def main():
     ctx = prepare_context(cfg, days)
     print(f"窗口 {len(ctx['main_dates'])} 日 {ctx['main_dates'][0]} ~ {ctx['main_dates'][-1]}", flush=True)
 
-    res = run(ctx, cfg)
+    # 第一百八十一轮: 入场闸门(指数站上 MA20+0.3%)。buf=0 时该函数返回 None, 行为与旧口径一致。
+    _entry = entry_ok_series(ctx.get("reg"), cfg)
+    res = run(ctx, cfg, entry_ok=_entry)
     m = res["metrics"]
     print(f"总收益 {m['总收益率%']:+.2f}%  年化 {m['年化收益率%']:+.2f}%  回撤 {m['最大回撤%']:.2f}%  "
           f"卡玛 {m['卡玛比率']}  笔数 {m['交易次数']}  胜率 {m['胜率%']}%  单笔 {m['平均单笔收益%']:+.3f}%",
