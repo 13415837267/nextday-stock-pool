@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 2,          # 第179轮: 副方案新增 order(挂单价) —— 结构变更必须升版
+        "plan_ver": 3,          # 179: 副方案加 order; 179补: 标题/放弃理由随限价口径改写
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -553,7 +553,10 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
         _gate_ok = bool(regime_info.get("ok"))
         plans["alt"] = {
             "strategy": P.get("mode", "lowvol"),
-            "strategy_cn": "副方案 · 追高(低波池内风险调整动量)",
+            # 第一百七十九轮补: "追高"描述的是选股方向(低波池内动量最强的票), 不是买入方式。
+            # 第179轮把执行改成"挂 -1% 限价等回踩"后, 标题若仍只写"追高", 人工会去竞价追单,
+            # 实际成交价与回测(限价成交)不符 —— 标题必须自带这个区分。
+            "strategy_cn": "副方案 · 追强选股 + 回踩买入(低波池内风险调整动量)",
             "code": s.get("code"),
             "name": (names or {}).get(s.get("code")) or s.get("name") or s.get("code"),
             "close": s.get("close"), "pct": s.get("pct"),
@@ -575,7 +578,10 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             ],
             "abort": [
                 f"低开 <= {P.get('gap_min')}%: 破位不接 [回测口径]",
-                f"高开 >= +{P.get('gap_max')}%: 追高成本过高 [回测口径]",
+                (f"高开 >= +{P.get('gap_max')}%: 限价单挂在收盘价下方 "
+                 f"{float(P.get('pullback_pct') or 0):g}%, 高开这么多不会成交 = 自动放弃, 不追 [回测口径]"
+                 if float(P.get("pullback_pct") or 0) > 0
+                 else f"高开 >= +{P.get('gap_max')}%: 追高成本过高 [回测口径]"),
             ],
             "exit": (f"持有 {P.get('hold_days')} 个交易日后收盘卖; 移动止损 "
                      f"{float(P.get('trail') or 0) * 100:g}% / 固定止损 "
