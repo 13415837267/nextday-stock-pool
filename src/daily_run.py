@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 5,          # 180: 闸门置空 order/仓位 + peers 挂单价 + batch + observe 不再教挂单
+        "plan_ver": 6,          # 181: 副策略入场闸门加 0.3% 缓冲(闸门开 != 允许开新仓)
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -461,7 +461,8 @@ def _score_band(score) -> dict | None:
 
 
 def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
-                 ex: dict, t1: dict, regime_info: dict, names: dict | None = None) -> dict:
+                 ex: dict, t1: dict, regime_info: dict, names: dict | None = None,
+                 reg=None) -> dict:
     """生成"明日计划"双方案卡片: 给人工盯盘执行, 不是自动下单指令。
 
     为什么单独一块而不是复用 picks:
@@ -554,6 +555,13 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
         s = sl[0]
         P = _sat_params(cfg) if _sat_params else {}
         _gate_ok = bool(regime_info.get("ok"))
+        # 第一百八十一轮: "闸门开"不等于"允许开新仓" —— 入场还要指数站上 MA20×(1+缓冲)。
+        # 口径与 tools/satellite_run.py、tools/satellite_backtest.py 同源(entry_ok_series)。
+        _buf = float((cfg.get("satellite") or {}).get("gate_entry_buffer") or 0.0)
+        _entry_ok = _gate_ok
+        if _gate_ok and _buf > 0 and reg is not None and signal_date in reg.index:
+            _r0 = reg.loc[signal_date]
+            _entry_ok = bool(float(_r0["mkt_idx"]) >= float(_r0["mkt_ma"]) * (1 + _buf / 100.0))
         plans["alt"] = {
             "strategy": P.get("mode", "lowvol"),
             # 第一百七十九轮补: "追高"描述的是选股方向(低波池内动量最强的票), 不是买入方式。
@@ -569,8 +577,12 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             "signal": (f"20日动量{s.get('mom20')}% / 特质波动{s.get('ivol20')}"
                        f" / 距5日线{s.get('dist_ma5')}%"),
             "observe": [
-                (f"系统口径: 大盘闸门已开, 可参与 [回测口径]" if _gate_ok
-                 else "系统口径: 大盘闸门关闭(指数在MA20下), 系统不开新仓 —— 今日不挂单、不建仓 [回测口径]"),
+                (f"系统口径: 大盘闸门已开, 可参与 [回测口径]" if _entry_ok
+                 else (f"系统口径: 大盘闸门虽开, 但指数只在 MA20 上方 "
+                       f"{(float(reg.loc[signal_date, 'mkt_idx']) / float(reg.loc[signal_date, 'mkt_ma']) - 1) * 100:.2f}%"
+                       f"(< {_buf:g}% 入场缓冲), 今日不追新仓 —— 不挂单 [回测口径]"
+                       if _gate_ok and reg is not None and signal_date in reg.index
+                       else "系统口径: 大盘闸门关闭(指数在MA20下), 系统不开新仓 —— 今日不挂单、不建仓 [回测口径]")),
                 f"竞价缺口须在 [{P.get('gap_min')}%, +{P.get('gap_max')}%] 内"
                 " [回测口径: 低开破位不接、高开过多不追]",
                 # 第一百八十轮: 闸门关闭时不能再教"怎么挂单" —— 旧实现第 1 条写
@@ -605,9 +617,9 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                 "pct": float(P.get("pullback_pct") or 0),
                 "days": int(P.get("pullback_days") or 1),
                 "base": s.get("close"),
-            } if _gate_ok and float(P.get("pullback_pct") or 0) > 0 and s.get("close") else None),
-            "system_ok": _gate_ok,
-            "position_pct": (round(100.0 / max(1, int(P.get("max_pos") or 1)), 1) if _gate_ok else 0.0),
+            } if _entry_ok and float(P.get("pullback_pct") or 0) > 0 and s.get("close") else None),
+            "system_ok": _entry_ok,
+            "position_pct": (round(100.0 / max(1, int(P.get("max_pos") or 1)), 1) if _entry_ok else 0.0),
             # 第一百七十六轮: 只买第 1 名的代价(1500 日实测, 同引擎同成本)
             "position_note": (
                 "系统口径是一次买满 4 只、每只 25%; 只买第 1 名(单吊) 1500 日年化 9.09% / "
@@ -619,13 +631,13 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
                        "name": (names or {}).get(x.get("code")) or x.get("name") or x.get("code"),
                        "rank_pct": x.get("rank_pct"), "mom20": x.get("mom20"),
                        "limit": (round(float(x.get("close") or 0) * (1 - float(P.get("pullback_pct") or 0) / 100), 2)
-                                 if _gate_ok and float(P.get("pullback_pct") or 0) > 0 and x.get("close") else None)}
+                                 if _entry_ok and float(P.get("pullback_pct") or 0) > 0 and x.get("close") else None)}
                       for x in sl[1:4]],
             # 系统口径的完整下单清单: 多少人多少份, 卡上必须自己说清, 不能靠用户推
             "batch": {"slots": int(P.get("max_pos") or 1),
-                      "each_pct": (round(100.0 / max(1, int(P.get("max_pos") or 1)), 1) if _gate_ok else 0.0),
+                      "each_pct": (round(100.0 / max(1, int(P.get("max_pos") or 1)), 1) if _entry_ok else 0.0),
                       "n_cands": len(sl),
-                      "n_buy": (min(len(sl), int(P.get("max_pos") or 1)) if _gate_ok else 0)},
+                      "n_buy": (min(len(sl), int(P.get("max_pos") or 1)) if _entry_ok else 0)},
         }
     elif "alt_error" not in plans:
         plans["alt_note"] = "当日副策略无达标候选(池子不足或大盘闸门关闭)"
@@ -1455,7 +1467,7 @@ def main():
     # 第一百七十六轮: 明日计划双方案(主抄底 / 副追高)。放在 latest 之前算好,
     # 异常在其中被吞掉并写 alt_error, 不影响主流程出池。
     _plans = _build_plans(cfg, by_date[signal_date], _fmt(signal_date), verified, ranked,
-                          ex, t1_decision, regime_info, names)
+                          ex, t1_decision, regime_info, names, reg)
 
     latest = {
         "update_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
