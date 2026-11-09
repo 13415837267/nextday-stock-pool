@@ -253,7 +253,10 @@ def main():
               # 必须跟配置同源 —— 改配置不改页面就是假披露。
               "max_pos": P["max_pos"], "buys_per_day": P["buys_per_day"],
               "dist_ma5_max": P["dist_ma5_max"],
-              "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"]}
+              "sort_by": P["sort_by"], "ivol_pct_max": P["ivol_pct"],
+              # 第一百七十九轮: 回踩限价随参数发布 —— 页面"挂单 -2%"必须与执行同源
+              "pullback_pct": P["pullback_pct"], "pullback_days": P["pullback_days"],
+              "pullback_mode": P["pullback_mode"]}
     tape["params"] = params
 
     action, note, code_today = "none", "", ""
@@ -277,7 +280,28 @@ def main():
         if not ok:
             note = note or why
             continue
-        px = _op * (1 + HALF)
+        # 第一百七十九轮: 回踩限价。挂"信号日收盘 ×(1-pb%)"的买单, 盘中触及才成交。
+        # 账本按日推进, pullback_days=1 时挂单当日有效, 因此不需要跨日队列。
+        _fill_adj = _op
+        _ratio = 1.0
+        if P["pullback_pct"] > 0:
+            _lim = float(_s.get("limit_adj") or 0.0)
+            if _lim <= 0:
+                note = note or "信号缺少限价基准, 不买"
+                continue
+            _rr = day.loc[day["ts_code"] == code_today].iloc[0]
+            _o_raw = float(_rr["open"])
+            _ratio = _op / _o_raw if _o_raw else 1.0
+            _low_adj = float(_rr["low"]) * _ratio
+            if _op <= _lim + 1e-9:
+                _fill_adj = _op                      # 开盘已低于限价 -> 开盘成交
+            elif P["pullback_mode"] != "open" and _low_adj <= _lim + 1e-9:
+                _fill_adj = _lim                     # 盘中回踩触及 -> 限价成交
+            else:
+                note = note or ("未回踩到 -%g%% 限价(最低 %+.2f%%), 今日不买"
+                                % (P["pullback_pct"], (_low_adj / _cl - 1) * 100))
+                continue
+        px = _fill_adj * (1 + HALF)
         # 单笔预算 = 总资产 / max_pos。总资产用"现金 + 已有持仓成本"估算:
         # 买入发生在开盘, 当日收盘价还不可知, 用成本估值不引入未来函数。
         budget = min((cash + sum(float(x.get("cost") or 0) for x in positions))
@@ -288,7 +312,8 @@ def main():
         shares = budget / px
         pos = {"code": code_today, "name": names.get(code_today, _s.get("name", "")),
                "signal_date": _s["date"], "entry_date": today,
-               "entry_px": round(px, 4), "entry_px_raw": round(op_raw, 3),
+               "entry_px": round(px, 4),
+               "entry_px_raw": round(_fill_adj / _ratio, 3),
                "gap_pct": round(gap, 2), "shares": round(shares, 4),
                "cost": round(budget, 2), "hold_days": P["hold_days"],
                # 第一百五十五轮: 移动止损需要"持仓期最高收盘价"(复权口径, 与 entry_px 同源)
@@ -358,6 +383,10 @@ def main():
         for _c in cands:
             _c["date"] = today
             _c["name"] = names.get(_c["code"], "")
+            if P["pullback_pct"] > 0:
+                # 限价基准锁在**信号日收盘**(今日已知), 次日执行时不再读新行情
+                _r0 = day.loc[day["ts_code"] == _c["code"]].iloc[0]
+                _c["limit_adj"] = round(float(_r0["close_adj"]) * (1 - P["pullback_pct"] / 100.0), 4)
         tape["signals"] = cands
         cand = cands[0] if cands else None
         if cand:
