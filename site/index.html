@@ -361,6 +361,7 @@
       <li><b>为什么算这个</b>：前 163 轮一直是 104%（主）和 19%（副）两个孤立数字，<b>从没算过"钱放一起是多少"</b>。本轮把主副资金叠加算到底，结论是<b>任何叠加都不如单跑主策略</b></li>
       <li><b>先纠正一个被用错的数字</b>：<code>空仓天数 1147</code> 的定义是"<b>收盘时</b>账户无持仓"（1500−1147=353，与逐笔重建完全吻合），但<b>卖出发生在开盘</b>，卖出日收盘已空仓、当天资金其实工作过。按"当天持有过仓位"算，资金有敞口 <b>656 天 = 43.7%</b>。第 158 轮写的"资金在场时间只有 23.5%"已原位更正（方向不变，但与副策略的差距从 44.7pp 缩到 27.3pp）</li>
       <li><b>权重网格：年化严格单调</b>。两条曲线日收益相关仅 <b>+0.14</b>，看起来是完美分散标的，但 19% 的收益补不上 104% 的差：主策略权重 0→30→50→70→90→100% 对应年化 <b>19.16 / 41.84 / 58.33 / 75.87 / 94.42 / 104.04%</b>（本节统一按 252 日/年从净值重算；副策略引擎自身按 250 日折算报 18.99%，同一组净值在 252 口径下为 19.16%），每一档都比上一档高 7.3~9.6pp。<b>50/50 砍掉 45.7pp 年化，只换来回撤改善 4.85pp</b></li>
+      <li><b>第 185 轮重算：上面那条权重网格的数字已全部过期</b>。它测的是旧口径（主策略年化 104%、副策略 19%）；现在主策略 <b>498 倍 / 年化 184.1% / 回撤 -21.7%</b>、副策略 <b>8.27 倍 / 42.6% / -21.6%</b>，两腿差三个数量级，网格形状完全变了：100% → <b>498×</b>、80% → <b>248×</b>、70% → <b>171×</b>、<b>60% → 116×（回撤 -14.2%，全表最浅）</b>、50% → 77.7×、0% → 8.27×。日收益相关也从 +0.14 降到 <b>+0.085</b>（副策略口径三次改过，与主策略的重合度更低）。<b>结论反转</b>：现在"百倍"不需要任何杠杆，100% 主策略自己就有 498 倍；分 40% 给副策略不是为了让复利更高，是<b>用 4 倍的倍数换 7.5pp 的回撤</b>。完整表格见下方「资金配置」</li>
       <li><b>资金"完全复用"也不行</b>：主策略持仓日全给主策略、空仓日全给副策略（零闲置）→ 年化 <b>86.14%</b>、回撤 <b>-27.16%</b>；只在"连续空仓 ≥10 日"的段复用 → 97.25%；复用但副策略半仓 → 95.36%。<b>连零闲置都低于基线 18pp</b></li>
       <li><b>为什么复用会亏</b>：副策略在主策略持仓的 656 天里赚 <b>+159.0%</b>（对数），在主策略空仓的 844 天里亏 <b>-54.7%</b>。分年 6 段里 5 段同向、控制大盘涨跌后仍在、block bootstrap 日均差 +0.1442pp（<b>P(>0)=100%</b>）</li>
       <li><b>但这不能当闸门 —— 换个口径就反过来</b>：按笔看，买入决策日落在主策略信号日的 103 笔平均 <b>+0.593%</b>，其余 289 笔 <b>+1.642%</b>。<b>在主策略喊"跌到位了"的那天买动量股，是最差的买点</b>。日收益口径量的是"持仓期内的浮盈节奏"，与"买入时机"是两件事——本轮一度把 30.62% 的反事实年化当救命稻草，就是混了这两个口径</li>
@@ -496,6 +497,19 @@
     </ul>
   </div>
 
+  <h2 data-pane="more">资金配置：两条腿怎么分钱 <span class="sub">主策略 dip/H1 × 副策略 lowvol/H10 · 一个账户按权重分钱、按月再平衡 · 第 185 轮</span></h2>
+  <div data-pane="more" class="panel">
+    <div class="legend" style="margin-bottom:10px">
+      两条腿的信号源、持有期、选股池完全不同（一个买缩量阴线、次日就卖；一个在低波池里持 10 个交易日），
+      日收益相关系数只有 <b id="combo-corr">-</b> —— <b>分散是真的，不是回测拟合出来的</b>。
+      下面三种配置都是同一个账户的两种分法，不加任何融资：<b>100% 主策略</b>给出百倍级复利；
+      想压回撤就把一部分钱交给副策略，代价是按比例少赚。
+    </div>
+    <div class="cards" id="combo-cards"><div class="card"><div class="k">资金配置</div><div class="v" style="font-size:14px;color:var(--muted)">加载中...</div></div></div>
+    <div style="margin-top:12px" id="combo-table"></div>
+    <div class="legend" style="margin-top:10px" id="combo-note"></div>
+  </div>
+
 <div data-pane="more" class="disclaimer" id="disclaimer"></div>
 
   <footer>
@@ -532,6 +546,7 @@ const U = {
   latest: "./data/latest.json", history: "./data/history.json",
   backtest: "./data/backtest.json", replay: "./data/replay.json", paper: "./data/paper.json",
   satellite: "./data/satellite.json", satbt: "./data/satellite_bt.json",
+  combo: "./data/combo.json",
 };
 
 let STRAT = "main", PANE = "strategy";
@@ -1697,6 +1712,49 @@ async function renderTape() {
   if (isMain) { loadPaper(); loadReplay(); } else { renderReplaySat(); }
 }
 
+/* ---------- 资金配置(第185轮, 数据源 output/combo.json) ----------
+   两条腿各跑各的, 组合只是"一个账户按权重分钱、按月再平衡", 不加融资。
+   网格由 tools/make_combo.py 每日从两腿净值重算, 不重跑回测。 */
+async function loadCombo() {
+  const box = document.getElementById("combo-cards");
+  if (!box) return;
+  const tb = document.getElementById("combo-table");
+  const nt = document.getElementById("combo-note");
+  let d;
+  try { d = await jgetOnce(U.combo); }
+  catch (e) {
+    box.innerHTML = `<div class="card"><div class="k">资金配置</div><div class="v" style="font-size:14px;color:var(--muted)">数据未部署（output/combo.json）</div></div>`;
+    if (tb) tb.innerHTML = "";
+    return;
+  }
+  const g = d.grid || [];
+  const pick = w => g.find(x => Number(x.w) === w) || null;
+  const corrEl = document.getElementById("combo-corr");
+  if (corrEl) corrEl.textContent = (d.corr > 0 ? "+" : "") + Number(d.corr).toFixed(3);
+  const card = (t, x, sub) => x ? `<div class="card"><div class="k">${t}</div>
+      <div class="v">${Number(x["倍数"]).toFixed(2)}×</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">
+        年化 ${Number(x["年化%"]).toFixed(1)}% · 回撤 ${Number(x["回撤%"]).toFixed(1)}%<br>
+        卡玛 ${x["卡玛"]} · ${x["笔数"]} 笔<br>${sub}</div></div>` : "";
+  box.innerHTML = card("100% 主策略", pick(100), "最猛的一档") +
+                  card("60 / 40 组合", pick(60), "仍是百倍级，回撤最浅") +
+                  card("100% 副策略", pick(0), "低相关第二腿");
+  if (tb) {
+    tb.innerHTML = `<div class="tscroll"><table class="rtable">
+      <tr class="h"><th>主策略权重</th><th>期末倍数</th><th>年化</th><th>最大回撤</th><th>卡玛</th><th>交易笔数</th></tr>` +
+      g.slice().sort((a, b) => b.w - a.w).map(x => `<tr>
+        <td data-label="主策略权重">${x.w}%</td>
+        <td data-label="期末倍数" style="font-variant-numeric:tabular-nums"><b>${Number(x["倍数"]).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}×</b></td>
+        <td data-label="年化">${Number(x["年化%"]).toFixed(1)}%</td>
+        <td data-label="最大回撤" class="down">${Number(x["回撤%"]).toFixed(1)}%</td>
+        <td data-label="卡玛">${Number(x["卡玛"]).toFixed(2)}</td>
+        <td data-label="交易笔数">${x["笔数"]}</td></tr>`).join("") + `</table></div>`;
+  }
+  if (nt && d.window) nt.innerHTML = `${esc(d.note || "")} 窗口 ${esc(d.window.start)} ~ ${esc(d.window.end)}
+    （${d.window.days} 个交易日）。网格随两腿净值每日重算（<code>tools/make_combo.py</code>）。
+    回测为满仓复利的理论值，不等于可实现收益。`;
+}
+
 async function loadDisclaimer() {
   try {
     const d = await jgetOnce(U.latest);
@@ -1731,6 +1789,7 @@ document.addEventListener("click", e => {
   renderStrategy();
   if (PANE === "tape") renderTape();
   loadHealth();
+  loadCombo();
   loadDisclaimer();
 })();
 </script>

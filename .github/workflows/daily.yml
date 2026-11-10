@@ -133,6 +133,16 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python tools/satellite_backtest.py
 
+      # 第一百八十五轮: 资金配置网格。两腿净值(backtest.json / satellite_bt.json)都已在手,
+      # 组合只是把两条日收益序列按权重加权再复利 —— 毫秒级, 不重跑任何回测。
+      # continue-on-error: 纯展示层, 失败不该阻断部署。
+      - name: 资金配置网格(两腿净值加权)
+        if: steps.guard.outputs.skip != 'true'
+        continue-on-error: true
+        env:
+          TZ: Asia/Shanghai
+        run: python tools/make_combo.py
+
       # 第一百四十一轮: 主策略回放原先只在手工跑 tools/replay.py 时更新(区间还是写死的
       # 20251101~20261031), 与每天刷新的副策略回放并排看就是"一条腿走、一条腿钉住"。
       # 现在每日刷新, 区间取"最新交易日前推 12 个月"。
@@ -193,7 +203,7 @@ jobs:
           # 回测/审计中间产物一起推到 Pages —— mkt_gap_events.json 35MB、overnight_offset.json
           # 5.4MB、stock_state_pool.json 4.6MB, 部署体积 48.7MB, 而站点只需约 0.5MB。
           # 新增前端数据源时必须同步改这里, 否则页面会显示"数据未部署"。
-          for f in latest history backtest health replay paper satellite satellite_bt; do
+          for f in latest history backtest health replay paper satellite satellite_bt combo; do
             cp "output/$f.json" deploy/data/ 2>/dev/null || true
           done
 
