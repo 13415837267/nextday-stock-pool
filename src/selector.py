@@ -200,9 +200,11 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
         lambda s: s.abs().rolling(10, min_periods=8).mean()))
     del _gap
     # CTC: 用矩公式手算 rolling 相关, 比 groupby.rolling.corr 快一个量级(后者 python 级双列窗口)。
+    # 中间量用 float32: 5 个 float64 中间 Series 在 1500 日面板(836 万行)上峰值多占 335MB,
+    # GitHub runner 只有 7G, 而相关系数保留 2 位小数, float32 足够。
     _code = panel["ts_code"]
-    _x = panel["close_adj"].astype("float64")
-    _y = panel["turnover_rate"].astype("float64")
+    _x = panel["close_adj"].astype("float32")
+    _y = panel["turnover_rate"].astype("float32")
     _n = 20
 
     def _rmean(s):
