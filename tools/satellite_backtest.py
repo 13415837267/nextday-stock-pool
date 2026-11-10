@@ -523,9 +523,11 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
                       + (f" · 低波前 {P['ivol_pct'] * 100:g}%" if P["ivol_pct"] else "")
                       # 第一百八十轮: 候选池是"展示几只", 执行是"买前几名" —— 单吊时两者不同,
                       # 旧文案只写"候选池≤4只", 与"最多 1 只并发"并排看会自相矛盾。
-                      + (f" · 候选池展示≤{P['pool_show']}只 / 只买前 {P['buys_per_day']} 名(评分≥{P['min_score']:g})"
+                      # 第 193 轮: 页面口径改为"表内行数＝实际买入只数", 候选池不再展示第 2 名以后
+                      # (第 193 轮实测名次间无显著差异, 展示出来只会被误读成"可以改买")。
+                      + (f" · 候选池只发布第 1 名 / 只买前 {P['buys_per_day']} 名(评分≥{P['min_score']:g})"
                          if P["min_score"] > 0
-                         else f" · 候选池展示≤{P['pool_show']}只 / 只买前 {P['buys_per_day']} 名")
+                         else f" · 候选池只发布第 1 名 / 只买前 {P['buys_per_day']} 名")
                       + (f" / 止损 {P['stop'] * 100:g}%" if P["stop"] < 0 else "")
                       # 第一百八十一轮: 入场缓冲要写进 rules —— 否则页面只看到"MA20 闸门",
                       # 会以为闸门一开就能买, 与实际的"还要站上 +0.3%"对不上。

@@ -1,0 +1,134 @@
+{
+ "days": 1500,
+ "window": [
+  "20200831",
+  "20261110"
+ ],
+ "hold": 10,
+ "cost": 0.003,
+ "pb": 1.0,
+ "pb_days": 3,
+ "rows": [
+  {
+   "mode": "open",
+   "gate": false,
+   "rank": 1,
+   "n": 641,
+   "mean": 0.301,
+   "median": -0.411,
+   "nw_t": 0.53,
+   "win": 46.5
+  },
+  {
+   "mode": "open",
+   "gate": false,
+   "rank": 2,
+   "n": 643,
+   "mean": 0.338,
+   "median": -0.171,
+   "nw_t": 0.71,
+   "win": 49.0
+  },
+  {
+   "mode": "open",
+   "gate": false,
+   "rank": 3,
+   "n": 642,
+   "mean": 0.291,
+   "median": -0.128,
+   "nw_t": 0.54,
+   "win": 49.4
+  },
+  {
+   "mode": "open",
+   "gate": true,
+   "rank": 1,
+   "n": 733,
+   "mean": 0.783,
+   "median": -0.16,
+   "nw_t": 1.57,
+   "win": 48.3
+  },
+  {
+   "mode": "open",
+   "gate": true,
+   "rank": 2,
+   "n": 733,
+   "mean": 1.034,
+   "median": 0.158,
+   "nw_t": 2.07,
+   "win": 50.8
+  },
+  {
+   "mode": "open",
+   "gate": true,
+   "rank": 3,
+   "n": 737,
+   "mean": 1.287,
+   "median": 0.152,
+   "nw_t": 3.37,
+   "win": 51.4
+  },
+  {
+   "mode": "limit",
+   "gate": false,
+   "rank": 1,
+   "n": 515,
+   "mean": 0.643,
+   "median": -0.045,
+   "nw_t": 0.98,
+   "win": 49.1
+  },
+  {
+   "mode": "limit",
+   "gate": false,
+   "rank": 2,
+   "n": 497,
+   "mean": 0.55,
+   "median": 0.003,
+   "nw_t": 1.06,
+   "win": 50.1
+  },
+  {
+   "mode": "limit",
+   "gate": false,
+   "rank": 3,
+   "n": 479,
+   "mean": 0.053,
+   "median": -0.483,
+   "nw_t": 0.1,
+   "win": 48.4
+  },
+  {
+   "mode": "limit",
+   "gate": true,
+   "rank": 1,
+   "n": 575,
+   "mean": 1.182,
+   "median": 0.149,
+   "nw_t": 2.05,
+   "win": 51.3
+  },
+  {
+   "mode": "limit",
+   "gate": true,
+   "rank": 2,
+   "n": 580,
+   "mean": 1.305,
+   "median": 0.215,
+   "nw_t": 2.45,
+   "win": 51.0
+  },
+  {
+   "mode": "limit",
+   "gate": true,
+   "rank": 3,
+   "n": 573,
+   "mean": 1.614,
+   "median": 0.71,
+   "nw_t": 3.69,
+   "win": 55.5
+  }
+ ],
+ "limit_fill_rate_rank1": 73.4
+}

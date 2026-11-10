@@ -17,6 +17,14 @@
   h1 { font-size: 25px; color: var(--gold); }
   h1 small { font-size: 13px; color: var(--muted); font-weight: normal; margin-left: 12px; }
   .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  /* 页面开场: 数据时间 / 回测口径 / 怎么用 / 一句话纪律 —— 先讲清楚"这份数据到哪一天、
+     明天该做什么", 再让人往下滚。主副策略各一份(切按钮即换)。 */
+  .lead { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--gold);
+          border-radius: 8px; padding: 12px 16px; margin: 14px 0 4px; font-size: 13px; color: var(--muted); }
+  .lead .lrow { margin: 4px 0; }
+  .lead .lk { display: inline-block; min-width: 74px; color: var(--gold); font-weight: 600; }
+  .lead b { color: var(--text); }
+  @media (max-width: 640px) { .lead { font-size: 12px; padding: 10px 12px; } .lead .lk { min-width: 60px; } }
   .badges { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
   .badge { font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--border); }
   .badge.ok { color: var(--green); border-color: var(--green); }
@@ -154,6 +162,8 @@
     <div class="badges" id="badges"></div>
   </header>
 
+  <div class="lead" id="lead"></div>
+
   <nav class="tabs" id="tabs">
     <button class="tab active" data-tab="strategy">策略</button>
     <button class="tab" data-tab="tape">台账 · 回放</button>
@@ -257,7 +267,7 @@
     想看真实流水请到「台账 · 回放 → 向前台账」。</div>
     <b>执行时点（与主策略同一套纪律）</b>
     <ul class="rules">
-      <li>T日收盘后：基础票池 → <b>当日 ivol 最低 10%</b>（池边界）→ 按 <b>20 日动量 ÷ 特质波动</b>（风险调整动量）由强到弱排序，取<b>第 1 名</b>为执行票（第 2~4 名只在页面展示为候补）——<b>不设涨幅上限</b>，涨得多且走得稳的优先</li>
+      <li>T日收盘后：基础票池 → <b>当日 ivol 最低 10%</b>（池边界）→ 按 <b>20 日动量 ÷ 特质波动</b>（风险调整动量）由强到弱排序，取<b>第 1 名</b>为执行票（第 2 名以后折叠为"候补排序"，<b>不参与执行</b>；第 193 轮实测名次间无显著差异，排序只在第 1 名处有决策意义）——<b>不设涨幅上限</b>，涨得多且走得稳的优先</li>
       <li><b>基础票池不足 20 只则当日不出票</b>（宁缺勿滥）。这 20 只是<b>样本下限</b>、不是池深：可选面太窄说明市场极端（大面积停牌 / 流动性枯竭），不下注</li>
       <li><b>T+1 起挂「信号日收盘 × (1−1%)」限价单，3 个交易日内盘中触及即成交</b>；开盘已低于限价按开盘价成交（第 179 轮）。竞价缺口须在 -3%~+5% 内（深低开破位不接、高开过多不追），一字涨停/停牌买不到</li>
       <li><b>单吊 1 只、100% 仓位</b>（第 180 轮定稿）—— 每天最多买 1 只，不并行、不补位</li>
@@ -522,10 +532,12 @@
    一、布局：只剩 3 个页签（策略 / 台账·回放 / 体检·规则），主副策略用顶部按钮切换。
       原先"主策略""副策略"是两个页签、首页又单独堆两张计划卡 —— 同一个策略被拆在
       两处：看计划在首页、看池子和回测要换页签，手机上来回滚三屏。
-   二、候选池：两个策略都不再显示"全市场 1799 只"这种假池深。主策略只有一个执行标的
-      —— 候选池恒 1 只(= 表内行数)，第 2~20 名降级为"备选排序"，默认折叠并标注不参与
-      执行；副策略(第一百四十九轮起)候选池 = 评分达标的前 3 名(表内行数，0~3 只)，
-      不再有 20 只备选折叠；执行仍是单吊只买第 1 名。漏斗写清 1799 → 1 / 1799 → 3 是怎么来的。
+   二、候选池：两个策略都不显示"全市场 1799 只"这种假池深，也都不列"能买但不会买"的票。
+      主策略：候选池恒 1 只(= 表内行数)，第 2 名以后不展示；
+      副策略(第 193 轮统一口径)：**表内行数 = 明日实际买入只数 = 1**，池内达标的第 2~N 名
+      折叠为"候补排序"并标注不参与执行。理由见第 193 轮实验：名次之间没有显著收益差
+      (1-2 / 1-3 配对 t 均 < 0.7)，而引擎没有"第 1 名买不到就改买第 2 名"的分支，
+      列出来只会让人以为有备选。漏斗写清 1799 → 180 → N → 1 是怎么来的。
    三、多端：桌面与手机是同一份 DOM、同一套渲染器，手机沿用既有 .rtable 卡片规则，
       没有第二套页面、也没有"手机版隐藏某几列"。
 */
@@ -1338,10 +1350,26 @@ async function loadReplay() {
     个别日期的候选池会有出入。数据源：<code>output/replay.json</code>（${rpDate(m.panel_first)} 起面板）。</p>`;
 }
 
+/* ---- 页面开场白(第 193 轮): 数据时间 / 回测口径 / 怎么用 / 一句话纪律 ----
+   主策略页原先只在 meta 行里写"信号日 + 更新于", 第一次打开的人不知道
+   "这份数据到哪一天、明天几点该做什么、这一页该从哪看起"。副策略页更是只有
+   "低波池内追风险调整动量"一句术语。两个策略共用同一个 lead 区块, 内容随策略切换。 */
+function leadBlock(items) {
+  return (items || []).map(([k, v]) =>
+    `<div class="lrow"><span class="lk">${k}</span>${v}</div>`).join("");
+}
+
 /* ================= 主策略: 卡片 / 候选池 / 执行 / 回测 ================= */
 function headMain(d) {
   document.getElementById("meta").textContent =
     `信号日 ${fmtDate(d.signal_date)} · 更新于 ${d.update_time} · ${d.strategy}`;
+  const _pl = d.plan || {};
+  document.getElementById("lead").innerHTML = leadBlock([
+    ["数据时间", `信号日 <b>${fmtDate(d.signal_date)}</b>（收盘后生成，只用当日收盘可知的数据）→ 执行日 <b>${fmtDate(_pl.buy_date)}</b> 09:25 竞价买入 → <b>${fmtDate(_pl.sell_date)}</b> 14:55 前清仓。页面每个交易日盘后自动刷新。`],
+    ["回测口径", `近 <b>1500</b> 个交易日（约 6 年，2020-08 起）为主窗口，另附 <b>3378</b> 日全史（2012-11 起）做压力检验；所有收益都已扣双边成本与印花税。`],
+    ["怎么看", `<b>① 明日计划</b>：一张卡就够执行（买不买 / 买哪只 / 什么价 / 几点）；<b>② 候选池</b>：漏斗解释"为什么只剩这 1 只"；<b>③ 台账 · 回放</b>：收盘后逐笔对账；<b>④ 体检 · 规则</b>：参数现状与被证伪过的规则。`],
+    ["纪律", `9:25 前挂单、收盘前不动手 —— <b>不追单、不改价、不补仓</b>；买不到就当日空仓，不临时改买备选。`],
+  ]);
   const b = [replayBadge()];
   const ok = d.regime && d.regime.ok;
   b.push(`<span class="badge ${ok ? "ok" : "stop"}">${ok ? "风控通过·可开仓" : "风控触发·次日受限"}</span>`);
@@ -1378,9 +1406,21 @@ function headSat(d) {
   const by = Number(P.buys_per_day || 1);
   document.getElementById("meta").textContent =
     `信号日 ${rpDate(d.updated)} · 更新于 ${rpDate(d.updated)} 收盘后 · 低波池内追风险调整动量（最多 ${mx} 只 · 虚拟本金 10 万，独立记账）`;
+  // 第 193 轮: 与主策略同一套开场白。副策略没有"明日必买"的确定性(限价单可能 3 天都不成交),
+  // 所以"数据时间"必须把三件事写全: 信号日出在哪天、挂单从哪天开始、最晚哪天了结。
+  const _sigD = rpDate((d.signal || {}).date || d.updated);
+  const _pbd = Number(P.pullback_days || 3);
+  const _limTxt = (d.signal && d.signal.limit_adj)
+    ? `（限价 <b>${Number(d.signal.limit_adj).toFixed(2)}</b> = 信号日收盘 ×(1−${Number(P.pullback_pct || 1)}%)）` : "";
+  document.getElementById("lead").innerHTML = leadBlock([
+    ["数据时间", `信号日 <b>${_sigD}</b> 收盘后生成 → 限价单从<b>下一交易日</b> 9:25 起挂、<b>${_pbd}</b> 个交易日内有效${_limTxt} → 成交后持满 <b>${Number(P.hold_days || 10)}</b> 个交易日收盘卖出。页面每个交易日盘后自动刷新。`],
+    ["回测口径", `近 <b>1500</b> 个交易日（约 6 年，起点随窗口滚动）；台账（真实流水）自 2026-11-05 起独立记账，两者不混算。收益已扣双边成本，未加杠杆。`],
+    ["怎么看", `<b>① 明日计划</b>：给出限价、有效天数、卖出日；<b>② 候选池</b>：只发布第 1 名（表内行数＝实际买入只数），第 2 名以后折叠为候补；<b>③ 台账 · 回放</b>：逐笔对账；<b>④ 体检 · 规则</b>：回测口径的失效探针与参数披露。`],
+    ["纪律", `<b>只买第 1 名</b>：限价没触及就到期撤单、当日空仓，<b>系统不会改买第 2 名</b>；持满 10 日或触发止损/移动止损/闸门才卖，中途不加仓。`],
+  ]);
   const b = [replayBadge()];
   b.push(`<span class="badge ${(p.entry_ok ?? p.gate_ok) ? "ok" : "stop"}">大盘闸门 ${(p.entry_ok ?? p.gate_ok) ? "开 · 可开新仓" : "关 · 不开新仓"}</span>`);
-  if ((p.rows || []).length) b.push(`<span class="badge gold">候选池 ${p.rows.length} 只 · 只买第 1 名</span>`);
+  if ((p.rows || []).length) b.push(`<span class="badge gold">候选 ${p.rows.length} 只 → 执行 1 只</span>`);
   else b.push(`<span class="badge">候选池 0 只·无符合条件的票</span>`);
   if (P.dist_ma5_max != null) b.push(`<span class="badge">追高线 5日线+${Number(P.dist_ma5_max).toFixed(1)}%</span>`);
   else b.push(`<span class="badge">不设涨幅上限（追高）</span>`);
@@ -1461,9 +1501,11 @@ function planSat(d) {
 
   const cands = p.rows || [];
   if (cands.length) {
-    rows.push(`<b>候选池 ${cands.length} 只（按 20 日动量由强到弱）：</b>` + cands.map((x, i) =>
-      `${i === 0 ? "<b>" : ""}${esc(x.name || x.code)}（${esc(x.code)}，20日动量 ${x.mom20 != null ? Number(x.mom20).toFixed(1) : "-"}%，距5日线 ${x.dist_ma5 != null ? Number(x.dist_ma5).toFixed(2) : "-"}%）${i === 0 ? "</b>" : ""}`).join("、")
-      + (poss.length >= mx ? "，<b>持仓已满，明日不买</b>" : "，第 1 名明日买入"));
+    // 第 193 轮: 计划卡也只点名第 1 名 —— 旧版把 4 只全列出来, 读者会以为要在 4 只里挑。
+    rows.push(`<b>候选池 ${cands.length} 只 → 只买第 1 名：</b>`
+      + `<b>${esc(cands[0].name || cands[0].code)}</b>（${esc(cands[0].code)}，风险调整动量 ${cands[0].ra ?? "-"} = 20日动量 ${cands[0].mom20 != null ? Number(cands[0].mom20).toFixed(1) : "-"}% ÷ 波动 ${Number(cands[0].ivol20 ?? 0).toFixed(2)}）`
+      + (cands.length > 1 ? `；另有 ${cands.length - 1} 只候补（第 2~${cands.length} 名）<b>不参与执行</b> —— 限价没触及就当日空仓，不改买` : "")
+      + (poss.length >= mx ? "，<b>持仓已满，明日不买</b>" : ""));
   }
 
   return planCard({
@@ -1499,25 +1541,32 @@ function poolMain(d) {
     `<div class="legend">当日达标 <b>${n}</b> 只（策略按这个数字做仓位分档，<b>不是买入只数</b>）· 页面只发布评分第 1 名 <b>${picks.length}</b> 笔，第 2 名以后只在备用漏斗里补位${d.regime ? ` · 风控 ${d.regime.ok ? "通过" : "触发"}` : ""}${picks[0] ? ` · 今日主选 <b>${esc(picks[0].code)}</b>` : ""}</div>`;
 }
 
+/* ---- 副策略候选池: 只发布"会成交的那 1 只" (第 193 轮, 与主策略同构) ----
+   旧版把 pool_show=4 名全列进表 —— 表里 4 行, 实际只买第 1 名, 读者会以为
+   系统会在 4 只里挑、或持仓满员时改买第 2 名。事实是: 第 1 名的限价 3 天没触及
+   就当日空仓, 引擎**没有**改买第 2 名的分支(第 179 轮定稿)。
+   所以表内行数必须等于实际买入只数(=1), 第 2~N 名折叠为"候补排序", 并写清不参与执行。
+   —— 与主策略 poolMain 的口径完全一致: 表里几行 = 明天买几只。 */
 function poolSat(d) {
   const P = d.params || {}, p = d.pool || {};
-  // 第一百五十四轮: 候选池 = 低波池里按 mom20/ivol(风险调整动量)排序的票, 最多 3 只。
   const rows = p.rows || [];
   const base = p.base ?? p.n ?? rows.length;
   const minPool = Number(P.min_pool || 20);
   const capped = P.dist_ma5_max != null;
   const line = capped ? Number(P.dist_ma5_max) : null;
   const lowPct = Math.round(Number(P.ivol_pct_max || 0) * 100);
-  const show = Number(p.show ?? P.pool_show ?? 3);
   const mx = Number(P.max_pos || 1);
-  const by = Number(P.buys_per_day || 1);
+  const gate = (p.entry_ok ?? p.gate_ok);
+  const exec = rows.slice(0, 1);        // 只发布第 1 名
+  const alt = rows.slice(1);            // 第 2~N 名: 折叠, 不参与执行
 
   const funnel = (p.funnel && p.funnel.length)
     ? p.funnel.slice()
     : [{ label: "基础票池（主板 · 非ST · 非停牌 · 成交额≥1亿）", n: base }];
   funnel.push({ label: rows.length
-    ? `候选池（低波前${lowPct}% · 风险调整动量排序${capped ? ` · 距5日线≤+${line}%` : " · 不设涨幅上限"}，展示前 ${show} 只）`
-    : `候选池（无符合条件的票，低波前${lowPct}%）`, n: rows.length, last: true });
+    ? `低波前${lowPct}% · 风险调整动量排序（达标${capped ? ` · 距5日线≤+${line}%` : ""}）`
+    : `低波前${lowPct}%（无符合条件的票）`, n: rows.length });
+  funnel.push({ label: "发布 / 执行（第 1 名 · 单吊 100%）", n: exec.length, last: true });
 
   if (!rows.length) {
     const why = base < minPool
@@ -1527,9 +1576,7 @@ function poolSat(d) {
       `<div class="loading">今日候选池为空 —— ${why}，明日不买。系统正常运行，非数据缺失。</div>`;
   }
 
-  // 第 192 轮: 最后一列改成真正的排序键 mom20÷ivol(风险调整动量)。
-  // 旧版放的是 dist_ma5(距 5 日线), 但第 153 轮已经把"距5日线"这条追高线删掉了 ——
-  // 列里显示的是一个已不参与决策的量, 与"按风险调整动量排序"的规则说明自相矛盾。
+  // 第 192 轮: 最后一列是真正的排序键 mom20÷ivol(风险调整动量), 不是已废弃的 dist_ma5。
   const row = x => ({ no: x.rank ?? 1, tag: P.mode_cn || "低波动量",
     code: x.code, name: x.name, close: x.close, pct: x.pct,
     volRatio: x.vol_ratio ?? "-", turnover: x.turnover_rate ?? "-",
@@ -1537,12 +1584,26 @@ function poolSat(d) {
     metric: x.ra != null ? Number(x.ra).toFixed(2)
       : (x.dist_ma5 != null ? Number(x.dist_ma5).toFixed(2) : "-") });
 
+  // 排序键断层: 第 1 名领先第 2 名多少倍 —— 候选池里"第 2~4 名"到底算不算能比的候选
+  const _pb = Number(P.pullback_pct || 0);
+  const _lim1 = (_pb > 0 && exec[0] && exec[0].close)
+    ? (Number(exec[0].close) * (1 - _pb / 100)).toFixed(2) : null;
+  const _r1 = exec[0] && exec[0].ra != null ? Number(exec[0].ra) : null;
+  const _r2 = alt[0] && alt[0].ra != null ? Number(alt[0].ra) : null;
+  const _gapTxt = (_r1 != null && _r2 != null && _r2 > 0 && _r1 / _r2 >= 1.5)
+    ? `　第 1 名风险调整动量 <b>${_r1.toFixed(2)}</b>，是第 2 名（${_r2.toFixed(2)}）的 <b>${(_r1 / _r2).toFixed(1)} 倍</b> —— 排序键在第一名处断开，后面几只不是"同档候选"`
+    : "";
+
   return funnelBar(funnel) +
-    poolTable(rows.map((x, i) => ({ ...row(x),
-      reason: i === 0
-        ? `风险调整动量 ${x.ra ?? "-"}（20日 ${x.mom20}%）最强${(p.entry_ok ?? p.gate_ok) ? " · 明日计划，9:25 按开盘价买入" : " · 闸门关闭，明日不买"}`
-        : `候补第 ${i + 1} 名（动量 ${x.mom20}%，距5日线 ${x.dist_ma5 ?? "-"}%），最多同时持 ${mx} 只，满员时不买` })), "mom20÷ivol") +
-    `<div class="legend">候选池 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20日动量÷特质波动 排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，展示前 ${show} 只）· 最多同时持 <b>${mx}</b> 只、每日最多买 <b>${by}</b> 只 · 基础票池 ${base} 只（样本下限 ${minPool} 只）· 大盘闸门 ${(p.entry_ok ?? p.gate_ok) ? "开" : "关"}${p.picked ? ` · 今日主选 <b>${esc(p.picked)}</b>` : ""}</div>`;
+    poolTable(exec.map(x => ({ ...row(x),
+      reason: `风险调整动量 ${x.ra ?? "-"}（20日动量 ${x.mom20}% ÷ 波动 ${Number(x.ivol20 ?? 0).toFixed(2)}）当日最强`
+        + (gate ? ` · 明日挂限价 ${_lim1 ?? "-"}，${Number(P.pullback_days || 3)} 个交易日内触及即成交` : " · 闸门关闭，明日不挂单") })), "mom20÷ivol") +
+    `<div class="legend">表内 <b>${exec.length}</b> 行 = 明日实际买入 <b>${exec.length}</b> 只（单吊 100%）· 池内达标 <b>${rows.length}</b> 只（低波前 ${lowPct}% 内按 20日动量÷特质波动 排序${capped ? `、剔除距5日线 &gt; +${line}%` : "、不设涨幅上限"}，只发布第 1 名）· 基础票池 ${base} 只（样本下限 ${minPool}）· 最多同时持 ${mx} 只 · 大盘闸门 <b>${gate ? "开" : "关"}</b>${_gapTxt}</div>` +
+    (alt.length ? `<details style="margin-top:10px">
+      <summary>候补排序 —— 第 2~${rows.length} 名（<b>不参与执行</b>：第 1 名限价没触及就当日空仓，系统不会改买第 2 名）</summary>
+      <div style="margin-top:10px">${poolTable(alt.map(x => ({ ...row(x),
+        reason: `候补第 ${x.rank} 名 · 风险调整动量 ${x.ra ?? "-"}（动量 ${x.mom20}%）· 仅供观察，不挂单` })), "mom20÷ivol")}</div>
+    </details>` : "");
 }
 
 /* ---- 单吊执行记录 ---- */
@@ -1915,7 +1976,7 @@ async function renderStrategy() {
   document.getElementById("pool-title").textContent = "当日候选池";
   document.getElementById("exec-title").textContent = "逐笔执行记录";
   setSub("pool-sub", isMain ? "仅沪深主板 · 有信号日只发 1 只；无信号日按备用漏斗补位（至多 3 只）"
-    : "低波前 10% 里按 20 日动量由强到弱排序取第 1 名（追强不追价：挂昨日收盘 −1% 的限价单，3 个交易日内触及才成交）；单吊 100% 仓位，大盘闸门关闭时连老仓一起清");
+    : "只发布第 1 名（表内行数＝明日实际买入只数）；第 2 名以后折叠为候补，系统不会改买 —— 与主策略同一口径");
   setSub("exec-sub", isMain ? "逐笔明细：买入哪只、什么价、卖出哪只、什么价（自 2026-10-22 起）"
     : "逐笔明细：买入哪只、什么价、卖出哪只、什么价（v3 自 2026-11-05 起）");
   setSub("bt-sub", "加载中...");
