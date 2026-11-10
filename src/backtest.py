@@ -499,8 +499,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         _fbs = _sel.get("fallbacks") or []
         _main = [p for p in picks if p.get("pool", "main") == "main"]
         _fbp = [p for p in picks if p.get("pool", "main") != "main"]
+        # 第一百八十七轮: 名次偏移(pick_offset) —— 让"同一形态的第 k 名"可以单独跑成一条策略。
+        # 用途: 主策略吃评分第 1 名; 第二策略吃第 2 名(同一天、不同票, 选股不重叠),
+        # 两条腿各自复利, 是真正并行的两个策略, 而不是同一个策略里加仓。
+        # 缺省 0 = 逐位不变(现役口径), 只有显式配置才生效。
+        _poff = int(_sel.get("pick_offset") or 0)
         if _topk > 0:
-            _main = _main[:_topk]
+            _main = _main[_poff:_poff + _topk]
+        elif _poff:
+            _main = _main[_poff:]
         if _fbs and _fbp:
             _up = (reg_row is not None and not pd.isna(reg_row.get("mkt_ma", np.nan))
                    and float(reg_row["mkt_idx"]) >= float(reg_row["mkt_ma"]))

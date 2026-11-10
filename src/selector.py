@@ -30,6 +30,7 @@ STRATEGY_CN = {
     "spike": "放量突破承接",
     "oversold": "深跌阳线反转",
     "trend": "上升趋势突破",
+    "vcp": "波动收缩贴新高",
 }
 
 
@@ -556,6 +557,35 @@ def _select_one(
             + 0.25 * _zs(-df["dist_ma5"])
             + 0.20 * _zs(-df["vol_ratio"])
             + 0.20 * _zs(-df["bias20"])
+        )
+
+    elif mode == "vcp":
+        # 波动收缩 + 缩量贴近新高(第一百八十七轮): O'Neil VCP(波动收缩形态)的日线近似。
+        # 上涨中继里的"惜售": 价格贴在 20 日高点下方(未突破也未回落), 但振幅与量能同时收缩,
+        # 说明浮筹已被消化。与 dip 物理互斥: dip 要求"跌 3~6% 的阴线", 本模式要求"几乎不跌的窄幅"。
+        # 与 trend(追突破)也不同: trend 要求"涨 1~7% 且放量创新高", 本模式要求"缩量且未创新高"。
+        df = df[df["turnover_rate"] <= uni_cfg["turnover_max"]]
+        df = df[df["pct"].between(sel_cfg.get("vcp_pct_min", -2.0),
+                                  sel_cfg.get("vcp_pct_max", 3.0))]
+        df = df[df["close"] < df["high_limit"] - 1e-9]
+        df = df[df["close"] > df["low_limit"]]
+        df = df[df["low"] < df["high"]]
+        df = df[df["close_adj"] > df["ma20"]]
+        df = df[df["ma20"] > df["ma20_prev"]]                               # 20 日线向上
+        df = df[df["dist_high20"] >= sel_cfg.get("vcp_dist_high_min", -3.0)]  # 贴在 20 日高点下方
+        df = df[df["amp_pct"] <= sel_cfg.get("vcp_amp_max", 4.0)]           # 振幅收缩
+        df = df[df["vol_ratio"] <= sel_cfg.get("vcp_vol_ratio_max", 0.9)]   # 缩量(惜售)
+        df = df[df["mom20"].between(sel_cfg.get("vcp_mom20_min", 5.0),
+                                    sel_cfg.get("vcp_mom20_max", 40.0))]
+        df = df[df["bias20"] <= sel_cfg.get("bias20_max", 8.0)]             # 乖离不过热
+        stats["trend_ok"] = int(len(df))
+        if df.empty:
+            return [], stats
+        score = (
+            0.35 * _zs(-df["amp_pct"])
+            + 0.30 * _zs(-df["vol_ratio"])
+            + 0.20 * _zs(df["dist_high20"])
+            + 0.15 * _zs(df["mom20"])
         )
 
     elif mode == "limitup":
