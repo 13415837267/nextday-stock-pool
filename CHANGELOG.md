@@ -11,7 +11,9 @@
 ### 一、数据: 2304 个交易日, 12.85 万条
 
 - 新增 `tools/fetch_lhb_hist.py`(akshare 按月拉取, 按上榜日拆日文件, 按 code+date 去重留成交额
-  最大的一条), 落盘 `data/lhb_hist/` 2304 个文件 / 16MB / 2016-01-04 ~ 2025-06-30
+  最大的一条), 落盘 2304 个日文件后 `--pack` 合并成单个 `data/lhb_hist.parquet`
+  (7.7MB / 131,385 行 / 2016-01-04 ~ 2025-06-30) —— 2304 个小文件逐个 push 实测 15 分钟超时,
+  单文件一次推完; 日文件目录进 .gitignore
 - 与已有 `data/lhb`(tushare 源, 2025-05 起)合并后共 **154,861 条** (日, 票) 记录, 覆盖 3,545 日面板
 - 原始表的"上榜后 1/2/5/10 日"是未来收益, 一律不落盘, 从源头排除泄漏
 
@@ -88,7 +90,7 @@ dip 比它高 1.8pp, 差异只能来自"缩量"和"MA20 上方"这两个附加�
 
 - **生效参数一个未改**, config_fp 不变, 主策略 1500 日 498x / 年化 184% / -21.7% / 卡玛 8.47 / 352 笔
 - 新增文件: `tools/fetch_lhb_hist.py`、`tools/exp_lhb_hist.py`、`tools/exp_left_right_curve.py`、
-  `tools/make_fig_188.py`、`data/lhb_hist/`(2304 文件)、`output/lhb_hist_188.json`、`output/left_right_curve.json`
+  `tools/make_fig_188.py`、`data/lhb_hist.parquet`、`output/lhb_hist_188.json`、`output/left_right_curve.json`
 
 ## 第一百八十七轮: 右侧的绝对天花板 22.5 倍 / -62.6% —— 补测全史、全板块、杠杆、VCP，共 35 个变体（2026-11-10）
 
