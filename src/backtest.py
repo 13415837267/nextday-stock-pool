@@ -416,6 +416,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     #   lev>1 时允许透支 (lev-1)*equity 买入, 透支额按 margin_rate 年化逐日计息。
     #   实盘含义: 自有资金 1 份 + 融资 (lev-1) 份; 单票集中度/标的资格由券商约束, 回测不建模。
     lev = float(ex.get("leverage", 1.0) or 1.0)
+    # 第一百九十轮: 杠杆的回撤节流(可选, 缺省空=逐位等价)。
+    #   两融的硬约束不是"我想加多少倍", 而是**最坏时刻的维持担保比例**(<130% 强平)。
+    #   189 轮测出的天花板: 1.5x 最坏 223%(安全)、2.0x 134%(贴着线)、2.5x 101%(已被强平)。
+    #   也就是说 2.0x 的收益(11,108%x)拿不到, 不是因为它不赚钱, 而是因为它在历史最坏那一刻
+    #   会先被券商平掉。若能在"净值从高点回撤超过 dd_below"时把杠杆降到 lev, 最坏担保比例
+    #   就被截断在节流线附近, 从而可能用 2.0x 的收益拿到 1.5x 的安全性。
+    #   口径: 只看**截至前一交易日**的已实现净值曲线, 无未来函数; 回撤恢复后自动加回基础杠杆。
+    #   tiers: [{dd_below: -8.0, lev: 1.0}, ...] —— 按 dd_below 从深到浅匹配第一个命中的档。
+    dd_cut = sorted((t for t in (ex.get("dd_cut_tiers") or [])),
+                    key=lambda t: float(t.get("dd_below", 0.0)))
+    lev_now = [lev]          # 当日有效杠杆(闭包内可读, 由主循环按日更新)
+    _peak_nav = [0.0]        # 历史最高净值(截至前一交易日收盘)
     lev_rate = float(ex.get("margin_rate", 0.055) or 0.0)
     # 第一百七十三轮: 闲置现金收益。策略年均只有约 24% 的交易日有持仓, 其余时间现金
     # 完全空转(收益 0)。实盘上这部分钱可以买国债逆回购/货币 ETF, 年化约 1.5~2%。
@@ -867,11 +879,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 融资可用额度按"本笔目标仓位"重算: pick_frac>1 时杠杆额度须同步放大,
             # 否则 min(pick_frac*equity*lev, cash+margin_avail) 会被 (lev-1)*equity 卡死,
             # 超配永远不生效。pick_frac<=1 时 _lev_eff==lev, 与旧口径逐位一致。
-            _lev_eff = lev * max(1.0, pick_frac)
+            _lev_eff = lev_now[0] * max(1.0, pick_frac)
             margin_avail = max(0.0, (_lev_eff - 1.0) * equity - max(0.0, -cash)) if _lev_eff > 1.0 else 0.0
             if cash + margin_avail <= 0:
                 break
-            alloc = min(pick_frac * equity * lev, cash + margin_avail)
+            alloc = min(pick_frac * equity * lev_now[0], cash + margin_avail)
             # 第一百零三轮修复: 分档乘数为 0(或叠乘后为 0)时会生成 units=0 的"零仓成交" ——
             # 既记进交易次数/胜率(0 收益被算作亏损), 又与实际资金路径矛盾。
             # 与 day 级 frac<=0 的守卫同源, 只是那一层拦不住单笔被乘成 0。
@@ -1111,6 +1123,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             interest_total += _int
             fee_total += _int
         # 开盘: 先卖出昨日到期持仓(T-2信号的池), 再买入(T-1信号的池)
+        # 第一百九十轮: 按"截至前一交易日"的净值回撤更新当日有效杠杆(无未来函数)。
+        if dd_cut and _peak_nav[0] > 0:
+            _dd_now = (curve[main_dates[idx - 1]] / _peak_nav[0] - 1.0) * 100.0 if idx > 0 else 0.0
+            _lv = lev
+            for _t in dd_cut:
+                if _dd_now <= float(_t.get("dd_below", 0.0)):
+                    _lv = float(_t.get("lev", lev))
+                    break
+            lev_now[0] = _lv
         do_sell(d, idx, has_buy=bool(pending_buy is not None and pending_buy[1]))
         if pending_buy is not None:
             _, picks = pending_buy
@@ -1120,6 +1141,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         total = cash + pending_cash + sum(h["units"] * float(per_code[h["code"]].loc[d]["close_adj"])
                                           for h in holding if d in per_code[h["code"]].index)
         curve[d] = total
+        if total > _peak_nav[0]:
+            _peak_nav[0] = total      # 第一百九十轮: 回撤节流的峰值锚点(仅日终更新)
         if not holding:
             flat_days += 1   # 收盘账户无持仓(当日买入失败/全部到期卖出且无新票)
         # 收盘后: 决定明日计划
