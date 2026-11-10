@@ -10,3 +10,6 @@ evolution/last_run.json
 evolution/last_run.md
 evolution/last_run.*.json
 evolution/last_run.*.md
+
+# 龙虎榜十年历史: 2304 个日文件不入库(逐个 push 会超时), 只提交合并后的 parquet
+data/lhb_hist/
