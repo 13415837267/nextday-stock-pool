@@ -1,0 +1,81 @@
+{
+ "days": 1500,
+ "window": [
+  "20200831",
+  "20261110"
+ ],
+ "rows": [
+  {
+   "lev": 1.0,
+   "total_pct": 726.7,
+   "mult": 8.27,
+   "ann": 42.2,
+   "mdd": -21.63,
+   "calmar": 1.95,
+   "n": 106,
+   "avg": 2.546,
+   "ratio": null,
+   "margin_call": false
+  },
+  {
+   "lev": 1.25,
+   "total_pct": 1131.48,
+   "mult": 12.31,
+   "ann": 51.96,
+   "mdd": -26.46,
+   "calmar": 1.96,
+   "n": 106,
+   "avg": 2.546,
+   "ratio": 368.0,
+   "margin_call": false
+  },
+  {
+   "lev": 1.5,
+   "total_pct": 1676.04,
+   "mult": 17.76,
+   "ann": 61.53,
+   "mdd": -31.05,
+   "calmar": 1.98,
+   "n": 106,
+   "avg": 2.546,
+   "ratio": 207.0,
+   "margin_call": false
+  },
+  {
+   "lev": 1.75,
+   "total_pct": 2387.24,
+   "mult": 24.87,
+   "ann": 70.85,
+   "mdd": -35.41,
+   "calmar": 2.0,
+   "n": 106,
+   "avg": 2.546,
+   "ratio": 151.0,
+   "margin_call": false
+  },
+  {
+   "lev": 2.0,
+   "total_pct": 3288.92,
+   "mult": 33.89,
+   "ann": 79.89,
+   "mdd": -39.54,
+   "calmar": 2.02,
+   "n": 106,
+   "avg": 2.546,
+   "ratio": 121.0,
+   "margin_call": true
+  },
+  {
+   "lev": 2.5,
+   "total_pct": 5729.18,
+   "mult": 58.29,
+   "ann": 96.91,
+   "mdd": -47.17,
+   "calmar": 2.05,
+   "n": 106,
+   "avg": 2.546,
+   "ratio": 88.0,
+   "margin_call": true
+  }
+ ]
+}

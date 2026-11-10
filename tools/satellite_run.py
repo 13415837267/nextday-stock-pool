@@ -353,6 +353,7 @@ def main():
     # 第一百八十轮: 大盘闸门提前算 —— 持仓清仓判定与"明日是否开新仓"必须用同一个值,
     # 否则会出现"实盘因闸门不开新仓、但老仓位不清"的行为, 与回测口径不一致。
     gate_ok, entry_ok, gate_note = True, True, ""
+    _gate_missing = False
     _buf = float(P.get("gate_entry_buf") or 0.0)
     if P["gate"]:
         reg = ctx.get("reg")
@@ -365,8 +366,15 @@ def main():
                 _rr = reg.loc[today]
                 entry_ok = bool(float(_rr["mkt_idx"]) >=
                                 float(_rr["mkt_ma"]) * (1 + _buf / 100.0))
+        elif reg is not None:
+            # 第 192 轮: 旧实现在 "today 不在 reg.index" 时让 gate_ok 保持默认 True ——
+            # 数据没就绪反而放行, 是方向性错误。改成显式拒绝, 并在 note 里写明原因。
+            gate_ok = entry_ok = False
+            _gate_missing = True
         if not gate_ok:
-            gate_note = "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓"
+            gate_note = (("风控序列未覆盖 %s(数据未就绪), 今日按不开新仓处理" % today)
+                         if _gate_missing
+                         else "大盘闸门关闭(指数在 MA20 下方 / 宽度不足), 不开新仓")
         elif not entry_ok:
             _r0 = reg.loc[today]
             gate_note = ("大盘闸门虽开, 但指数只在 MA20 上方 %.2f%%(< %.2f%% 入场缓冲), "
