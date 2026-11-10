@@ -95,7 +95,7 @@ def fig2():
     k4 = [k for k in marg if k != "base"]
     _bar(axes[1][1], k4, [marg[k]["年化%"] or 0 for k in k4], b4,
          "副策略：两融闸门（年化%）", "{:.0f}%")
-    fig.suptitle("第184轮：五个文献因子 × 六种用法，全部劣于现役（新增 30 个变体, 0 存活）",
+    fig.suptitle("第184轮：五个文献因子 × 七种用法，全部劣于现役（新增 35 个变体, 0 存活）",
                  fontsize=13, y=0.985)
     fig.tight_layout(rect=(0, 0, 1, 0.945))
     p = ROOT.parent / "第184轮_文献因子全否.png"
