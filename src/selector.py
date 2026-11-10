@@ -182,6 +182,41 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     put("to_ma3", g["turnover_rate"].transform(lambda s: s.rolling(3).mean()))
     put("to_ma20", g["turnover_rate"].transform(lambda s: s.rolling(20).mean()))
     panel["turnover_cool"] = panel["to_ma3"] / panel["to_ma20"].replace(0, np.nan)
+
+    # ------------------------------------------------------------------
+    # 第一百八十四轮: 全网文献复现用的横截面因子。
+    # 本段**只加列, 不参与任何默认逻辑** —— 现有每条取数路径逐字节不变, 是否启用由
+    # satellite.sort_by / 可选门槛决定(默认全关)。四个因子的文献口径:
+    #   max20    Bali/Cakici/Whitelaw(2011) MAX 彩票效应; A股小盘显著为负(低 MAX 更优)
+    #   imax20   中国市场 MAX 被 IVOL 吸收, 用超额收益的 MAX(IMAX)才有增量(2025 文献)
+    #   on_abs10 华安金工《昼夜分离》: |隔夜跳空| 大者次月负 alpha, 10 日窗口最优
+    #   ctc20    价量相关性(收盘价 vs 换手率); 低 CTC 次月收益更优, RankIC≈-0.07
+    # 全部仍只用到 T 日及之前的数据(rolling 不含未来), 无前视。
+    put("max20", g["pct"].transform(lambda s: s.rolling(20, min_periods=15).max()))
+    put("imax20", g["resid_pct"].transform(lambda s: s.rolling(20, min_periods=15).max()))
+    # 隔夜跳空 = 开盘/昨收-1; 用户口径的"跳空"含除权日, 故用 pre_close(交易所除权调整后价)。
+    _gap = (panel["open"] / panel["pre_close"].replace(0, np.nan) - 1) * 100
+    put("on_abs10", _gap.groupby(panel["ts_code"], sort=False).transform(
+        lambda s: s.abs().rolling(10, min_periods=8).mean()))
+    del _gap
+    # CTC: 用矩公式手算 rolling 相关, 比 groupby.rolling.corr 快一个量级(后者 python 级双列窗口)。
+    _code = panel["ts_code"]
+    _x = panel["close_adj"].astype("float64")
+    _y = panel["turnover_rate"].astype("float64")
+    _n = 20
+
+    def _rmean(s):
+        return s.groupby(_code, sort=False).transform(
+            lambda t: t.rolling(_n, min_periods=15).mean())
+
+    _mx, _my = _rmean(_x), _rmean(_y)
+    _mxy, _mxx, _myy = _rmean(_x * _y), _rmean(_x * _x), _rmean(_y * _y)
+    _vx = (_mxx - _mx * _mx).clip(lower=0)
+    _vy = (_myy - _my * _my).clip(lower=0)
+    _cov = _mxy - _mx * _my
+    _den = np.sqrt(_vx * _vy)
+    put("ctc20", (_cov / _den.replace(0, np.nan)).clip(-1, 1))
+    del _x, _y, _mx, _my, _mxy, _mxx, _myy, _vx, _vy, _cov, _den
     return panel
 
 
@@ -371,6 +406,15 @@ def _select_one(
             trend &= df["hold_prev_low"] >= sel_cfg["dip_hold_prev_low_min"]
         if sel_cfg.get("dip_dist_ma5_max") is not None:     # 收盘距5日线上限(%): 回调未击穿5日线过深
             trend &= df["dist_ma5"] <= sel_cfg["dip_dist_ma5_max"]
+        # 第一百八十四轮: 文献因子可选门槛(默认不配置=不启用, 与旧口径逐位一致)
+        if sel_cfg.get("dip_max20_max") is not None:        # 20日最大单日涨幅上限(MAX彩票效应)
+            trend &= df["max20"] <= sel_cfg["dip_max20_max"]
+        if sel_cfg.get("dip_imax20_max") is not None:       # 20日最大超额收益上限(IMAX)
+            trend &= df["imax20"] <= sel_cfg["dip_imax20_max"]
+        if sel_cfg.get("dip_on_abs10_max") is not None:     # 10日隔夜跳空绝对值上限
+            trend &= df["on_abs10"] <= sel_cfg["dip_on_abs10_max"]
+        if sel_cfg.get("dip_ctc20_max") is not None:        # 20日价量相关性上限(低CTC更优)
+            trend &= df["ctc20"] <= sel_cfg["dip_ctc20_max"]
         df = df[trend]
         stats["trend_ok"] = int(len(df))
         if df.empty:

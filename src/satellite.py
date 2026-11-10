@@ -345,6 +345,20 @@ def _sort_key(df, key: str):
         "mom60_desc": -df["mom60"].astype(float),              # 60日动量最强(中期趋势)
         "mom20_ivol": -df["mom20"].astype(float) / df["ivol20"].astype(float).replace(0, float("nan")),
     }
+    # 第一百八十四轮: 文献因子键(列由 selector.build_indicators 提供, 缺失时回退 ivol)。
+    _opt = {
+        "max20_asc": "max20",        # 20日最大单日涨幅最低(非彩票股)
+        "imax_asc": "imax20",        # 20日最大超额收益最低(IMAX)
+        "on_abs10_asc": "on_abs10",  # 10日隔夜跳空绝对值最小
+        "ctc_asc": "ctc20",          # 20日价量相关性最低
+        "turn20_asc": "to_ma20",     # 20日均换手最低
+        "max20_desc": "max20",       # 反向对照
+        "ctc_desc": "ctc20",         # 反向对照
+    }
+    for _k, _col in _opt.items():
+        if _col in df.columns:
+            v = df[_col].astype(float)
+            m[_k] = -v if _k.endswith("_desc") else v
     return m.get(key, m["ivol"])
 
 
@@ -374,6 +388,17 @@ def rank_qualified(day, cfg: dict, rk=None):
         q = q[q["dist_ma5"] >= P["dist_ma5_min"]]
     if len(q) and P["dist_high20_max"] is not None:
         q = q[q["dist_high20"] <= P["dist_high20_max"]]
+    # 第一百八十四轮: 文献因子的"排除式"用法 —— 不换排序键, 只砍掉当日池内最差的尾部。
+    # 与"把因子当排序键"的区别(实测后者五个键全部远差于 mom20_ivol, 见 exp_web_sort):
+    #   排序键取的是极端第 1 名, 极端端是死水票(最低 MAX / 最低换手 = 无人关注);
+    #   排除式只砍尾部 20~30%, 池子主体不变, 是更温和的用法。
+    # 参数缺省 0 = 不启用, 与旧口径逐位一致。
+    _sat = cfg.get("satellite") or {}
+    for _col, _key in (("max20", "excl_max20_pct"), ("imax20", "excl_imax_pct"),
+                       ("on_abs10", "excl_onabs_pct"), ("ctc20", "excl_ctc_pct")):
+        _p = float(_sat.get(_key) or 0.0)
+        if _p > 0 and _col in q.columns and len(q):
+            q = q[q[_col] <= q[_col].quantile(1.0 - _p)]
     return q
 
 
