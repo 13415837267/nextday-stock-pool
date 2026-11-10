@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-10",
+   "buy_date": "2026-11-11",
+   "sell_date": "2026-11-12",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "600872.SH",
+     "name": "中炬高新",
+     "close": 19.38,
+     "pct": -3.77,
+     "reasons": "回调-3.8%、量比1.44(缩量)、20日动量9%、乖离2.5%、换手3.0%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "9f3de21a8153"
+  },
+  {
    "publish_date": "2026-11-09",
    "buy_date": "2026-11-10",
    "sell_date": "2026-11-11",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "9f3de21a8153"
+   "config_fp": "9f3de21a8153",
+   "skip_chain": [
+    "第1名 一心堂: 缺口0.5%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-06",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "165930b3577f",
    "skip_chain": [
     "第1名 中马传动: 缺口2.0%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "603767.SH"
    ]
   },
   {
