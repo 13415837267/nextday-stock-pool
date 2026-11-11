@@ -13,3 +13,9 @@ evolution/last_run.*.md
 
 # 龙虎榜十年历史: 2304 个日文件不入库(逐个 push 会超时), 只提交合并后的 parquet
 data/lhb_hist/
+
+# 2010~2011 扩展窗口的日面板(第194轮 4000 日实验顺手抓的 278 个文件 / 约 39MB):
+# 本地缓存保留(回测会自动抓取), 但不入库 —— 避免小文件 bulk push 超时(第 188 轮教训)。
+data/panel/2009*.csv.gz
+data/panel/2010*.csv.gz
+data/panel/2011*.csv.gz
