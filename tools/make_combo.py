@@ -62,9 +62,30 @@ def main():
 
     tm = int(mm.get("交易次数") or 0)
     ts = int(ms.get("交易次数") or 0)
+
+    def sim(w: float) -> pd.Series:
+        """一个账户按 w 分钱: 每月首个交易日调回目标权重, 月内两腿各自漂移。
+
+        第一百九十七轮修正: 此前是 `(1 + w*ra + (1-w)*rb).cumprod()`, 即**日频再平衡** ——
+        每天从涨的那条腿抽钱补给跌的那条腿, 凭空多出一层"波动收割"收益。注释写的是
+        "按月再平衡", 代码却每天在做, 实盘也做不到(两腿都是满仓单票, 日频调仓等于天天换股)。
+        改成月度调仓后 60/40 从 84.7%/卡玛 7.67 回到 95.7%/6.67, 差的 11pp 年化就是这个偏差。
+        """
+        cap_m, cap_s = float(w), 1.0 - float(w)
+        prev_ym, vals = idx[0][:6], [1.0]      # 首元素 = 初始市值, 保证首日收益不被吞掉
+        for i, d in enumerate(idx):
+            if i and d[:6] != prev_ym:
+                tot = cap_m + cap_s
+                cap_m, cap_s = tot * w, tot * (1 - w)
+                prev_ym = d[:6]
+            cap_m *= 1.0 + float(ra.iloc[i])
+            cap_s *= 1.0 + float(rb.iloc[i])
+            vals.append(cap_m + cap_s)
+        return pd.Series(vals, index=pd.Index([idx[0]] + list(idx)))
+
     grid = []
     for w in WEIGHTS:
-        m = perf((1 + (w / 100) * ra + (1 - w / 100) * rb).cumprod())
+        m = perf(sim(w / 100))
         m["w"] = w
         m["笔数"] = int(round(w / 100 * tm + (1 - w / 100) * ts))
         grid.append(m)
@@ -77,9 +98,11 @@ def main():
             "sat": {**perf(b), "笔数": ts, "名": "副策略 lowvol/H10"},
         },
         "grid": grid,
-        "note": ("一个账户, 资金按权重分给两条腿, 各自满仓运行自己那份钱, 按月再平衡。"
-                 "再平衡成本忽略(月换手<5%)。两腿日收益相关 "
-                 f"{corr:+.3f}, 分散是真实的, 不是回测拟合。"),
+        "note": ("一个账户, 资金按权重分给两条腿, 各自满仓运行自己那份钱; 每月首个交易日"
+                 "调回目标权重, 月内自由漂移。两腿日收益相关 "
+                 f"{corr:+.3f}。第 197 轮复核: 这个分散只在近六年改善卡玛(60/40 7.55 vs "
+                 "100% 主策略 6.25); 拉到 3000 日全史是反的(60/40 3.54 vs 4.04), 因为副策略"
+                 "全史卡玛只有 0.63、回撤 -48.6% —— 它是回撤保险, 不是第二条收益腿。"),
     }
     p = ROOT / "output" / "combo.json"
     p.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")

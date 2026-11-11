@@ -160,6 +160,7 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
     _sat = cfg.get("satellite") or {}
     LEV = float(_sat.get("leverage", 1.0) or 1.0)
     RATE = float(_sat.get("margin_rate", 0.055) or 0.0) if LEV > 1.0 else 0.0
+    CASH_YIELD = float(_sat.get("cash_yield", 0.0) or 0.0)
     _interest = 0.0
     # 第一百五十六轮修复: cost_pct 此前是**死参数** —— config 里写 0.8 也不生效,
     # 因为买卖两侧直接用了硬编码常量 HALF。现在真正读 config: 往返成本 cost_pct%
@@ -210,6 +211,12 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             _i = -cash * RATE / 252.0
             cash -= _i
             _interest += _i
+        # 第一百九十七轮: 闲置现金计息, 与主策略 execution.cash_yield 同口径 ——
+        #   "正现金余额 × 年化 / 252" 逐日计提, 只对现金部分, 不改变任何买卖判定。
+        #   副策略空仓 889/1500 天(59%), 记 0 会让两腿的年化口径不可比(页面已注明,
+        #   但这仍是一处系统性低估)。默认 0 保持旧结果逐位不变。
+        elif cash > 0 and CASH_YIELD > 0:
+            cash += cash * CASH_YIELD / 252.0
 
         # 当日收盘的闸门(只用当日可知信息): 决定明日能否开新仓
         gate_today = True
