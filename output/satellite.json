@@ -3,24 +3,10 @@
  "strategy": "trend_single",
  "engine": "single",
  "init_capital": 100000.0,
- "capital": 100000.0,
- "cash": 100000.0,
- "nav": 1.0,
- "signal": {
-  "code": "002351.SZ",
-  "ivol20": 0.821,
-  "score": 45.3,
-  "dist_ma5": 2.77,
-  "pct": 2.03,
-  "mom20": 27.3,
-  "rank_pct": 100.0,
-  "rank_key": "mom20_ivol",
-  "close": 12.54,
-  "amount_yi": 3.46,
-  "date": "20261110",
-  "name": "漫步者",
-  "limit_adj": 12.4146
- },
+ "capital": 100972.68,
+ "cash": 500.0,
+ "nav": 1.0097,
+ "signal": null,
  "trades": [],
  "daily": [
   {
@@ -50,11 +36,18 @@
    "action": "signal",
    "code": "002351.SZ",
    "note": "低波池内风险调整动量最强(20日 +27.3% / 波动 0.82 / 距MA5 +2.77%), 明日开盘买入"
+  },
+  {
+   "date": "20261111",
+   "nav": 1.0097,
+   "action": "buy",
+   "code": "002351.SZ",
+   "note": "开盘 12.400 买入"
   }
  ],
  "legacy_batches": 0,
  "legacy_trades": [],
- "updated": "20261110",
+ "updated": "20261111",
  "params": {
   "mode": "lowvol",
   "mode_cn": "低波单吊",
@@ -84,10 +77,28 @@
   "pullback_days": 3,
   "pullback_mode": "low"
  },
- "positions": [],
+ "positions": [
+  {
+   "code": "002351.SZ",
+   "name": "漫步者",
+   "signal_date": "20261110",
+   "entry_date": "20261111",
+   "entry_px": 12.4186,
+   "entry_px_raw": 12.4,
+   "gap_pct": -1.12,
+   "shares": 8012.1755,
+   "cost": 99500.0,
+   "hold_days": 10,
+   "hwm": 12.54,
+   "status": "holding",
+   "held_days": 0,
+   "px": 12.54,
+   "ret_pct": 0.98
+  }
+ ],
  "pool": {
   "n": 4,
-  "base": 1517,
+  "base": 1553,
   "show": 4,
   "alt": [],
   "funnel": [
@@ -101,11 +112,11 @@
    },
    {
     "label": "成交额≥1.0亿",
-    "n": 2482
+    "n": 2510
    },
    {
     "label": "沪深主板白名单",
-    "n": 1517
+    "n": 1553
    }
   ],
   "rows": [
@@ -113,86 +124,70 @@
     "rank": 1,
     "code": "002351.SZ",
     "name": "漫步者",
-    "ivol20": 0.821,
-    "score": 45.3,
-    "dist_ma5": 2.77,
-    "pct": 2.03,
+    "ivol20": 1.01,
+    "score": 32.6,
+    "dist_ma5": 1.64,
+    "pct": 0.0,
     "close": 12.54,
-    "amount_yi": 3.46,
-    "vol_ratio": 1.13,
-    "turnover_rate": 5.29,
-    "mom20": 27.3,
-    "ra": 33.28
+    "amount_yi": 2.44,
+    "vol_ratio": 0.7,
+    "turnover_rate": 3.69,
+    "mom20": 28.0,
+    "ra": 27.67
    },
    {
     "rank": 2,
     "code": "002920.SZ",
     "name": "德赛西威",
-    "ivol20": 1.584,
-    "score": 0.0,
-    "dist_ma5": 3.09,
-    "pct": 4.77,
-    "close": 83.09,
-    "amount_yi": 8.64,
-    "vol_ratio": 2.07,
-    "turnover_rate": 1.76,
-    "mom20": 8.0,
-    "ra": 5.03
+    "ivol20": 1.498,
+    "score": 0.1,
+    "dist_ma5": 4.87,
+    "pct": 3.2,
+    "close": 85.75,
+    "amount_yi": 8.92,
+    "vol_ratio": 1.69,
+    "turnover_rate": 1.77,
+    "mom20": 15.5,
+    "ra": 10.37
    },
    {
     "rank": 3,
-    "code": "002544.SZ",
-    "name": "普天科技",
-    "ivol20": 1.536,
+    "code": "603786.SH",
+    "name": "科博达",
+    "ivol20": 1.546,
     "score": 0.0,
-    "dist_ma5": 3.01,
-    "pct": 3.42,
-    "close": 15.74,
-    "amount_yi": 2.47,
-    "vol_ratio": 1.3,
-    "turnover_rate": 2.3,
-    "mom20": 5.5,
-    "ra": 3.58
+    "dist_ma5": 5.51,
+    "pct": 5.46,
+    "close": 39.4,
+    "amount_yi": 2.0,
+    "vol_ratio": 2.35,
+    "turnover_rate": 1.28,
+    "mom20": 9.4,
+    "ra": 6.09
    },
    {
     "rank": 4,
-    "code": "002230.SZ",
-    "name": "科大讯飞",
-    "ivol20": 1.307,
-    "score": 12.8,
-    "dist_ma5": 0.27,
-    "pct": 1.5,
-    "close": 38.53,
-    "amount_yi": 7.17,
-    "vol_ratio": 0.75,
-    "turnover_rate": 0.82,
-    "mom20": 3.5,
-    "ra": 2.69
+    "code": "002248.SZ",
+    "name": "华东数控",
+    "ivol20": 1.39,
+    "score": 7.3,
+    "dist_ma5": 5.1,
+    "pct": 2.87,
+    "close": 9.32,
+    "amount_yi": 1.6,
+    "vol_ratio": 1.37,
+    "turnover_rate": 5.64,
+    "mom20": 7.7,
+    "ra": 5.57
    }
   ],
   "score_gate": 0.0,
   "ivol_cap": 0.0,
-  "date": "20261110",
+  "date": "20261111",
   "picked": "002351.SZ",
   "gate_ok": true,
   "entry_ok": true,
-  "pick_note": "低波池内风险调整动量最强(20日 +27.3% / 波动 0.82 / 距MA5 +2.77%), 明日开盘买入"
+  "pick_note": "开盘 12.400 买入"
  },
- "signals": [
-  {
-   "code": "002351.SZ",
-   "ivol20": 0.821,
-   "score": 45.3,
-   "dist_ma5": 2.77,
-   "pct": 2.03,
-   "mom20": 27.3,
-   "rank_pct": 100.0,
-   "rank_key": "mom20_ivol",
-   "close": 12.54,
-   "amount_yi": 3.46,
-   "date": "20261110",
-   "name": "漫步者",
-   "limit_adj": 12.4146
-  }
- ]
+ "signals": null
 }

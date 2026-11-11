@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-11",
+   "buy_date": "2026-11-12",
+   "sell_date": "2026-11-13",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "600732.SH",
+     "name": "爱旭股份",
+     "close": 12.55,
+     "pct": -3.16,
+     "reasons": "回调-3.2%、量比0.77(缩量)、20日动量19%、乖离2.9%、换手2.5%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "9f3de21a8153"
+  },
+  {
    "publish_date": "2026-11-10",
    "buy_date": "2026-11-11",
    "sell_date": "2026-11-12",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "9f3de21a8153"
+   "config_fp": "9f3de21a8153",
+   "skip_chain": [
+    "第1名 中炬高新: 缺口0.1%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-09",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "9f3de21a8153",
    "skip_chain": [
     "第1名 一心堂: 缺口0.5%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "002727.SZ"
    ]
   },
   {
