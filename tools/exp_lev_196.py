@@ -64,6 +64,7 @@ def main() -> None:
 
     variants = {}
     a = copy.deepcopy(base)
+    a["execution"]["pos_frac_cap"] = 0          # config 已落地 1.0, A 必须显式关掉才是"可透支"
     variants["A_现行_boost1.5可透支"] = a
     b = copy.deepcopy(base)
     b["execution"]["mkt_boost_tiers"] = []
