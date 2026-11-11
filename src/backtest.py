@@ -876,6 +876,15 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                             continue
                         pick_frac *= float(_t.get("mult", 1.0))
                         break
+            # 第一百九十六轮: **名义无杠杆**的漏洞。事件加仓(mkt_boost_tiers ×1.5)会让
+            #   pick_frac>1, 下面两行随即按 max(1.0, pick_frac) 放宽融资额度 —— 于是
+            #   execution.leverage=1.0 的账户在实际成交里仍有 71/365 笔透支 50%。
+            #   第 195 轮只调了 leverage 这一个数, 没有堵住这条旁路。
+            #   pos_frac_cap>0 时把单笔目标仓位钉死在自有资金以内(1.0=真的不用融资)。
+            #   缺省 0 = 不启用, 与旧口径逐位一致。
+            _pcap = float(ex.get("pos_frac_cap", 0) or 0)
+            if _pcap > 0:
+                pick_frac = min(pick_frac, _pcap)
             # 融资可用额度按"本笔目标仓位"重算: pick_frac>1 时杠杆额度须同步放大,
             # 否则 min(pick_frac*equity*lev, cash+margin_avail) 会被 (lev-1)*equity 卡死,
             # 超配永远不生效。pick_frac<=1 时 _lev_eff==lev, 与旧口径逐位一致。

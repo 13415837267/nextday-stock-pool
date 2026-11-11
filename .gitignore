@@ -19,3 +19,6 @@ data/lhb_hist/
 data/panel/2009*.csv.gz
 data/panel/2010*.csv.gz
 data/panel/2011*.csv.gz
+
+# 第196轮资金复用实验的中间全量输出(含逐日 equity 与全量 trades, 约 2.3MB)
+output/reuse_196_*.json
