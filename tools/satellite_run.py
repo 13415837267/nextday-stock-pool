@@ -11,9 +11,14 @@ data/cache/market_*.pkl），不单独抓数、不单独建指标。每日流程
     持有 N 日 -> 第 N 个交易日收盘价卖出（或触发止损）
     空仓      -> 不买, 等下一次信号（"不到标准不成交"）
 
-幂等：updated == 今日 时直接退出, 重复运行不重复买卖。
+第一百九十八轮：回踩限价单跨日挂单。config 的 pullback_days=3 含义是"信号日后三个交易日
+内触及限价即成交, 到期撤单"，但旧账本只在 T+1 撮合一次 —— 回测按 3 日、实盘按 1 日，
+两边不可比(同参数 1500 日: 43.69% vs 36.52%, 差 7pp/年)。现在未成交的信号带剩余天数
+顺延到下一个交易日, 老单优先撮合, 归零撤单。
 
-用法: python tools/satellite_run.py [--rebuild]
+幂等：updated == 今日 时直接退出, 重复运行不重复买卖。--dry 只演算不写盘(测试用)。
+
+用法: python tools/satellite_run.py [--rebuild] [--dry]
 """
 from __future__ import annotations
 
@@ -142,6 +147,7 @@ def _migrate(tape: dict, day, today: str) -> float:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rebuild", action="store_true")
+    ap.add_argument("--dry", action="store_true", help="只演算不写盘(回归测试用)")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -246,6 +252,22 @@ def main():
     sigs = tape.get("signals")
     if sigs is None:
         sigs = [sig] if sig else []
+
+    # 第一百九十八轮: 回踩限价单跨日挂单。
+    #   pullback_days=N 的语义是"信号日后 N 个交易日内触及即成交"，旧实现每次只撮合
+    #   信号日次日那一次，第三天还没回踩就永久放弃 —— 与回测(挂单保留 N 日)不是同一套规则。
+    #   现在把未成交的信号放进 tape["pending"]，带 _left 剩余次数顺延；撮合顺序按信号日
+    #   升序(老单优先)，与回测 pending 列表的遍历顺序一致。
+    pending = [dict(x) for x in (tape.get("pending") or [])]
+    _queued = {x.get("code") for x in pending}
+    for _s in sigs:
+        if _s.get("code") in _queued:
+            continue                      # 同一只票不重复挂单
+        _q = dict(_s)
+        _q["_left"] = max(1, int(P["pullback_days"]))
+        pending.append(_q)
+        _queued.add(_q.get("code"))
+    pending.sort(key=lambda x: (str(x.get("date") or ""), str(x.get("code") or "")))
     trades = tape.get("trades") or []
     daily = tape.get("daily") or []
     params = {"mode": P["mode"], "mode_cn": STRATEGY_CN.get(P["mode"], P["mode"]),
@@ -282,30 +304,34 @@ def main():
 
     # ---------- 1) T+1 开盘: 执行昨日信号(每日最多 buys_per_day 笔, 持仓上限 max_pos) ----------
     bought = 0
-    for _s in sigs:
+    for _s in list(pending):
         if len(positions) >= P["max_pos"]:
             break
         code_today = _s["code"]
         p = _px(day, code_today)
         if p is None:
             note = note or "停牌, 未成交"
-            continue
+            continue                      # 停牌不撤单, 顺延到下一个交易日
         _cl, _clr, _op, op_raw, pre, hi_lim, _lo = p
         gap = (op_raw / pre - 1) * 100 if pre else 0.0
         if op_raw >= hi_lim - 1e-9:
+            pending.remove(_s)            # 一字涨停买不进, 与回测同口径撤单
             note = note or "一字涨停, 买不到"
             continue
         ok, why = entry_gate(gap, cfg)
         if not ok:
+            pending.remove(_s)            # 缺口过滤当日不复用, 与回测 pending.remove 一致
             note = note or why
             continue
         # 第一百七十九轮: 回踩限价。挂"信号日收盘 ×(1-pb%)"的买单, 盘中触及才成交。
-        # 账本按日推进, pullback_days=1 时挂单当日有效, 因此不需要跨日队列。
+        # 第一百九十八轮: 挂单不再当天作废 —— 未触及则保留在 pending, 到期(_left 归零)才撤,
+        # 与回测 pullback_days 的口径一致。
         _fill_adj = _op
         _ratio = 1.0
         if P["pullback_pct"] > 0:
             _lim = float(_s.get("limit_adj") or 0.0)
             if _lim <= 0:
+                pending.remove(_s)
                 note = note or "信号缺少限价基准, 不买"
                 continue
             _rr = day.loc[day["ts_code"] == code_today].iloc[0]
@@ -340,6 +366,7 @@ def main():
                "status": "holding"}
         cash -= budget
         positions.append(pos)
+        pending.remove(_s)                # 已成交, 出队
         tape["positions"] = positions
         action = "buy"
         note = "开盘 %.3f 买入" % op_raw if not note else note
@@ -349,6 +376,21 @@ def main():
     if bought:
         tape["signal"] = None
         tape["signals"] = None
+
+    # 挂单有效期: 每个交易日(即每次运行)消耗一次, 归零撤单 —— 与回测 pending 的 _exp 同口径。
+    # 持仓已满导致没轮到的挂单同样消耗次数(回测也是按日期过期, 不看是否轮到)。
+    _keep = []
+    for _s in pending:
+        _s["_left"] = int(_s.get("_left") or 1) - 1
+        if _s["_left"] > 0:
+            _keep.append(_s)
+        else:
+            _nm = _s.get("name") or _s.get("code") or ""
+            note = note or ("挂单到期未回踩, 撤单(%s)" % _nm)
+    tape["pending"] = _keep
+    if _keep:
+        print("  挂单队列: %s" % ", ".join(
+            "%s(%d日)" % (x.get("name") or x.get("code"), x["_left"]) for x in _keep), flush=True)
 
     # 第一百八十轮: 大盘闸门提前算 —— 持仓清仓判定与"明日是否开新仓"必须用同一个值,
     # 否则会出现"实盘因闸门不开新仓、但老仓位不清"的行为, 与回测口径不一致。
@@ -429,6 +471,9 @@ def main():
                 # 限价基准锁在**信号日收盘**(今日已知), 次日执行时不再读新行情
                 _r0 = day.loc[day["ts_code"] == _c["code"]].iloc[0]
                 _c["limit_adj"] = round(float(_r0["close_adj"]) * (1 - P["pullback_pct"] / 100.0), 4)
+                # 第一百九十八轮: 同时记屏幕价限价 —— 页面"挂 X.XX"要跟券商委托价一致,
+                # 用复权价比对会差一个复权因子(高分红票尤其明显)。
+                _c["limit_raw"] = round(float(_r0["close"]) * (1 - P["pullback_pct"] / 100.0), 2)
         tape["signals"] = cands
         cand = cands[0] if cands else None
         if cand:
@@ -485,6 +530,9 @@ def main():
     tape["daily"] = daily[-500:]
     tape["updated"] = today
 
+    if args.dry:
+        print("  [dry] 演算完成, 不写盘", flush=True)
+        return
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
     print("  净值 %.4f · 现金 %.2f · 持仓 %s · %s"

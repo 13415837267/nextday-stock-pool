@@ -499,6 +499,8 @@
       <li>回测为<b>样本内</b>结果，窗口与主策略相同（1500 交易日），没有独立样本外检验；单吊满仓的隔夜方差极大，回撤量级天然高于分散组合</li>
       <li><b>本页「回测绩效」用实盘口径</b>：第 10 个交易日<b>收盘</b>卖、止损<b>当日收盘</b>成交、卖出后空一天再买（与账本 <code>satellite_run.py</code> 逐条一致）。第一百三十九轮的实验口径是"次日开盘卖 + 卖出当日即再买"，同一组参数下年化 6.3%、回撤 -42.8%；两种口径在 <code>tools/exp_sat_exit.py</code> 的 2×2×2 矩阵里可逐位复现 —— <b>差异全部来自规则，不是引擎</b></li>
       <li>与 v2（40 只分散，实验口径年化）对比：分散 1500 日 +7.7%/-27.4%、全史 +8.8%/-52.9%；单吊 1500 日 +6.3%/-42.8%、全史 +8.5%/-56.8% —— 收益同量级，回撤大 4~15pp，这是集中的必然代价，不是参数没调好</li>
+      <li><b>第一百九十八轮：回踩限价单改为跨日顺延</b>。此前账本只在 T+1 撮合一次，第 2、3 个交易日的回踩永远买不到，而同参数回测按"3 日内有效"跑 —— 两边差 <b>7.2pp（1500 日）/ 4.8pp（3000 日）年化</b>。现在未成交的信号进入挂单队列（老单优先、到期撤单，停牌顺延、一字涨停与缺口当日撤单），逐笔表会显示<b>剩余可挂天数</b>。参数一个没动</li>
+      <li>参数面复扫（56 个变体、双窗口）<b>没有任何一个同时超过现行</b>：最好的"挂单 8 日"+3.3pp，而年化本身的抽样标准差是 ±18.7pp；反方向（3% 移动止损 −58.6pp、闸门换 MA60 −48.4pp）才是真差距。详见 <code>tools/exp_sat_198*.py</code></li>
       <li>副策略<b>不并入主策略资金</b>，两条腿各记各的账；每日只取一次数据，指标只算一次</li>
       <li>回测数值由 <code>tools/satellite_backtest.py</code> 每日刷新，实盘账本由 <code>tools/satellite_run.py</code> 逐日推进 —— 口径一致，样本不同（前者模拟、后者向前）</li>
       <li>研究留痕：<code>tools/exp_sat_opt.py</code>（12 个变体）、<code>tools/exp_factor_scan.py</code>（因子扫描）、<code>tools/exp_rot_lowvol.py</code>（组合轮动），产物在 <code>output/exp_*.json</code></li>
@@ -1033,6 +1035,7 @@ async function loadSatPaper() {
   const trs = (d.trades || []).slice();
   const poss = d.positions || (d.position ? [d.position] : []);
   const sig = d.signal || null;
+  const pends = (d.pending || []).filter(x => x && x.code);   // 未回踩的挂单(3 日内有效)
   const closed = trs.filter(t => t.ret_pct != null && isFinite(Number(t.ret_pct)));
   const rets = closed.map(t => Number(t.ret_pct));
   let cum = 1; rets.forEach(r => { cum *= 1 + r / 100; });
@@ -1052,8 +1055,8 @@ async function loadSatPaper() {
       rets.length ? `累计复利 ${pctStr((cum - 1) * 100)}（逐笔口径）` : "无样本",
       avg > 0 ? "up" : (avg < 0 ? "down" : "")),
     c("净值", nav.toFixed(4), `虚拟本金 ${(init / 1e4).toFixed(0)} 万 → ${(cap / 1e4).toFixed(2)} 万`),
-    c("在途", `${poss.length} / ${sig ? 1 : 0}`,
-      `持仓 / 待买 · 单吊 ${each}% 仓位 · 最多同持 ${P.max_pos ?? 1} 只`),
+    c("在途", `${poss.length} / ${pends.length || (sig ? 1 : 0)}`,
+      `持仓 / 待买 · 单吊 ${each}% 仓位 · 最多同持 ${P.max_pos ?? 1} 只${pends.length ? ` · 挂单队列 ${pends.length} 笔` : ""}`),
   ].join("");
 
   // 逐笔表: 已结算(带收益) + 持仓中(带浮盈) + 待执行(只给挂单价), 按信号日降序
@@ -1069,7 +1072,20 @@ async function loadSatPaper() {
     ret: p.ret_pct != null ? Number(p.ret_pct) : null,
     state: "持仓中", note: `已持 ${p.held_days ?? "-"} / ${P.hold_days ?? 10} 个交易日`,
   }));
-  if (sig) {
+  if (pends.length) {
+    // 第一百九十八轮: 挂单队列 —— 未回踩的信号在 pullback_days 内继续有效, 不是"今天不买就算了"
+    pends.forEach(q => {
+      const pb0 = Number(P.pullback_pct || 0);
+      const lim0 = q.limit_raw || (q.limit_adj ? Number(q.limit_adj).toFixed(2) : null);
+      rows.push({
+        sig: D8(q.date), buy: "下一交易日", code: q.code, name: q.name,
+        buyPx: lim0 ? `挂 ${lim0}` : "开盘价", sellD: "—", sellPx: "—", ret: null,
+        state: "待执行",
+        note: lim0 ? `限价 ${lim0}（信号日收盘 −${pb0}%）· 剩余 ${q._left ?? "-"} 个交易日`
+                   : "9:25 竞价按开盘价买入",
+      });
+    });
+  } else if (sig) {
     const pb = Number(P.pullback_pct || 0);
     const lim = (pb > 0 && sig.close) ? (Number(sig.close) * (1 - pb / 100)).toFixed(2) : null;
     rows.push({
