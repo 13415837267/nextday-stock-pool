@@ -22,7 +22,11 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import date
+from datetime import datetime, timedelta, timezone
+
+# 第207轮: Actions 跑在 UTC, 用 date.today() 会在北京时间 00:00~08:00 之间记成前一天;
+# 统一用北京时间 + 精确到秒, 与 satellite.json / latest.json 的 update_time 同口径。
+TZ_CN = timezone(timedelta(hours=8))
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -146,7 +150,7 @@ def main() -> None:
                           "实盘滚动均值<0%→红、<-1%→深红按注册行为处置)")}
         quarters = _quarters(settled)
 
-    health = {"updated": date.today().isoformat(), "probe": probe,
+    health = {"updated": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"), "probe": probe,
               "quarters": quarters, "era": ERA_VERDICT,
               "regime_value": _regime_value(),
               "recheck": RECHECK, "sources": SOURCES}

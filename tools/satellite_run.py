@@ -25,10 +25,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# 第207轮: 精确到秒的展示时间戳。此前 satellite.json 只有 updated="20261112"(8位日期),
+# 页面副策略页只能写"更新于 2026-11-12 收盘后" —— 数据到底跑没跑、几点跑的, 看不出来。
+# 与主策略 latest.json 的 update_time 同格式、同时区(Actions 是 UTC, 统一 +8)。
+TZ_CN = timezone(timedelta(hours=8))
 
 from src.backtest import prepare_context  # noqa: E402
 from src.config import load_config  # noqa: E402
@@ -185,6 +191,9 @@ def main():
         tape["positions"] = [_p] if _p else []
 
     if tape.get("updated") == today:
+        # 第207轮: 幂等跳过时仍刷新 update_time —— 与主策略 latest.json 同一语义
+        # (内容不重算, 但"更新于"应反映最近一次检查, 否则手动重跑后时间停在首跑时刻)
+        tape["update_time"] = datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S")
         # 幂等跳过, 但有一个例外: 候选池快照是"展示层", 口径变过一次(第一百四十轮新增 pool,
         # 第一百四十二轮改成 base/show/funnel + 20 行)。旧快照缺字段时重算一次 ——
         # 只补写展示字段, 状态机一律不动(重跑状态机会重复记账)。
@@ -241,6 +250,9 @@ def main():
             OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
             print("  升级候选池快照(候选池 %d 只 / 评分阈值 %g / 基础票池 %d 只), 状态机未动"
                   % (snap["n"], P["min_score"], snap["base"]), flush=True)
+        # 第207轮: 无论是否升级快照, 都把刷新后的 update_time 落盘 —— 页面秒级时间戳
+        # 反映的是"最近一次实际检查", 不能因为幂等跳过就停在首跑时刻。
+        OUT.write_text(json.dumps(tape, ensure_ascii=False, indent=1), encoding="utf-8")
         print("  今日(%s)已更新, 跳过" % today, flush=True)
         return
 
@@ -529,6 +541,7 @@ def main():
                   "code": code_today, "note": note})
     tape["daily"] = daily[-500:]
     tape["updated"] = today
+    tape["update_time"] = datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S")
 
     if args.dry:
         print("  [dry] 演算完成, 不写盘", flush=True)

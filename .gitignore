@@ -29,3 +29,6 @@ data/panel/2011*.csv.gz
 # 第196轮资金复用实验的中间全量输出(含逐日 equity 与全量 trades, 约 2.3MB)
 output/reuse_196_*.json
 output/mins_200/
+
+# 第207轮: 本地预览用(workflow 部署时把 output/*.json 拷进 deploy/data, 不必入库)
+site/data/
