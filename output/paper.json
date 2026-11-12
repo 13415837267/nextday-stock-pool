@@ -2,8 +2,8 @@
  "meta": {
   "created": "2026-11-02",
   "version": 1,
-  "updated": "2026-11-12 15:16:04",
-  "n": 8
+  "updated": "2026-11-12 16:36:48",
+  "n": 9
  },
  "records": [
   {
@@ -214,8 +214,34 @@
    "floor_pct": null,
    "condition": "首选评分 0.72 < 门槛 1(横截面 z 分): 当日质量不足, 空仓不参与(与回测 min_top1_score 同口径)",
    "fallbacks": [],
-   "state": "planned",
+   "state": "void",
    "recorded_at": "2026-11-11 15:44:32",
+   "buy_px": null,
+   "sell_px": null,
+   "gap_pct": -0.319,
+   "ret_gross_pct": null,
+   "ret_net_pct": null,
+   "weighted_pct": null,
+   "exec": null,
+   "note": "风控未触发(缺口 -0.32% 未达 None%), 按规则空仓"
+  },
+  {
+   "signal_date": "20261112",
+   "buy_date": "20261113",
+   "sell_date": "20261116",
+   "code": "002368.SZ",
+   "name": "太极股份",
+   "rank": 1,
+   "score": 1.895,
+   "strategy": "dip",
+   "regime_ok": false,
+   "allow_buy": true,
+   "plan_pos_pct": 40.0,
+   "floor_pct": -2.5,
+   "condition": "风控中(连续第10日): 只接恐慌深跌 —— 开盘缺口≤-2.5%才买, 仓位按40%执行; 缺口不够深则当日空仓; 若竞价缺口 ≥0.5%→50% 则按该比例减仓(照常成交, 不弃单); 全市场下跌(中位数-1.6%)→回100%仓",
+   "fallbacks": [],
+   "state": "planned",
+   "recorded_at": "2026-11-12 16:36:46",
    "buy_px": null,
    "sell_px": null,
    "gap_pct": null,
@@ -227,13 +253,13 @@
   }
  ],
  "stats": {
-  "n_signal": 8,
+  "n_signal": 9,
   "n_closed": 0,
   "n_holding": 0,
   "n_planned": 1,
-  "n_void": 7,
+  "n_void": 8,
   "void_reasons": {
-   "风控未触发": 7
+   "风控未触发": 8
   }
  }
 }
