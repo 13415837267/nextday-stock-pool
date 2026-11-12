@@ -20,9 +20,13 @@
 - **诚实结论**: 纯价量+龙虎榜+季度财报 数据下, T+2单吊选1只 的框架里, 右侧负期望、左侧
   上限年化~25%(dip 的 75% 已是"选1只"的近似极限)。年化 200% 需要换数据源(北向/涨停原因/
   席位明细/公告)或放宽约束(持有3~5天/分散/杠杆)。
+- **换数据源探查(用户选A)**: westock 安装失败(SHA256校验不通过); mx-finance 查历史龙虎榜席位/
+  涨停原因返回空; 本地财报事件驱动实测——净利暴雷(<-100%)次日 +0.67%/胜率54.7%, 净利暴增(>100%)
+  仅 +0.17% —— 第三次印证"利空出尽正alpha、利好兑现负alpha"。
 - **本轮产出**: `tools/exp_rebuild_212.py`(涨停普查) / `exp_lhb_212.py`(龙虎榜普查) /
-  `build_price_table.py`+`build_panel_212.py`(价表+面板) / `scan_212.py`+`scan_deep_212.py`(因子扫描) /
-  `backtest_deep_212.py`+`backtest_crash_212.py`+`backtest_final_212.py`(选1只回测)。零引擎改动、零 config 改动。
+  `exp_earnings_212.py`(财报事件) / `build_price_table.py`+`build_panel_212.py`(价表+面板) /
+  `scan_212.py`+`scan_deep_212.py`(因子扫描) / `backtest_deep_212.py`+`backtest_crash_212.py`+
+  `backtest_final_212.py`(选1只回测)。零引擎改动、零 config 改动。
 
 ## 第二百一十一轮: 右侧追高的真实画像 —— 用赢家画像训练, 逼近 250 日新高(2026-11-13)
 
