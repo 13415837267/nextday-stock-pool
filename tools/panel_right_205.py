@@ -31,12 +31,18 @@ MIN_PCT = float(os.environ.get("PN_MIN_PCT", "1.0"))
 MAX_PCT = float(os.environ.get("PN_MAX_PCT", "11.5"))
 
 
+# 第206轮: 板块集改为可配(默认仍是纯主板, 保持 205 轮结果可复现)
+#   PN_BOARDS=main  -> 原口径(排除创业板/科创板/北交所)
+#   PN_BOARDS=cyb   -> 主板 + 创业板(20cm)
+PN_BOARDS = os.environ.get("PN_BOARDS", "main")
+
+
 def board_ok(code: str) -> bool:
     c, s = code.split(".")
     if s == "SH":
-        return not c.startswith("688")
+        return True if PN_BOARDS == "cyb" else not c.startswith("688")
     if s == "SZ":
-        return not c.startswith("30")
+        return True if PN_BOARDS == "cyb" else not c.startswith("30")
     return False
 
 
@@ -230,8 +236,8 @@ def main() -> None:
 
     p = pd.concat(keep, ignore_index=True)
     tag = os.environ.get("PN_TAG", "right")
-    p.to_parquet(OUT / f"panel_{tag}_205.parquet", index=False)
-    pd.DataFrame(mkt).to_csv(OUT / f"panel_mkt_{tag}_205.csv", index=False)
+    p.to_parquet(OUT / f"panel_{tag}_206.parquet", index=False)
+    pd.DataFrame(mkt).to_csv(OUT / f"panel_mkt_{tag}_206.csv", index=False)
     print("样本", len(p), "日数", p["d"].nunique())
     print(p["ret5"].describe().round(3).to_string())
 
