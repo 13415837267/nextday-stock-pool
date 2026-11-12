@@ -146,7 +146,15 @@ def _build_replay(dates: list, nav: pd.Series, trades: list[dict],
 
 def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
         stamp_2023: bool | None = None,
-        entry_ok: pd.Series | None = None) -> dict:
+        entry_ok: pd.Series | None = None,
+        lev_cut: float | None = None, lev_floor: float = 1.0) -> dict:
+    """lev_cut/lev_floor = 回撤自适应杠杆(第二百零三轮, 默认 None 逐位不变)。
+
+    机制: 用**上一交易日收盘总资产**相对历史峰值的回撤决定本次开仓杠杆 ——
+    回撤 <= -lev_cut 时杠杆降到 lev_floor。只用已实现净值, 无未来函数。
+    为什么需要它: 1.5x 恒定杠杆的全史回撤 -64.7%, 两融维持担保比例早已跌破 130%,
+    实盘会在 -35% 附近被强平, 所以"恒定高杠杆的百倍"是账面数字。
+    """
     # 第 162 轮: 两个执行摩擦开关默认从 config 读, 脚本可显式覆盖(用于对照实验)。
     if defer_on_limit_down is None:
         defer_on_limit_down = bool((cfg.get("satellite") or {}).get("defer_on_limit_down", False))
@@ -195,8 +203,20 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
     navs, trades, daily = [], [], []
     blocked = skipped = 0
     last_px = {}
+    peak_nav = init            # 第二百零三轮: 回撤自适应杠杆用的历史峰值(日收盘总资产)
+    eff_lev = LEV
+    _lev_state = LEV           # 迟滞状态: 跌破 -cut 降档, 回到 -cut/2 以内才升档
 
     for j, d in enumerate(dates):
+        # 回撤自适应: 只看昨日收盘, 决定今天开仓用多大杠杆(双阈值迟滞, 避免在阈值上抖动)
+        eff_lev = LEV
+        if lev_cut and LEV > 1.0 and navs and peak_nav > 0:
+            _dd = navs[-1][1] / peak_nav - 1.0
+            if _dd <= -float(lev_cut):
+                _lev_state = float(lev_floor)
+            elif _dd >= -float(lev_cut) * 0.5:
+                _lev_state = LEV
+            eff_lev = _lev_state
         day = by_date.get(d)
         if day is None:
             navs.append((d, cash + sum(p["units"] * last_px.get(p["code"], p["entry_px"])
@@ -333,8 +353,8 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
             # 买入发生在开盘, 当日收盘价还不可知, 用成本不引入未来函数。
             nav_now = cash + sum(p["units"] * p["entry_px"] for p in positions)
             _slots = P["budget_slots"] or P["max_pos"]
-            _cap = cash + max(0.0, (LEV - 1.0) * nav_now) if LEV > 1.0 else cash
-            budget = min(nav_now / _slots * LEV, _cap * 0.995)
+            _cap = cash + max(0.0, (eff_lev - 1.0) * nav_now) if eff_lev > 1.0 else cash
+            budget = min(nav_now / _slots * eff_lev, _cap * 0.995)
             if budget < 1000:
                 pending.remove(o)
                 skipped += 1
@@ -490,6 +510,7 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
         rec["holding"] = bool(positions)
         rec["alloc"] = round(min(len(positions) / P["max_pos"], 1.0) * 100, 1)
         navs.append((d, cash + mv))
+        peak_nav = max(peak_nav, cash + mv)
         daily.append(rec)
 
     nav = pd.Series({d: v for d, v in navs}, dtype=float)
