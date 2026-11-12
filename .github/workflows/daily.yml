@@ -105,43 +105,11 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
         run: python tools/paper_tape.py
 
-      # 独立副策略(第一百三十九轮): 单吊, 每日最多买1只、100%仓位、持40个交易日。
-      # 数据与主策略共用(同一 ZZClient + 同一份 data/cache 面板), 不重复抓数;
-      # 策略独立 —— src/satellite.py、账本 output/satellite.json、虚拟本金 10 万,
-      # 不读写 config/latest/paper, 也不参与主策略资金调度。
-      # 第一百四十七轮: 副策略改回低波单吊(v3) —— 用户拍板"形态与主策略同构"优先于
-      # 绩效(第 145 轮的 20 只等权轮动卡玛 0.25 优于单吊 0.14, 但一次买 20 只与主策略
-      # 单吊形态不一致)。轮动版 rotation_*.py 保留归档, 不再每日推进。
-      # continue-on-error: 副策略是独立的一条腿, 它失败不该阻断主策略的产物流转与
-      # Pages 部署 —— 否则"加了一条腿"反而降低了主策略的可用性。
-      - name: 更新副策略账本(低波单吊)
-        if: steps.guard.outputs.skip != 'true'
-        continue-on-error: true
-        env:
-          TZ: Asia/Shanghai
-          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
-        run: python tools/satellite_run.py
-
-      # 副策略回测(第一百四十轮): 页面要与主策略同构, 就必须有同一套「回测绩效」模块。
-      # 与主策略回测同一窗口(config backtest.trading_days=1500)、同一份缓存面板,
-      # 复用 prepare_context 不再抓数; 只做单吊逐日模拟, 产物 output/satellite_bt.json。
-      - name: 副策略回测(低波单吊, 与主策略同窗口 1500 日)
-        if: steps.guard.outputs.skip != 'true'
-        continue-on-error: true
-        env:
-          TZ: Asia/Shanghai
-          ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}
-        run: python tools/satellite_backtest.py
-
-      # 第一百八十五轮: 资金配置网格。两腿净值(backtest.json / satellite_bt.json)都已在手,
-      # 组合只是把两条日收益序列按权重加权再复利 —— 毫秒级, 不重跑任何回测。
-      # continue-on-error: 纯展示层, 失败不该阻断部署。
-      - name: 资金配置网格(两腿净值加权)
-        if: steps.guard.outputs.skip != 'true'
-        continue-on-error: true
-        env:
-          TZ: Asia/Shanghai
-        run: python tools/make_combo.py
+      # 第 213 轮(用户裁定): 副策略已删除 —— 右侧追高经 210/211/212/213 轮全口径训练,
+      # 在"T+1 买、持有 1~10 日"单吊口径下全部负期望(涨停 -0.44%/连板 -2.33%/放量突破 -0.22%,
+      # 逼近 250 日新高 +1.39% 但单吊第 1 名仅 -0.19%~+0.29%、等权分散负复利), 故停用
+      # satellite_run/satellite_backtest。资金配置网格(make_combo.py)依赖两腿净值, 删除后退化为
+      # "100% 主策略", 一并停用。如需恢复: config.yaml 的 satellite.enabled 改回 true 并还原本段。
 
       # 第一百四十一轮: 主策略回放原先只在手工跑 tools/replay.py 时更新(区间还是写死的
       # 20251101~20261031), 与每天刷新的副策略回放并排看就是"一条腿走、一条腿钉住"。
@@ -203,7 +171,7 @@ jobs:
           # 回测/审计中间产物一起推到 Pages —— mkt_gap_events.json 35MB、overnight_offset.json
           # 5.4MB、stock_state_pool.json 4.6MB, 部署体积 48.7MB, 而站点只需约 0.5MB。
           # 新增前端数据源时必须同步改这里, 否则页面会显示"数据未部署"。
-          for f in latest history backtest health replay paper satellite satellite_bt combo; do
+          for f in latest history backtest health replay paper; do
             cp "output/$f.json" deploy/data/ 2>/dev/null || true
           done
 

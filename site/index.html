@@ -157,7 +157,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>A股次日候选池系统 <small>主策略：缩量阴线 · 次日深低开承接（H1）　副策略：低波池追风险调整动量（H10）　各自记账</small></h1>
+    <h1>A股次日候选池系统 <small>主策略：缩量阴线 · 次日深低开承接（H1）　副策略已删除（第 213 轮）</small></h1>
     <div class="meta" id="meta">加载中...</div>
     <div class="badges" id="badges"></div>
   </header>
@@ -173,7 +173,6 @@
   <div class="segbar" id="segbar">
     <div class="seg">
       <button class="seg-btn on" data-strat="main">主策略 · 深低开承接</button>
-      <button class="seg-btn" data-strat="sat">副策略 · 低波追强</button>
     </div>
     <span class="seg-note" id="seg-note"></span>
   </div>
@@ -346,8 +345,11 @@
     </ul>
   </div>
 
-  <h2 data-pane="more" data-strat-pane="sat">副策略规则与披露 <span class="sub">低波池内追风险调整动量 · 单吊 1 只 · 挂 −1% 回踩限价 3 日有效 · 与主策略（抄底）方向相反</span></h2>
+  <h2 data-pane="more" data-strat-pane="sat">副策略已删除（第 213 轮） <span class="sub">右侧追高经全口径训练仍负期望，已停用 —— 以下为历史归档</span></h2>
   <div data-pane="more" data-strat-pane="sat" class="panel">
+    <div class="legend" style="margin-bottom:10px">第 213 轮（用户裁定）<b>删除副策略</b>：右侧追高在「T+1 买、持有 1~10 日」的单吊口径下全部负期望
+    —— 涨停 −0.44%、连板 −2.33%、放量突破 −0.22%、逼近 250 日新高 +1.39%（唯一正，但单吊第 1 名仅 −0.19%~+0.29%、等权分散扣成本后负复利 −8.9%）。
+    副策略运行链路（config <code>satellite.enabled=false</code> / 每日选股 / 网页副方案卡）已停用。下方为历史迭代归档。</div>
     <div class="legend" style="margin-bottom:10px">上方「策略体检」对副策略用的是<b>回测口径</b>（1500 日 106 笔的滚动探针 + 季度分解），
     不是向前样本 —— 副策略 v3 账本自 2026-11-05 起记，真实流水只有几天，硬做向前探针没有统计意义。
     想看真实流水请到「台账 · 回放 → 向前台账」。</div>
@@ -647,7 +649,7 @@ const HASHMAP = {
 };
 const STRAT_NOTE = {
   main: "每日只买评分第 1 名 1 笔 · T+1 开盘价成交 · T+2 收盘清仓",
-  sat: "低波池内追风险调整动量 · 单吊 1 只 · 挂 −1% 回踩限价 3 日有效",
+  sat: "副策略已删除（第 213 轮）",
 };
 const U = {
   latest: "./data/latest.json", history: "./data/history.json",
