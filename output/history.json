@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-12",
+   "buy_date": "2026-11-13",
+   "sell_date": "2026-11-16",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "002368.SZ",
+     "name": "太极股份",
+     "close": 12.73,
+     "pct": -4.43,
+     "reasons": "回调-4.4%、量比0.94(缩量)、20日动量9%、乖离-5.6%、换手2.6%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "9f3de21a8153"
+  },
+  {
    "publish_date": "2026-11-11",
    "buy_date": "2026-11-12",
    "sell_date": "2026-11-13",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "9f3de21a8153"
+   "config_fp": "9f3de21a8153",
+   "skip_chain": [
+    "第1名 爱旭股份: 缺口-0.3%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-10",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "9f3de21a8153",
    "skip_chain": [
     "第1名 中炬高新: 缺口0.1%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "600872.SH"
    ]
   },
   {

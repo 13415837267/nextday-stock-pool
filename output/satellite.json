@@ -3,9 +3,9 @@
  "strategy": "trend_single",
  "engine": "single",
  "init_capital": 100000.0,
- "capital": 100972.68,
+ "capital": 98809.4,
  "cash": 500.0,
- "nav": 1.0097,
+ "nav": 0.9881,
  "signal": null,
  "trades": [],
  "daily": [
@@ -43,11 +43,18 @@
    "action": "buy",
    "code": "002351.SZ",
    "note": "开盘 12.400 买入"
+  },
+  {
+   "date": "20261112",
+   "nav": 0.9881,
+   "action": "none",
+   "code": "002351.SZ",
+   "note": ""
   }
  ],
  "legacy_batches": 0,
  "legacy_trades": [],
- "updated": "20261111",
+ "updated": "20261112",
  "params": {
   "mode": "lowvol",
   "mode_cn": "低波单吊",
@@ -91,14 +98,14 @@
    "hold_days": 10,
    "hwm": 12.54,
    "status": "holding",
-   "held_days": 0,
-   "px": 12.54,
-   "ret_pct": 0.98
+   "held_days": 1,
+   "px": 12.27,
+   "ret_pct": -1.2
   }
  ],
  "pool": {
   "n": 4,
-  "base": 1553,
+  "base": 1681,
   "show": 4,
   "alt": [],
   "funnel": [
@@ -108,15 +115,15 @@
    },
    {
     "label": "非ST·非停牌·上市满250日",
-    "n": 5214
+    "n": 5215
    },
    {
     "label": "成交额≥1.0亿",
-    "n": 2510
+    "n": 2717
    },
    {
     "label": "沪深主板白名单",
-    "n": 1553
+    "n": 1681
    }
   ],
   "rows": [
@@ -124,70 +131,71 @@
     "rank": 1,
     "code": "002351.SZ",
     "name": "漫步者",
-    "ivol20": 1.01,
-    "score": 32.6,
-    "dist_ma5": 1.64,
-    "pct": 0.0,
-    "close": 12.54,
-    "amount_yi": 2.44,
-    "vol_ratio": 0.7,
-    "turnover_rate": 3.69,
-    "mom20": 28.0,
-    "ra": 27.67
+    "ivol20": 1.105,
+    "score": 26.3,
+    "dist_ma5": -0.55,
+    "pct": -2.15,
+    "close": 12.27,
+    "amount_yi": 2.41,
+    "vol_ratio": 0.81,
+    "turnover_rate": 3.7,
+    "mom20": 26.9,
+    "ra": 24.33
    },
    {
     "rank": 2,
-    "code": "002920.SZ",
-    "name": "德赛西威",
-    "ivol20": 1.498,
-    "score": 0.1,
-    "dist_ma5": 4.87,
-    "pct": 3.2,
-    "close": 85.75,
-    "amount_yi": 8.92,
-    "vol_ratio": 1.69,
-    "turnover_rate": 1.77,
-    "mom20": 15.5,
-    "ra": 10.37
+    "code": "002681.SZ",
+    "name": "奋达科技",
+    "ivol20": 1.471,
+    "score": 1.9,
+    "dist_ma5": -0.22,
+    "pct": -3.4,
+    "close": 4.55,
+    "amount_yi": 2.39,
+    "vol_ratio": 1.14,
+    "turnover_rate": 3.3,
+    "mom20": 13.5,
+    "ra": 9.15
    },
    {
     "rank": 3,
     "code": "603786.SH",
     "name": "科博达",
-    "ivol20": 1.546,
+    "ivol20": 1.544,
     "score": 0.0,
-    "dist_ma5": 5.51,
-    "pct": 5.46,
-    "close": 39.4,
-    "amount_yi": 2.0,
-    "vol_ratio": 2.35,
-    "turnover_rate": 1.28,
-    "mom20": 9.4,
-    "ra": 6.09
+    "dist_ma5": 3.7,
+    "pct": -0.74,
+    "close": 39.11,
+    "amount_yi": 1.94,
+    "vol_ratio": 1.87,
+    "turnover_rate": 1.22,
+    "mom20": 11.6,
+    "ra": 7.52
    },
    {
     "rank": 4,
     "code": "002248.SZ",
     "name": "华东数控",
-    "ivol20": 1.39,
-    "score": 7.3,
-    "dist_ma5": 5.1,
-    "pct": 2.87,
-    "close": 9.32,
-    "amount_yi": 1.6,
-    "vol_ratio": 1.37,
-    "turnover_rate": 5.64,
-    "mom20": 7.7,
-    "ra": 5.57
+    "ivol20": 1.397,
+    "score": 6.9,
+    "dist_ma5": 2.28,
+    "pct": -1.61,
+    "close": 9.17,
+    "amount_yi": 1.5,
+    "vol_ratio": 1.19,
+    "turnover_rate": 5.26,
+    "mom20": 8.6,
+    "ra": 6.19
    }
   ],
   "score_gate": 0.0,
   "ivol_cap": 0.0,
-  "date": "20261111",
+  "date": "20261112",
   "picked": "002351.SZ",
   "gate_ok": true,
   "entry_ok": true,
-  "pick_note": "开盘 12.400 买入"
+  "pick_note": ""
  },
- "signals": null
+ "signals": null,
+ "pending": []
 }
