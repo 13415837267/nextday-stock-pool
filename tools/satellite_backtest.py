@@ -147,13 +147,17 @@ def _build_replay(dates: list, nav: pd.Series, trades: list[dict],
 def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
         stamp_2023: bool | None = None,
         entry_ok: pd.Series | None = None,
-        lev_cut: float | None = None, lev_floor: float = 1.0) -> dict:
+        lev_cut: float | None = None, lev_floor: float = 1.0,
+        block_dates: set | None = None) -> dict:
     """lev_cut/lev_floor = 回撤自适应杠杆(第二百零三轮, 默认 None 逐位不变)。
 
     机制: 用**上一交易日收盘总资产**相对历史峰值的回撤决定本次开仓杠杆 ——
     回撤 <= -lev_cut 时杠杆降到 lev_floor。只用已实现净值, 无未来函数。
     为什么需要它: 1.5x 恒定杠杆的全史回撤 -64.7%, 两融维持担保比例早已跌破 130%,
     实盘会在 -35% 附近被强平, 所以"恒定高杠杆的百倍"是账面数字。
+
+    block_dates = 共享资金池(第二百零八轮): 这些交易日不允许**开新仓**(已持仓不受影响)。
+    语义是"钱被另一条腿占着"。默认 None 时行为与旧口径逐位一致。
     """
     # 第 162 轮: 两个执行摩擦开关默认从 config 读, 脚本可显式覆盖(用于对照实验)。
     if defer_on_limit_down is None:
@@ -465,7 +469,12 @@ def run(ctx: dict, cfg: dict, defer_on_limit_down: bool | None = None,
 
         # ---------- 3) 收盘: 出明日信号(先过大盘闸门) ----------
         if len(positions) < P["max_pos"]:
-            if not _entry_today:
+            if block_dates and d in block_dates:
+                # 第二百零八轮: 共享资金池 —— 主策略当日持满仓, 副策略没有钱可用。
+                # 只挡"开新仓", 已有持仓照常按自己的规则卖。
+                blocked += 1
+                ev.append("资金被主策略占用（主策略在仓），不开新仓")
+            elif not _entry_today:
                 blocked += 1
                 ev.append("大盘闸门关闭（指数在 MA20 下方），不开新仓")
             else:
