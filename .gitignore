@@ -32,3 +32,7 @@ output/mins_200/
 
 # 第207轮: 本地预览用(workflow 部署时把 output/*.json 拷进 deploy/data, 不必入库)
 site/data/
+
+# 第212轮: 全量价表(482M)与全样本面板(288M), 可由脚本数分钟重建
+output/price_table_212.parquet
+output/panel_212.parquet
