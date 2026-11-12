@@ -1,0 +1,11 @@
+{
+ "pool_all": -0.028,
+ "pool_ok": 0.213,
+ "pool_no": -0.554,
+ "pick_all": -0.366,
+ "pick_ok": -0.565,
+ "pick_no": -0.078,
+ "ok_share": 59.2,
+ "stride_ok_mult": 1.82,
+ "stride_no_mult": 0.19
+}

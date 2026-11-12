@@ -16,6 +16,9 @@ data/lhb_hist/
 
 # 第204轮训练面板 36MB(可由 panel_train_204.py 74 秒重建), 只留脚本与汇总结果
 output/panel_train_204.parquet
+# 第205轮右侧面板(138M 上涨日 / 331M 全样本), 4 分钟可重建
+output/panel_right_205.parquet
+output/panel_all_205.parquet
 
 # 2010~2011 扩展窗口的日面板(第194轮 4000 日实验顺手抓的 278 个文件 / 约 39MB):
 # 本地缓存保留(回测会自动抓取), 但不入库 —— 避免小文件 bulk push 超时(第 188 轮教训)。
