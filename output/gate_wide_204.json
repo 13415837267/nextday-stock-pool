@@ -1,0 +1,24 @@
+{
+ "宽池": {
+  "label": "wide",
+  "n": 229048,
+  "days": 2260,
+  "day_mean": -0.051,
+  "ann_est": -12.8,
+  "win_days": 49.4,
+  "early": 0.001,
+  "late": -0.093,
+  "per_year": 101.3
+ },
+ "现行硬条件": {
+  "label": "hard",
+  "n": 45351,
+  "days": 1969,
+  "day_mean": -0.063,
+  "ann_est": -15.8,
+  "win_days": 49.4,
+  "early": 0.058,
+  "late": -0.148,
+  "per_year": 23.0
+ }
+}
