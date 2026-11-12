@@ -563,28 +563,37 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
         }
 
     # ---------- 副方案: 追高(低波池内风险调整动量) ----------
-    try:
-        from .satellite import STRATEGY_CN as _SAT_CN
-        from .satellite import daily_params as _sat_params
-        from .satellite import pick_list as _sat_pick
-        # 副策略要求 bars>=250(上市满一年), 而主流程面板只预热 30~60 天 —— 直接在
-        # 当日面板上跑, m_listed 会全 False、静默返回空池(2026-11-09 实测: alt 恒为 null)。
-        # 这里按需补一份长面板; 命中 data/panel 缓存时耗时约 5 秒, 有缓存缺失才会联网。
-        _sday = day
+    # 第 213 轮(用户裁定): 副策略删除。enabled=false 时整条链路短路, alt 恒为 None,
+    # 不再 import satellite / 不再补长面板 / 不再出副方案计划卡。
+    _sat_enabled = bool((cfg.get("satellite") or {}).get("enabled", True))
+    if not _sat_enabled:
+        sl = []
+        plans["alt"] = None
+        plans["alt_note"] = "副策略已删除（第 213 轮：右侧追高持有多日仍负期望）"
+        plans["alt_error"] = "satellite_removed_213"  # 阻止下方 elif 覆盖 alt_note
+    else:
         try:
-            if day is None or (len(day) and float(day["bars"].max()) < 260):
-                from .backtest import prepare_context as _prep
-                _sctx = _prep(cfg, 320)
-                _sday = _sctx["by_date"].get(signal_date.replace("-", ""), day)
-        except Exception:  # noqa: BLE001 补面板失败不阻断, 退回当日面板
+            from .satellite import STRATEGY_CN as _SAT_CN
+            from .satellite import daily_params as _sat_params
+            from .satellite import pick_list as _sat_pick
+            # 副策略要求 bars>=250(上市满一年), 而主流程面板只预热 30~60 天 —— 直接在
+            # 当日面板上跑, m_listed 会全 False、静默返回空池(2026-11-09 实测: alt 恒为 null)。
+            # 这里按需补一份长面板; 命中 data/panel 缓存时耗时约 5 秒, 有缓存缺失才会联网。
             _sday = day
-        # 第一百八十轮: 取几只必须跟 max_pos 一致。此前硬编码 4, 单吊时会把
-        # 第 2~4 名当"同批"列出来, 与"单吊"直接矛盾。
-        _mp = int((cfg.get("satellite") or {}).get("max_pos") or 4)
-        sl = _sat_pick(_sday, cfg, (), max(1, _mp))
-    except Exception as _e:  # noqa: BLE001  副策略异常不能拖垮主流程
-        sl, _SAT_CN, _sat_params = [], {}, None
-        plans["alt_error"] = f"{type(_e).__name__}: {_e}"
+            try:
+                if day is None or (len(day) and float(day["bars"].max()) < 260):
+                    from .backtest import prepare_context as _prep
+                    _sctx = _prep(cfg, 320)
+                    _sday = _sctx["by_date"].get(signal_date.replace("-", ""), day)
+            except Exception:  # noqa: BLE001 补面板失败不阻断, 退回当日面板
+                _sday = day
+            # 第一百八十轮: 取几只必须跟 max_pos 一致。此前硬编码 4, 单吊时会把
+            # 第 2~4 名当"同批"列出来, 与"单吊"直接矛盾。
+            _mp = int((cfg.get("satellite") or {}).get("max_pos") or 4)
+            sl = _sat_pick(_sday, cfg, (), max(1, _mp))
+        except Exception as _e:  # noqa: BLE001  副策略异常不能拖垮主流程
+            sl, _SAT_CN, _sat_params = [], {}, None
+            plans["alt_error"] = f"{type(_e).__name__}: {_e}"
     if sl:
         s = sl[0]
         P = _sat_params(cfg) if _sat_params else {}
