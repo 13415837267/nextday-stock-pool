@@ -641,6 +641,14 @@ def _select_one(
         df = df[df["low"] < df["high"]]
         df = df[df["mom20"] <= sel_cfg.get("os_mom20_max", -10.0)]      # 20日深跌
         df = df[df["dist_low20"] <= sel_cfg.get("os_dist_low20_max", 10.0)]  # 贴近20日低点
+        # 第二百一十轮新增(可选, 默认 None = 旧口径逐位不变): 距 20 日高点的上限。
+        # 缺的是什么: dist_low20<=10 只能证明"离最近低点不远", 证明不了"离前高很远" ——
+        # 一只刚从 20 日低点反弹 8% 的票也算合格, 但它可能只跌了 10%(浅坑), 不是深跌。
+        # 第 210 轮面板扫描里, 真正有正期望的是"离前高 >=15%"那一格(mom20<-5 且
+        # dist_ph20<-15 且 vr 1.8~3, h=1 单笔 +1.18%, 17 年 15 年正), 而"贴低点"口径
+        # 在引擎里单笔只有 +0.13% —— 差别就在这一条。设 -15 即要求"离前高至少跌 15%"。
+        if sel_cfg.get("os_dist_high20_max") is not None:
+            df = df[df["dist_high20"] <= sel_cfg["os_dist_high20_max"]]
         df = df[df["close_pos"] >= sel_cfg.get("os_close_pos_min", 0.60)]
         df = df[df["vol_ratio"] >= sel_cfg.get("os_vol_ratio_min", 1.2)]
         stats["trend_ok"] = int(len(df))
