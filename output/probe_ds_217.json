@@ -1,0 +1,987 @@
+{
+  "probed_at": "2026-11-13 15:19:27",
+  "interfaces": {
+    "review_uplimit_reason_open": {
+      "kind": "by_date",
+      "earliest_hit": "20200102",
+      "fields": [
+        "date",
+        "reason",
+        "stock_code",
+        "stock_name"
+      ],
+      "sample": [
+        {
+          "date": "2020-01-02",
+          "stock_code": "603598",
+          "stock_name": "引力传媒",
+          "reason": "网红经济；已开始布局短视频商业化和MCN营销业务(网红孵化运营和营销业务)"
+        }
+      ],
+      "sweep": [
+        {
+          "date": "20100104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20120104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20130104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20140102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20150105",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20160104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20170103",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20180102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20190102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20200102",
+          "rows": 115,
+          "err": null
+        },
+        {
+          "date": "20210104",
+          "rows": 221,
+          "err": null
+        },
+        {
+          "date": "20220104",
+          "rows": 204,
+          "err": null
+        },
+        {
+          "date": "20230103",
+          "rows": 241,
+          "err": null
+        },
+        {
+          "date": "20240102",
+          "rows": 167,
+          "err": null
+        },
+        {
+          "date": "20250102",
+          "rows": 176,
+          "err": null
+        },
+        {
+          "date": "20260105",
+          "rows": 1150,
+          "err": null
+        }
+      ]
+    },
+    "review_uplimit_reason": {
+      "kind": "by_date",
+      "earliest_hit": "20200102",
+      "fields": [
+        "plate_code",
+        "plate_name",
+        "plate_score",
+        "stocks"
+      ],
+      "sample": [
+        {
+          "plate_code": "801439",
+          "plate_name": "网红经济",
+          "plate_score": 6711,
+          "stocks": [
+            {
+              "id": 19083,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "603598",
+              "stock_name": "引力传媒",
+              "stock_price": 18.69,
+              "up_limit_keep_times": 6,
+              "up_limit_desc": "7天6板",
+              "up_limit_type": "一",
+              "up_limit_time": "09:30",
+              "reason": "网红经济；已开始布局短视频商业化和MCN营销业务(网红孵化运营和营销业务)",
+              "fengdan_volumn": 60757.0,
+              "fengdan_money": 113555000.0,
+              "fengdan_rate": 0.58,
+              "feng_circulation_rate": 6.14,
+              "actualcirculation_value": 1849360000.0,
+              "turnover_ration_real": 10.66,
+              "market_type": "游资",
+              "amount": null
+            },
+            {
+              "id": 19084,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "300063",
+              "stock_name": "天龙集团",
+              "stock_price": 3.44,
+              "up_limit_keep_times": 1,
+              "up_limit_desc": "首板",
+              "up_limit_type": "一",
+              "up_limit_time": "09:30",
+              "reason": "网红经济；公司合资成立的两家短视频制作公司的定位是短视频营销解决方案专业服务商，为客户提供优质的垂直MCN营销等服务",
+              "fengdan_volumn": 258373.0,
+              "fengdan_money": 88880300.0,
+              "fengdan_rate": 2.45,
+              "feng_circulation_rate": 6.1,
+              "actualcirculation_value": 1455910000.0,
+              "turnover_ration_real": 2.49,
+              "market_type": "",
+              "amount": null
+            },
+            {
+              "id": 19085,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "603366",
+              "stock_name": "日出东方",
+              "stock_price": 6.29,
+              "up_limit_keep_times": 3,
+              "up_limit_desc": "3连板",
+              "up_limit_type": "自",
+              "up_limit_time": "09:31",
+              "reason": "网红经济；间接投资快手，与抖音相关。全资子公司创蓝国际以自有资金认购华兴资本美元基金份额",
+              "fengdan_volumn": 59277.0,
+              "fengdan_money": 37285200.0,
+              "fengdan_rate": 0.24,
+              "feng_circulation_rate": 1.75,
+              "actualcirculation_value": 2126020000.0,
+              "turnover_ration_real": 7.49,
+              "market_type": "",
+              "amount": null
+            },
+            {
+              "id": 19086,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "002878",
+              "stock_name": "元隆雅图",
+              "stock_price": 32.62,
+              "up_limit_keep_times": 3,
+              "up_limit_desc": "4天3板",
+              "up_limit_type": "T",
+              "up_limit_time": "09:32",
+              "reason": "网红经济；公司自媒体营销业务发展迅速， 公司是一家专业的促销品提供商",
+              "fengdan_volumn": 17850.0,
+              "fengdan_money": 58226700.0,
+              "fengdan_rate": 0.51,
+              "feng_circulation_rate": 4.45,
+              "actualcirculation_value": 1308790000.0,
+              "turnover_ration_real": 8.67,
+              "market_type": "",
+              "amount": null
+            },
+            {
+              "id": 19087,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "603196",
+              "stock_name": "日播时尚",
+              "stock_price": 11.23,
+              "up_limit_keep_times": 3,
+              "up_limit_desc": "3连板",
+              "up_limit_type": "烂10",
+              "up_limit_time": "09:37",
+              "reason": "网红经济；公司为国内知名的服装品牌运营管理集团，主营业务为品牌服装的创意设计、工艺技术研发生产销售",
+              "fengdan_volumn": 834.0,
+              "fengdan_money": 936582.0,
+              "fengdan_rate": 0.0,
+              "feng_circulation_rate": 0.13,
+              "actualcirculation_value": 734442000.0,
+              "turnover_ration_real": 36.72,
+              "market_type": "",
+              "amount": null
+            },
+            {
+              "id": 19088,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "002181",
+              "stock_name": "粤传媒",
+              "stock_price": 6.18,
+              "up_limit_keep_times": 1,
+              "up_limit_desc": "首板",
+              "up_limit_type": "自",
+              "up_limit_time": "09:40",
+              "reason": "网红经济+文化传媒；贵州美腕网络科技有限公司是以直播、短视频为媒介，通过孵化网红，为品牌带货。目前孵化出头部网红李佳琦",
+              "fengdan_volumn": 106392.0,
+              "fengdan_money": 65750300.0,
+              "fengdan_rate": 0.37,
+              "feng_circulation_rate": 2.87,
+              "actualcirculation_value": 2287470000.0,
+              "turnover_ration_real": 7.88,
+              "market_type": "",
+              "amount": null
+            },
+            {
+              "id": 19089,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "002291",
+              "stock_name": "星期六",
+              "stock_price": 21.64,
+              "up_limit_keep_times": 4,
+              "up_limit_desc": "5天4板",
+              "up_limit_type": "自",
+              "up_limit_time": "09:47",
+              "reason": "网红经济；公司为国内时尚女鞋小龙头，公告收购互联网营销公司遥望网络",
+              "fengdan_volumn": 48646.0,
+              "fengdan_money": 105270000.0,
+              "fengdan_rate": 0.16,
+              "feng_circulation_rate": 2.57,
+              "actualcirculation_value": 4095000000.0,
+              "turnover_ration_real": 16.12,
+              "market_type": "游资",
+              "amount": null
+            },
+            {
+              "id": 19090,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "002103",
+              "stock_name": "广博股份",
+              "stock_price": 5.39,
+              "up_limit_keep_times": 1,
+              "up_limit_desc": "首板",
+              "up_limit_type": "烂4",
+              "up_limit_time": "09:48",
+              "reason": "网红经济；公司收购灵云传媒，旗下拥有著名时尚网站“爱丽时尚网”",
+              "fengdan_volumn": 41004.0,
+              "fengdan_money": 22101200.0,
+              "fengdan_rate": 0.06,
+              "feng_circulation_rate": 1.53,
+              "actualcirculation_value": 1445250000.0,
+              "turnover_ration_real": 25.84,
+              "market_type": "",
+              "amount": null
+            },
+            {
+              "id": 19091,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "300792",
+              "stock_name": "壹网壹创",
+              "stock_price": 194.34,
+              "up_limit_keep_times": 1,
+              "up_limit_desc": "首板",
+              "up_limit_type": "烂4",
+              "up_limit_time": "09:52",
+              "reason": "网红经济；公司作为专业的电商服务商，在娱乐渠道（直播平台、短视频平台等）、微信公众号、美妆博客等多种渠道推广品牌及其产品",
+              "fengdan_volumn": 3408.0,
+              "fengdan_money": 66231100.0,
+              "fengdan_rate": 0.17,
+              "feng_circulation_rate": 1.7,
+              "actualcirculation_value": 3886800000.0,
+              "turnover_ration_real": 10.36,
+              "market_type": "",
+              "amount": null
+            },
+            {
+              "id": 19092,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "000716",
+              "stock_name": "黑芝麻",
+              "stock_price": 4.58,
+              "up_limit_keep_times": 4,
+              "up_limit_desc": "4连板",
+              "up_limit_type": "自",
+              "up_limit_time": "10:11",
+              "reason": "网红经济；公司拟通过发行股份及支付现金相结合的方式购买礼多多100%股权，礼多多是一家专门从事快消品电商服务的机构，主要业务模式分为B2B和B2C两类",
+              "fengdan_volumn": 208361.0,
+              "fengdan_money": 95429300.0,
+              "fengdan_rate": 0.26,
+              "feng_circulation_rate": 4.71,
+              "actualcirculation_value": 2025530000.0,
+              "turnover_ration_real": 18.58,
+              "market_type": "游资",
+              "amount": null
+            },
+            {
+              "id": 19093,
+              "date1": "2020-01-02",
+              "plate_code": "801439",
+              "plate_name": "网红经济",
+              "plate_score": 6711,
+              "stock_code": "600242",
+              "stock_name": "中昌数据",
+              "stock_price": 8.66,
+              "up_limit_keep_times": 1,
+              "up_limit_desc": "首板",
+              "up_limit_type": "自",
+              "up_limit_time": "10:36",
+              "reason": "网红经济；上海云克网络科技有限公司为公司全资子公司，云克科技主要业务为精准营销服务、效果营销服务、品牌广告服务",
+              "fengdan_volumn": 110259.0,
+              "fengdan_money": 95484300.0,
+              "fengdan_rate": 0.3,
+              "feng_circulation_rate": 4.18,
+              "actualcirculation_value": 2285460000.0,
+              "turnover_ration_real": 14.39,
+              "market_type": "",
+              "amount": null
+            }
+          ]
+        }
+      ],
+      "sweep": [
+        {
+          "date": "20100104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20120104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20130104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20140102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20150105",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20160104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20170103",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20180102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20190102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20200102",
+          "rows": 20,
+          "err": null
+        },
+        {
+          "date": "20210104",
+          "rows": 20,
+          "err": null
+        },
+        {
+          "date": "20220104",
+          "rows": 19,
+          "err": null
+        },
+        {
+          "date": "20230103",
+          "rows": 20,
+          "err": null
+        },
+        {
+          "date": "20240102",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20250102",
+          "rows": 18,
+          "err": null
+        },
+        {
+          "date": "20260105",
+          "rows": 19,
+          "err": null
+        }
+      ]
+    },
+    "uplimit_stocks": {
+      "kind": "by_date",
+      "earliest_hit": null,
+      "fields": [],
+      "sample": [],
+      "sweep": [
+        {
+          "date": "20100104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20120104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20130104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20140102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20150105",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20160104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20170103",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20180102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20190102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20200102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20210104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20220104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20230103",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20240102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20250102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20260105",
+          "rows": 0,
+          "err": null
+        }
+      ]
+    },
+    "uplimit_hot": {
+      "kind": "by_date",
+      "earliest_hit": "20100104",
+      "fields": [],
+      "sample": [
+        "{'today': False, 'plate': [], 'plate_info': {}, 'plate_stocks': {}, 'plate_stocks_zb': {}, 'plate_stocks_bx': {}, 'stocks': '', 'max_count': 1, 'relay': {'area': []}, 'plate_stocks_next_yi': {}, 'stock_info': {}, 'stocks_hot': {}, 'stocks_hot_n': [], 'ban_info': {'1': {'count': 0}}}"
+      ],
+      "sweep": [
+        {
+          "date": "20100104",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20120104",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20130104",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20140102",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20150105",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20160104",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20170103",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20180102",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20190102",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20200102",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20210104",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20220104",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20230103",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20240102",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20250102",
+          "rows": 14,
+          "err": null
+        },
+        {
+          "date": "20260105",
+          "rows": 14,
+          "err": null
+        }
+      ]
+    },
+    "lhb_list": {
+      "kind": "by_date",
+      "earliest_hit": null,
+      "fields": [],
+      "sample": [],
+      "sweep": [
+        {
+          "date": "20100104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20120104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20130104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20140102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20150105",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20160104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20170103",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20180102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20190102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20200102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20210104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20220104",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20230103",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20240102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20250102",
+          "rows": 0,
+          "err": null
+        },
+        {
+          "date": "20260105",
+          "rows": 0,
+          "err": null
+        }
+      ]
+    },
+    "sentiment_trend": {
+      "kind": "by_date",
+      "earliest_hit": null,
+      "fields": [],
+      "sample": [],
+      "sweep": [
+        {
+          "date": "20100104",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20120104",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20130104",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20140102",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20150105",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20160104",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20170103",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20180102",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20190102",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20200102",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20210104",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20220104",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20230103",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20240102",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20250102",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        },
+        {
+          "date": "20260105",
+          "rows": 0,
+          "err": "ValueError: 缺少路径参数 'model' for sentiment_trend"
+        }
+      ]
+    },
+    "lhb_detail": {
+      "kind": "seat",
+      "earliest_hit": null,
+      "fields": [],
+      "sample": [],
+      "sweep": [
+        {
+          "date": "20100104",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20120104",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20130104",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20140102",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20150105",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20160104",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20170103",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20180102",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20190102",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20200102",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20210104",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20220104",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20230103",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20240102",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20250102",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        },
+        {
+          "date": "20260105",
+          "lhb_list_rows": 0,
+          "seat_rows": 0,
+          "err": null
+        }
+      ]
+    },
+    "lhb_trader_history": {
+      "kind": "trader",
+      "earliest_hit": "n/a(按名检索)",
+      "fields": [],
+      "sample": [
+        "{'list': [], 'total': 0, 'pages': 0, 'current_page': 1, 'per_page': 5}"
+      ],
+      "name": "华鑫证券有限责任公司上海分公司"
+    },
+    "stk_mins_1min": {
+      "kind": "minutes",
+      "earliest_hit": "20150105",
+      "fields": [
+        "ts_code",
+        "trade_time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "vol",
+        "amount"
+      ],
+      "sample": [
+        {
+          "ts_code": "000001.SZ",
+          "trade_time": "201501051500",
+          "open": 16.02,
+          "high": 16.02,
+          "low": 16.02,
+          "close": 16.02,
+          "vol": 3282867.0,
+          "amount": 52591529.0
+        }
+      ],
+      "sweep": [
+        {
+          "date": "20150105",
+          "rows": 240,
+          "err": null
+        },
+        {
+          "date": "20180102",
+          "rows": 240,
+          "err": null
+        },
+        {
+          "date": "20200102",
+          "rows": 240,
+          "err": null
+        },
+        {
+          "date": "20230103",
+          "rows": 240,
+          "err": null
+        },
+        {
+          "date": "20250102",
+          "rows": 240,
+          "err": null
+        }
+      ]
+    },
+    "stock_moneyflow": {
+      "kind": "moneyflow",
+      "fields": [],
+      "sample": [],
+      "errs": [
+        "0.4.13 无 stock_moneyflow / market_mf 方法"
+      ]
+    }
+  }
+}
