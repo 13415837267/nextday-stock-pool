@@ -49,3 +49,6 @@ output/ml_220_pred.parquet
 # 第221轮: 可转债日线面板(79.7万行), 可由 tools/build_cb_221.py 全量重建
 data/cb/daily.parquet
 output/cb_pred_221.parquet
+
+# 第222轮: ETF 面板(可重建, 27MB)
+data/etf/daily.parquet
