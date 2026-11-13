@@ -283,6 +283,15 @@ def apply_regime(reg_base: pd.DataFrame, cfg: dict) -> pd.DataFrame:
             panic = (reg["mkt_pct"].rolling(20).std() > vol_max) \
                     & (m20 < cfg["regime"].get("vol_mkt_ret_min", 0.0))
             ok = ok & ~panic
+        # 第二百二十六轮: 低波动空仓 —— 与 vol_max 严格对称的另一端(默认不启用=旧口径不变)。
+        # 全史 3.4 万笔低开样本按市场20日波动五分档: Q1低波 单笔 -0.005%/胜率45.0%,
+        # Q2 +0.118%, Q3 +0.327%, Q4 +0.064%, Q5高波 +1.370%/胜率61.4% —— 相差 1.37pp。
+        # 逐年印证: 2023(波动0.833)单笔-0.002%、2024(1.533)-0.310%、2026(1.175)-0.286%,
+        # 而 2015(2.111)+1.505%。即"低波动期做这套低开修复等于白做", 这也是近三年收益
+        # 从 190% 回落到 74% 的主因, 不是策略失效而是波动环境不在。
+        vol_min = cfg["regime"].get("vol_min")
+        if vol_min:
+            ok = ok & ~(reg["mkt_pct"].rolling(20).std() < float(vol_min))
     reg["trade_ok"] = ok
     # panic 标记: 供回测引擎区分"恐慌日"(不计入连续风控天数, 防止被超限参与机制绕过)
     reg["panic"] = panic
