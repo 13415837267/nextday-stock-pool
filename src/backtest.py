@@ -928,6 +928,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                            + (1 - frac_buy_open) * float(row["close_adj"]))
             buy_eff = buy_adj * (1 + slip)
             units = alloc / (buy_eff * (1 + comm))
+            # 第二百二十四轮(可选): 最小交易单位。回测历来按连续股数下单, 而 A 股必须
+            # 100 股整数倍 —— 本金越小、仓位越轻、股价越高, "买不满"的损耗越大。
+            # execution.lot_size>0 时按整手成交并把 alloc 同步改写为真实投入;
+            # 一手都买不起则本笔放弃(资金不动, 记 skip)。缺省 0 = 旧口径逐位一致。
+            _lot = int(ex.get("lot_size", 0) or 0)
+            if _lot > 0:
+                _lots = int(units // _lot)
+                if _lots <= 0:
+                    trades.append(_trade(p, "skip", d, note="资金不足一手"))
+                    continue
+                units = float(_lots * _lot)
+                alloc = units * buy_eff * (1 + comm)
             fee = alloc * comm
             fee_total += fee
             cash -= alloc
