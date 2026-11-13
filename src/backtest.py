@@ -968,16 +968,20 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 row = None
             if row is None:
                 # 停牌顺延: 最多向后找5个交易日
-                idx = sub.index
-                if sub is not None and d in idx:
-                    pos = idx.get_loc(d)
+                # 第二百一十五轮修复: 原实现 `idx = sub.index` 会把 do_sell 的 idx 参数
+                # (int) 覆盖成 DateIndex, 持有期延长后持仓叠加、停牌顺延一旦触发,
+                # 后续持仓的 `cur_idx < due_i` 即抛 TypeError(_DateIndex < int)。
+                # 改用局部变量 _sidx, 不再污染 idx。
+                _sidx = sub.index
+                if sub is not None and d in _sidx:
+                    pos = _sidx.get_loc(d)
                     for j in range(1, 6):
-                        if pos + j >= len(idx):
+                        if pos + j >= len(_sidx):
                             break
                         r2 = sub.iloc[pos + j]
                         if r2["is_paused"] == 0 and r2["vol"] > 0:
                             row = r2
-                            sell_d, note = str(idx[pos + j]), "停牌顺延"
+                            sell_d, note = str(_sidx[pos + j]), "停牌顺延"
                             break
                 if row is None:  # 退市等极端情况: 按最后已知收盘估算
                     if sub is not None and len(sub):

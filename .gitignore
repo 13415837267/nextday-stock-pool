@@ -36,3 +36,6 @@ site/data/
 # 第212轮: 全量价表(482M)与全样本面板(288M), 可由脚本数分钟重建
 output/price_table_212.parquet
 output/panel_212.parquet
+# 第212轮: 龙虎榜/涨停 T+1买T+2卖对齐表中间缓存, 可由脚本重建
+output/lhb12_212.parquet
+output/lu12_212.parquet
