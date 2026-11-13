@@ -39,3 +39,5 @@ output/panel_212.parquet
 # 第212轮: 龙虎榜/涨停 T+1买T+2卖对齐表中间缓存, 可由脚本重建
 output/lhb12_212.parquet
 output/lu12_212.parquet
+# 第217轮: 逐日涨停明细(1654 个 csv.gz, 57MB), 可由 tools/fetch_uplimit_217.py 重建
+data/uplimit/
