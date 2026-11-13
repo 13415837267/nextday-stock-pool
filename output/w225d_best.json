@@ -1,0 +1,145 @@
+{
+ "weights": {
+  "mom20": 0.2,
+  "neg_bias20": 0.85,
+  "neg_amount": 0.05,
+  "neg_vol_ratio": 0.02,
+  "low_tail": 0.03,
+  "neg_turnover_cool": 0.0,
+  "ivol": 0.0,
+  "neg_dist_low20": 0.0
+ },
+ "ann": 113.12,
+ "calmar": 7.9,
+ "base_ann": 111.76,
+ "base_calmar": 6.31,
+ "trials": 18,
+ "log": [
+  {
+   "key": "mom20",
+   "step": 0.6,
+   "ann": 45.37,
+   "cal": 1.73,
+   "ok": false
+  },
+  {
+   "key": "mom20",
+   "step": 0.3,
+   "ann": 67.78,
+   "cal": 2.68,
+   "ok": false
+  },
+  {
+   "key": "mom20",
+   "step": 0.15,
+   "ann": 67.94,
+   "cal": 2.65,
+   "ok": false
+  },
+  {
+   "key": "mom20",
+   "step": -0.15,
+   "ann": 93.03,
+   "cal": 7.07,
+   "ok": false
+  },
+  {
+   "key": "mom20",
+   "step": -0.3,
+   "ann": 69.79,
+   "cal": 2.92,
+   "ok": false
+  },
+  {
+   "key": "mom20",
+   "step": -0.6,
+   "ann": 44.43,
+   "cal": 1.09,
+   "ok": false
+  },
+  {
+   "key": "neg_bias20",
+   "step": 0.6,
+   "ann": 104.75,
+   "cal": 7.49,
+   "ok": false
+  },
+  {
+   "key": "neg_bias20",
+   "step": 0.3,
+   "ann": 112.18,
+   "cal": 7.93,
+   "ok": true
+  },
+  {
+   "key": "neg_bias20",
+   "step": 0.15,
+   "ann": 107.04,
+   "cal": 8.06,
+   "ok": false
+  },
+  {
+   "key": "neg_bias20",
+   "step": -0.15,
+   "ann": 113.12,
+   "cal": 7.9,
+   "ok": true
+  },
+  {
+   "key": "neg_bias20",
+   "step": -0.3,
+   "ann": 81.14,
+   "cal": 3.52,
+   "ok": false
+  },
+  {
+   "key": "neg_bias20",
+   "step": -0.6,
+   "ann": 10.91,
+   "cal": 0.91,
+   "ok": false
+  },
+  {
+   "key": "neg_amount",
+   "step": 0.6,
+   "ann": 29.73,
+   "cal": 1.01,
+   "ok": false
+  },
+  {
+   "key": "neg_amount",
+   "step": 0.3,
+   "ann": 63.8,
+   "cal": 2.14,
+   "ok": false
+  },
+  {
+   "key": "neg_amount",
+   "step": 0.15,
+   "ann": 88.04,
+   "cal": 3.8,
+   "ok": false
+  },
+  {
+   "key": "neg_amount",
+   "step": -0.15,
+   "ann": 97.63,
+   "cal": 4.83,
+   "ok": false
+  },
+  {
+   "key": "neg_amount",
+   "step": -0.3,
+   "ann": 89.41,
+   "cal": 4.6,
+   "ok": false
+  },
+  {
+   "key": "neg_amount",
+   "step": -0.6,
+   "ann": 77.47,
+   "cal": 3.93,
+   "ok": false
+  }
+ ]
+}

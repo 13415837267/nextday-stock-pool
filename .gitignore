@@ -52,3 +52,7 @@ output/cb_pred_221.parquet
 
 # 第222轮: ETF 面板(可重建, 27MB)
 data/etf/daily.parquet
+
+# 第225轮: 训练候选池(可重建)
+output/pool_225.parquet
+output/pool_225b.parquet

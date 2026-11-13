@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 7,          # 183: 计划卡补具体买卖日期(信号/买入/卖出), 副策略位注改现行口径
+        "plan_ver": 8,          # 225: 计划卡新增 limit_order(前收价限价单 + 深低开降仓价)
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -500,6 +500,32 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
         except Exception:  # noqa: BLE001
             return "", False
 
+    def _limit_order(close_px, _ex):
+        """挂单指令卡: 前收价限价单 + 深低开降仓价。
+
+        第 224 轮实测: 免滑点值 20.9pp 年化、佣金万2.5->万1 值 0.9pp, 合计 20.3pp
+        (110.40% -> 130.69%)。滑点能真实消掉的原因是本策略只在低开时买:
+        09:15-09:24 挂前收价, 集合竞价撮合价必然 <= 前收价, 成交即开盘价, 没有追价动作。
+        这不是回测美化 —— 回测里 slippage=0.1% 是保守惩罚, 本字段标的是"实盘怎么拿到它"。
+        """
+        try:
+            px = float(close_px)
+        except (TypeError, ValueError):
+            return None
+        if not px or px <= 0:
+            return None
+        block = float((_ex or {}).get("block_gap_below", -2.5) or -2.5)
+        frac = float((_ex or {}).get("blocked_frac", 0.4) or 0.4)
+        return {
+            "place_by": "09:24",
+            "price": round(px, 2),
+            "deep_gap_price": round(px * (1 + block / 100.0), 2),
+            "deep_gap_frac": frac,
+            "fill_rule": "集合竞价撮合价 <= 挂单价才成交; 成交价即开盘价, 无滑点",
+            "value_pp": 20.3,
+            "note": "挂前收价这一步值 20.9pp 年化, 佣金谈到万1 再值 0.9pp",
+        }
+
     plans = {"as_of": signal_date, "main": None, "alt": None,
              "manual": {
                  "steps": [
@@ -554,6 +580,11 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             },
             "system_ok": bool(t1.get("allow_buy")),
             "position_pct": (t1.get("position_pct") if t1.get("allow_buy") else 0.0),
+            # 第二百二十五轮: 挂单指令卡 —— 把第 224 轮算出的 20.3pp 成本优势做成可执行字段。
+            # 机制: 回测的 slippage=0.1% 是保守惩罚, 实盘不存在 —— 因为你只在低开时买,
+            #   09:15~09:24 挂"前收价"限价单, 集合竞价撮合价必然 <= 前收价, 即成交价 = 开盘价,
+            #   没有追价动作就没有滑点。免滑点 + 佣金万1 合计值 20.3pp 年化(130.69% vs 110.40%)。
+            "limit_order": _limit_order(mp.get("close"), ex),
             # 第一百七十七轮: 缺口速查表 —— 人工盯盘最常问的是"明天高开还要不要买",
             # 这张表用实成交逐笔给答案(1500 日 330 笔, T+1开→T+2收, 含双边成本)。
             # 结论出乎直觉: 四档**全为正**, 深低开只是更肥(2.17%/71%)而不是唯一的正期望;
