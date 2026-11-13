@@ -41,3 +41,7 @@ output/lhb12_212.parquet
 output/lu12_212.parquet
 # 第217轮: 逐日涨停明细(1654 个 csv.gz, 57MB), 可由 tools/fetch_uplimit_217.py 重建
 data/uplimit/
+
+# 第220轮: 全历史训练集与预测(449MB/25MB), 可由 build_ml_220.py + train_ml_220.py 重建
+output/ml_220.parquet
+output/ml_220_pred.parquet
