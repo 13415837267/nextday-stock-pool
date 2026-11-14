@@ -363,6 +363,18 @@ def _select_one(
     if uni_cfg.get("amount_max_yi"):                 # 可选: 成交额上限(剔除过热巨量票)
         df = df[df["amount"] <= uni_cfg["amount_max_yi"] * 1e8]
     df = df[df["turnover_rate"] >= uni_cfg["turnover_min"]]
+    # 流通市值门槛(第一百二十九轮新增条件维度, 默认不启用):
+    #   turnover_rate = 成交额/流通市值*100 是交易所恒等式, 故流通市值(亿) = amount/turnover_rate/1e6,
+    #   可从已缓存两列精确反推, 无需外部数据。**仅在启用时按当日切片临时计算**,
+    #   不写回面板列 —— 4201 日全史多一列 float64 会多吃 120MB, 逼近 8G 上限。
+    _mv_lo, _mv_hi = uni_cfg.get("circ_mv_min"), uni_cfg.get("circ_mv_max")
+    if _mv_lo or _mv_hi:
+        _tr = df["turnover_rate"].astype("float64").replace(0, np.nan)
+        _mv = df["amount"].astype("float64") / _tr / 1e6
+        if _mv_lo:
+            df = df[_mv >= float(_mv_lo)]
+        if _mv_hi:
+            df = df[_mv <= float(_mv_hi)]
     stats["liquidity"] = int(len(df))
 
     df = df[df["bars"] >= uni_cfg["listed_min_bars"]]
