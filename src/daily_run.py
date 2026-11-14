@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 9,          # 227: 买入端滑点归零落地(config), 挂单卡数值改为实测 10.2pp
+        "plan_ver": 10,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -503,14 +503,13 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
     def _limit_order(close_px, _ex):
         """挂单指令卡: 前收价限价单 + 深低开降仓价。
 
-        第 227 轮已把这条**写进 config**(execution.slippage_buy=0), 不再是纸面测算。
-        实测(买入端滑点归零 vs 旧口径双边千1):
-          1500 日 111.76% -> 121.95%(+10.19pp), 卡玛 6.31 -> 6.98, 回撤 -17.71 -> -17.46;
-          2500 日  69.26% ->  75.97%( +6.71pp), 卡玛 3.46 -> 3.92, 回撤 -20.04 -> -19.40。
-        机制依据: 本策略只在 T+1 低开时买入, 09:15-09:24 挂前收价限价单,
-        集合竞价撮合价必然 <= 前收价, 成交价即开盘价, 没有追价动作 → 买入端滑点恒为 0。
-        卖出端是 T+2 收盘市价单, 滑点真实存在, 仍按千1 扣。
-        这条增益的**唯一前提**是按时挂限价单; 开盘后追价则增益消失。
+        第 227 轮已把两端滑点**都写进 config**(slippage_buy=0 / slippage_sell=0), 非纸面测算。
+        买入: T+1 低开, 09:15-09:24 挂前收价限价单, 集合竞价成交价即开盘价 → 滑点 0。
+        卖出: T+2 14:57 后挂跌停价卖单, 收盘集合竞价统一结算价为当日收盘价 → 滑点 0。
+        实测(合计 vs 最早千1双边):
+          1500 日 111.76% -> 132.63%(+20.87pp), 卡玛 6.31 -> 7.71, 回撤 -17.71 -> -17.21;
+          2500 日  69.26% ->  83.86%(+14.60pp), 卡玛 3.46 -> 4.48, 回撤 -20.04 -> -18.71。
+        增益的**唯一前提**是两端都挂限价单; 任意一端改为盘中市价, 该端增益消失。
         """
         try:
             px = float(close_px)
@@ -526,9 +525,11 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             "deep_gap_price": round(px * (1 + block / 100.0), 2),
             "deep_gap_frac": frac,
             "fill_rule": "集合竞价撮合价 <= 挂单价才成交; 成交价即开盘价, 无滑点",
-            "value_pp": 10.2,
-            "note": "买入端滑点已计入 0: 1500日 +10.19pp / 2500日 +6.71pp; "
-                    "开盘后追价则这笔增益消失, 必须 9:24 前挂单",
+            "sell_rule": "T+2 日 14:57 后挂跌停价卖出; 收盘集合竞价统一结算价为当日收盘价, 无滑点",
+            "sell_place_at": "14:57",
+            "value_pp": 20.9,
+            "note": "两端滑点均已计入 0: 1500日 +20.87pp / 2500日 +14.60pp。"
+                    "前提是买入 9:24 前挂前收价、卖出 14:57 后挂跌停价; 任一端改为盘中市价, 该端增益消失",
         }
 
     plans = {"as_of": signal_date, "main": None, "alt": None,

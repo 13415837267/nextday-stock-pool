@@ -56,6 +56,9 @@ def main() -> None:
         ("C 买0 卖千1 佣金万1", {"slippage_buy": 0.0, "slippage_sell": 0.001,
                                  "commission_rate": 0.0001}),
         ("D 买0 卖千0.5", {"slippage_buy": 0.0, "slippage_sell": 0.0005}),
+        ("E 买0 卖0", {"slippage_buy": 0.0, "slippage_sell": 0.0}),
+        ("F 买0 卖0 佣金万1", {"slippage_buy": 0.0, "slippage_sell": 0.0,
+                               "commission_rate": 0.0001}),
     ]
     rows = []
     for name, p in cases:
