@@ -329,6 +329,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
 
     ex = cfg["execution"]
     comm, stamp, slip = ex["commission_rate"], ex["stamp_tax"], ex["slippage"]
+    # 第二百二十七轮: 买卖分端滑点(可选, 缺省沿用 slippage, 与旧口径逐位一致)。
+    # 机制依据: 本策略只在 T+1 低开时买入, 9:15~9:24 挂"前收盘价"限价买单,
+    # 集合竞价撮合价必然 <= 前收价, 即成交价就是开盘价本身 —— 买入端滑点为 0。
+    # 卖出是 T+2 收盘市价单, 仍应保留滑点。此前统一按千 1 双边扣, 低估了真实收益。
+    slip_buy = ex.get("slippage_buy", slip)
+    slip_sell = ex.get("slippage_sell", slip)
     # 第一百六十二轮: 印花税时变。2023-08-28 起卖出印花税由千 1 降至万 5;
     # config 的 stamp_tax=0.0005 是**降税后**口径, 全程套用等于给 2012-2023 的每一笔
     # 少算 0.05%。开关默认关闭以保持历史数值可复现, 打开后按卖出日切换。
@@ -926,7 +932,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             else:
                 buy_adj = (frac_buy_open * float(row["open_adj"])
                            + (1 - frac_buy_open) * float(row["close_adj"]))
-            buy_eff = buy_adj * (1 + slip)
+            buy_eff = buy_adj * (1 + slip_buy)
             units = alloc / (buy_eff * (1 + comm))
             # 第二百二十四轮(可选): 最小交易单位。回测历来按连续股数下单, 而 A 股必须
             # 100 股整数倍 —— 本金越小、仓位越轻、股价越高, "买不满"的损耗越大。
@@ -1067,8 +1073,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 _defer_units = h["units"] * min(1.0, max(0.0, _df))
                 u_o *= (1 - _df)
                 u_c *= (1 - _df)
-            gross_o = u_o * open_adj * (1 - slip)
-            gross_c = u_c * close_adj * (1 - slip)
+            gross_o = u_o * open_adj * (1 - slip_sell)
+            gross_c = u_c * close_adj * (1 - slip_sell)
             _st = _stamp_at(row)
             net_o = gross_o * (1 - _st) * (1 - comm)
             net_c = gross_c * (1 - _st) * (1 - comm)
@@ -1246,7 +1252,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             "initial_capital": bt_cfg["initial_capital"],
             # 第一百二十五轮: 口径与成本均按 config 生成, 不再写死"T+2开盘卖出"。
             "rules": rules_line(
-                ex, f"复利/佣金万{comm * 10000:g}+印花税万{stamp * 10000:g}+滑点千{slip * 1000:g}"),
+                ex, (f"复利/佣金万{comm * 10000:g}+印花税万{stamp * 10000:g}+"
+                     f"滑点买{slip_buy * 1000:g}卖{slip_sell * 1000:g}")),
         },
         "metrics": {
             "总收益率%": round(total_ret * 100, 2),

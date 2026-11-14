@@ -86,7 +86,7 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 8,          # 225: 计划卡新增 limit_order(前收价限价单 + 深低开降仓价)
+        "plan_ver": 9,          # 227: 买入端滑点归零落地(config), 挂单卡数值改为实测 10.2pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -503,10 +503,14 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
     def _limit_order(close_px, _ex):
         """挂单指令卡: 前收价限价单 + 深低开降仓价。
 
-        第 224 轮实测: 免滑点值 20.9pp 年化、佣金万2.5->万1 值 0.9pp, 合计 20.3pp
-        (110.40% -> 130.69%)。滑点能真实消掉的原因是本策略只在低开时买:
-        09:15-09:24 挂前收价, 集合竞价撮合价必然 <= 前收价, 成交即开盘价, 没有追价动作。
-        这不是回测美化 —— 回测里 slippage=0.1% 是保守惩罚, 本字段标的是"实盘怎么拿到它"。
+        第 227 轮已把这条**写进 config**(execution.slippage_buy=0), 不再是纸面测算。
+        实测(买入端滑点归零 vs 旧口径双边千1):
+          1500 日 111.76% -> 121.95%(+10.19pp), 卡玛 6.31 -> 6.98, 回撤 -17.71 -> -17.46;
+          2500 日  69.26% ->  75.97%( +6.71pp), 卡玛 3.46 -> 3.92, 回撤 -20.04 -> -19.40。
+        机制依据: 本策略只在 T+1 低开时买入, 09:15-09:24 挂前收价限价单,
+        集合竞价撮合价必然 <= 前收价, 成交价即开盘价, 没有追价动作 → 买入端滑点恒为 0。
+        卖出端是 T+2 收盘市价单, 滑点真实存在, 仍按千1 扣。
+        这条增益的**唯一前提**是按时挂限价单; 开盘后追价则增益消失。
         """
         try:
             px = float(close_px)
@@ -522,8 +526,9 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             "deep_gap_price": round(px * (1 + block / 100.0), 2),
             "deep_gap_frac": frac,
             "fill_rule": "集合竞价撮合价 <= 挂单价才成交; 成交价即开盘价, 无滑点",
-            "value_pp": 20.3,
-            "note": "挂前收价这一步值 20.9pp 年化, 佣金谈到万1 再值 0.9pp",
+            "value_pp": 10.2,
+            "note": "买入端滑点已计入 0: 1500日 +10.19pp / 2500日 +6.71pp; "
+                    "开盘后追价则这笔增益消失, 必须 9:24 前挂单",
         }
 
     plans = {"as_of": signal_date, "main": None, "alt": None,
