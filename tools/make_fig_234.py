@@ -70,19 +70,15 @@ def fig2() -> None:
            label="只持 1 天（T+1 收盘卖）")
     a.set_xlabel("信号日涨跌幅（%）")
     a.set_ylabel("平均收益（%）")
-    a.set_title("涨跌幅与次日收益不是单调关系，是两头翘的 U 形", fontsize=13)
+    a.set_title("跌得越多，次日反弹越强；平盘最差；涨了只回来一半", fontsize=13)
     a.legend(fontsize=9.5, loc="upper center")
     a.grid(alpha=0.25)
     a.set_xlim(-11.5, 11.5)
-    a.annotate(f"跌 4% 附近\n{d[d['mid'].between(-4.5,-3.5)]['y'].mean():.2f}%",
-               (-4, float(d[d["mid"].between(-4.5, -3.5)]["y"].mean())),
-               textcoords="offset points", xytext=(-4, -34), ha="center", fontsize=9,
-               color="#7d6608")
     a.annotate("平盘最差\n≈0.12%", (0.25, 0.127), textcoords="offset points",
                xytext=(34, -26), fontsize=9, color="#555",
                arrowprops=dict(arrowstyle="->", color="#555", lw=1))
-    fig.text(0.5, 0.015, "所以「按涨跌幅排序取第 1 名」必然失败：排序只能取两端，"
-             "而这两端恰恰都不是最好的。跌最多的端是 −0.03%，涨最多的端是 +0.38%，最优点在分布内部。",
+    fig.text(0.5, 0.015, "跌到 −10% 是 1.07%，平盘 0.12%，涨回只到 0.46%。"
+             "但「每天买跌最多的那只」实测 −42.87%：分箱是条件期望，单因子是每天取极值。",
              ha="center", fontsize=9.5, color="#444")
     fig.tight_layout(rect=[0, 0.05, 1, 1])
     fig.savefig(ROOT / "第234轮_涨跌幅的U形.png", dpi=150)
