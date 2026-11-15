@@ -722,6 +722,10 @@ def _select_one(
 
     df = df.assign(score=score).sort_values("score", ascending=False)
     stats["scored"] = int(len(df))
+    # 第二百三十轮: 第2名评分。top1 与 top2 的差(margin)是"这次选择有多确信"的度量:
+    # 差很小意味着第1名与第2名几乎同分, 等于随机挑一只 —— 229轮证明"名额一旦换人
+    # 收益就掉", 根因就是这种低置信度选择。margin 随 pick 下发, 供可选门槛使用。
+    _top2 = round(float(df["score"].iloc[1]), 3) if len(df) > 1 else None
 
     picks = []
     for _, r in df.head(top_n).iterrows():
@@ -785,6 +789,7 @@ def _select_one(
             "vol_ratio": round(float(r["vol_ratio"]), 2),
             "mom20": round(float(r["mom20"]), 1),
             "score": round(float(r["score"]), 3),
+            "_top2": _top2,
             "reasons": "、".join(reasons),
             "strategy": mode,
             "strategy_cn": STRATEGY_CN.get(mode, mode),

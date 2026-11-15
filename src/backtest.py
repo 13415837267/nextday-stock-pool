@@ -417,6 +417,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     # 第九十六轮: 评分分档下注 [{min: 1.5, mult: 1.0}, {min: 1.1, mult: 0.6}, ...] 降序匹配
     # —— 门槛降低后不再"一刀切空仓", 低分票只给小仓, 高分票才满仓; 兼顾笔数与期望。
     score_tiers = ex.get("score_tiers") or []
+    margin_tiers = ex.get("margin_tiers") or []   # 第二百三十轮: 按 top1 领先幅度分档下注
     skip_gap_deep = ex.get("skip_gap_deep")       # 可选: 缺口深于该值(更恐慌)也放弃(崩塌保护)
     # 第一百七十轮: 融资杠杆。lev=1.0 时与旧口径逐位等价(cash 不可为负)。
     #   lev>1 时允许透支 (lev-1)*equity 买入, 透支额按 margin_rate 年化逐日计息。
@@ -655,6 +656,23 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             if _gate is not None and p.get("score", 0) < _gate:
                 trades.append(_trade(p, "skip", d, note=f"top1评分{p.get('score',0):.2f}低于门槛{_gate:.2f}"))
                 continue
+            # 第二百三十轮: top1 领先幅度门槛(可选, 缺省不启用)。
+            # 与 min_top1_score(绝对评分)不同, 这里卡的是"第1名相对第2名的领先"——
+            # 领先很小说明当天没有明显更好的票, 买它等于在几只几乎同分的票里随机挑。
+            _mm = ex.get("min_top1_margin")
+            if (_mm is not None and p.get("_top2") is not None
+                    and float(p["score"]) - float(p["_top2"]) < float(_mm)):
+                trades.append(_trade(p, "skip", d,
+                                     note=f"top1领先{p['score']-p['_top2']:.2f}低于{float(_mm):.2f}"))
+                continue
+            # 第二百三十轮: 领先幅度**上限**(可选)。实测 margin 与收益负相关(-0.14):
+            # 领先越大 = 第1名越"鹤立鸡群" = 越像个股独跌(极端), 而策略赚的是普遍性错杀的钱。
+            _mh = ex.get("max_top1_margin")
+            if (_mh is not None and p.get("_top2") is not None
+                    and float(p["score"]) - float(p["_top2"]) > float(_mh)):
+                trades.append(_trade(p, "skip", d,
+                                     note=f"top1领先{p['score']-p['_top2']:.2f}高于上限{float(_mh):.2f}"))
+                continue
             qualified.append({**p, "_row": row, "_gap": gap, "_lim_px": _lim_px,
                               "_pct_sig": _pct_sig})
         if not qualified:
@@ -741,6 +759,16 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 _sc = float(p.get("score") or 0.0)
                 for _t in score_tiers:
                     if _sc >= float(_t["min"]):
+                        pick_frac *= float(_t.get("mult", 1.0))
+                        break
+            # 领先幅度分档下注(第二百三十轮, 可选): margin=top1−top2 评分差。
+            # 实测 margin 与收益负相关(−0.141)、五档单笔 1.68/1.92/1.28/0.88/0.51 单调递减,
+            # 但直接做"买入门槛"会砍掉 36% 的笔数、年化 −26pp(笔数是命)。这里只降仓不拒单,
+            # 保留笔数的同时把最差一档的仓位压下来。档位按 max 升序匹配第一条满足的。
+            if margin_tiers and p.get("_top2") is not None:
+                _mg = float(p["score"]) - float(p["_top2"])
+                for _t in margin_tiers:
+                    if _mg <= float(_t["max"]):
                         pick_frac *= float(_t.get("mult", 1.0))
                         break
             # 缺口分级下注(可选): 竞价缺口越深=错杀越极端/edge越强, 仓位越高; 缺省关闭
@@ -1116,6 +1144,10 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "score": h.get("score"),
                 "gap_pct": (round(float(h["_gap"]) * 100, 2) if h.get("_gap") is not None else None),
                 "pool_n": h.get("_pool_n"),
+                # 第二百三十轮: top1 领先第2名的幅度(评分差), 与本笔收益一起落盘,
+                # 供"选择置信度是否与收益相关"的诊断使用。
+                "margin": (round(float(h["score"]) - float(h["_top2"]), 3)
+                           if h.get("_top2") is not None and h.get("score") is not None else None),
                 "pos_frac": h.get("pos_frac"),
             })
             if _defer_units > 0:
@@ -1290,9 +1322,12 @@ def sced_lbl(x):
 
 
 def _trade(p: dict, kind: str, d: str, note: str = "") -> dict:
+    _t2 = p.get("_top2")
     return {"signal_date": p.get("signal_date", ""), "code": p["code"], "name": p.get("name", ""),
             "rank": p.get("_rank"), "pool": p.get("pool", "main"),
             "buy_date": d, "buy_px": None, "sell_date": None, "sell_px": None,
+            "margin": (round(float(p["score"]) - float(_t2), 3)
+                       if _t2 is not None and p.get("score") is not None else None),
             "ret_pct": None, "note": note}
 
 
