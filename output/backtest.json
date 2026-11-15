@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run_time": "2026-11-15 09:54:37",
+  "run_time": "2026-11-15 15:32:45",
   "start": "20200903",
   "end": "20261113",
   "days": 1500,
@@ -12038,6 +12038,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.736,
    "ret_pct": null,
    "note": "缺口-1.5%未达承接线-2.5%"
   },
@@ -12061,6 +12062,7 @@
    "score": 1.685,
    "gap_pct": 3.67,
    "pool_n": 13,
+   "margin": 0.849,
    "pos_frac": 0.75
   },
   {
@@ -12073,6 +12075,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.678,
    "ret_pct": null,
    "note": "top1评分0.34低于门槛1.00"
   },
@@ -12086,6 +12089,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.645,
    "ret_pct": null,
    "note": "top1评分0.80低于门槛1.00"
   },
@@ -12099,6 +12103,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.131,
    "ret_pct": null,
    "note": "top1评分0.76低于门槛1.00"
   },
@@ -12122,6 +12127,7 @@
    "score": 1.162,
    "gap_pct": -3.96,
    "pool_n": 0,
+   "margin": 0.335,
    "pos_frac": 1.0
   },
   {
@@ -12134,6 +12140,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.191,
    "ret_pct": null,
    "note": "top1评分0.87低于门槛1.00"
   },
@@ -12147,6 +12154,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.594,
    "ret_pct": null,
    "note": "top1评分0.30低于门槛1.00"
   },
@@ -12170,6 +12178,7 @@
    "score": 1.633,
    "gap_pct": -0.33,
    "pool_n": 36,
+   "margin": 0.422,
    "pos_frac": 1.0
   },
   {
@@ -12182,6 +12191,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.385,
    "ret_pct": null,
    "note": "top1评分0.61低于门槛1.00"
   },
@@ -12205,6 +12215,7 @@
    "score": 1.683,
    "gap_pct": 0.29,
    "pool_n": 88,
+   "margin": 0.148,
    "pos_frac": 1.0
   },
   {
@@ -12227,6 +12238,7 @@
    "score": 1.579,
    "gap_pct": -0.59,
    "pool_n": 57,
+   "margin": 0.201,
    "pos_frac": 1.0
   },
   {
@@ -12249,6 +12261,7 @@
    "score": 1.691,
    "gap_pct": -1.04,
    "pool_n": 21,
+   "margin": 0.604,
    "pos_frac": 1.0
   },
   {
@@ -12271,6 +12284,7 @@
    "score": 1.434,
    "gap_pct": -0.68,
    "pool_n": 36,
+   "margin": 0.209,
    "pos_frac": 1.0
   },
   {
@@ -12283,6 +12297,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.019,
    "ret_pct": null,
    "note": "top1评分0.97低于门槛1.00"
   },
@@ -12306,6 +12321,7 @@
    "score": 1.433,
    "gap_pct": -4.62,
    "pool_n": 33,
+   "margin": 0.199,
    "pos_frac": 1.0
   },
   {
@@ -12328,6 +12344,7 @@
    "score": 1.587,
    "gap_pct": -1.01,
    "pool_n": 73,
+   "margin": 0.082,
    "pos_frac": 1.0
   },
   {
@@ -12350,6 +12367,7 @@
    "score": 1.521,
    "gap_pct": 0.31,
    "pool_n": 29,
+   "margin": 0.121,
    "pos_frac": 1.0
   },
   {
@@ -12362,6 +12380,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.328,
    "ret_pct": null,
    "note": "top1评分0.56低于门槛1.00"
   },
@@ -12385,6 +12404,7 @@
    "score": 1.453,
    "gap_pct": -0.73,
    "pool_n": 20,
+   "margin": 0.075,
    "pos_frac": 0.5
   },
   {
@@ -12397,6 +12417,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.142,
    "ret_pct": null,
    "note": "缺口-1.6%未达承接线-2.5%"
   },
@@ -12410,6 +12431,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.112,
    "ret_pct": null,
    "note": "缺口1.4%未达承接线-2.5%"
   },
@@ -12423,6 +12445,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.172,
    "ret_pct": null,
    "note": "缺口0.5%未达承接线-2.5%"
   },
@@ -12436,6 +12459,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.635,
    "ret_pct": null,
    "note": "缺口1.0%未达承接线-2.5%"
   },
@@ -12449,6 +12473,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.369,
    "ret_pct": null,
    "note": "缺口-0.8%未达承接线-2.5%"
   },
@@ -12462,6 +12487,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.858,
    "ret_pct": null,
    "note": "缺口4.0%未达承接线-2.5%"
   },
@@ -12475,6 +12501,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.415,
    "ret_pct": null,
    "note": "top1评分0.47低于门槛1.00"
   },
@@ -12488,6 +12515,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.926,
    "ret_pct": null,
    "note": "缺口-1.1%未达承接线-2.5%"
   },
@@ -12501,6 +12529,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.283,
    "ret_pct": null,
    "note": "缺口0.1%未达承接线-2.5%"
   },
@@ -12514,6 +12543,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.062,
    "ret_pct": null,
    "note": "缺口-0.5%未达承接线-2.5%"
   },
@@ -12527,6 +12557,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.257,
    "ret_pct": null,
    "note": "缺口1.1%未达承接线-2.5%"
   },
@@ -12540,6 +12571,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.174,
    "ret_pct": null,
    "note": "缺口0.7%未达承接线-2.5%"
   },
@@ -12553,6 +12585,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.149,
    "ret_pct": null,
    "note": "缺口0.0%未达承接线-2.5%"
   },
@@ -12566,6 +12599,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.736,
    "ret_pct": null,
    "note": "缺口0.8%未达承接线-2.5%"
   },
@@ -12589,6 +12623,7 @@
    "score": 1.611,
    "gap_pct": -2.72,
    "pool_n": 44,
+   "margin": 0.031,
    "pos_frac": 0.6
   },
   {
@@ -12601,6 +12636,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": null,
    "ret_pct": null,
    "note": "缺口0.6%未达承接线-2.5%"
   },
@@ -12624,6 +12660,7 @@
    "score": 1.215,
    "gap_pct": -3.98,
    "pool_n": 25,
+   "margin": 0.086,
    "pos_frac": 0.6
   },
   {
@@ -12636,6 +12673,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.643,
    "ret_pct": null,
    "note": "缺口0.1%未达承接线-2.5%"
   },
@@ -12649,6 +12687,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 1.605,
    "ret_pct": null,
    "note": "缺口-0.5%未达承接线-2.5%"
   },
@@ -12662,6 +12701,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 1.037,
    "ret_pct": null,
    "note": "缺口-1.5%未达承接线-2.5%"
   },
@@ -12675,6 +12715,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.871,
    "ret_pct": null,
    "note": "缺口0.2%未达承接线-2.5%"
   },
@@ -12688,6 +12729,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.093,
    "ret_pct": null,
    "note": "缺口0.0%未达承接线-2.5%"
   },
@@ -12701,6 +12743,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.879,
    "ret_pct": null,
    "note": "缺口-2.0%未达承接线-2.5%"
   },
@@ -12714,6 +12757,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": null,
    "ret_pct": null,
    "note": "缺口-0.8%未达承接线-2.5%"
   },
@@ -12727,6 +12771,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.055,
    "ret_pct": null,
    "note": "缺口1.0%未达承接线-2.5%"
   },
@@ -12740,6 +12785,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.133,
    "ret_pct": null,
    "note": "缺口-0.5%未达承接线-2.5%"
   },
@@ -12753,6 +12799,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": null,
    "ret_pct": null,
    "note": "top1评分0.00低于门槛1.00"
   },
@@ -12776,6 +12823,7 @@
    "score": 1.559,
    "gap_pct": -2.85,
    "pool_n": 11,
+   "margin": 0.957,
    "pos_frac": 0.4
   },
   {
@@ -12788,6 +12836,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.49,
    "ret_pct": null,
    "note": "缺口-0.7%未达承接线-2.5%"
   },
@@ -12801,6 +12850,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.957,
    "ret_pct": null,
    "note": "缺口-0.2%未达承接线-2.5%"
   },
@@ -12814,6 +12864,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.19,
    "ret_pct": null,
    "note": "缺口0.0%未达承接线-2.5%"
   },
@@ -12827,6 +12878,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.653,
    "ret_pct": null,
    "note": "缺口-0.7%未达承接线-2.5%"
   },
@@ -12840,6 +12892,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.209,
    "ret_pct": null,
    "note": "缺口-0.7%未达承接线-2.5%"
   },
@@ -12853,6 +12906,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 1.681,
    "ret_pct": null,
    "note": "缺口-1.2%未达承接线-2.5%"
   },
@@ -12866,6 +12920,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": null,
    "ret_pct": null,
    "note": "缺口-2.3%未达承接线-2.5%"
   },
@@ -12879,6 +12934,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.025,
    "ret_pct": null,
    "note": "缺口2.0%未达承接线-2.5%"
   },
@@ -12902,6 +12958,7 @@
    "score": 1.08,
    "gap_pct": 0.46,
    "pool_n": 4,
+   "margin": 1.24,
    "pos_frac": 0.3
   },
   {
@@ -12914,6 +12971,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.594,
    "ret_pct": null,
    "note": "top1评分0.30低于门槛1.00"
   },
@@ -12927,6 +12985,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.118,
    "ret_pct": null,
    "note": "top1评分0.71低于门槛1.00"
   },
@@ -12940,6 +12999,7 @@
    "buy_px": null,
    "sell_date": null,
    "sell_px": null,
+   "margin": 0.363,
    "ret_pct": null,
    "note": "缺口0.0%未达承接线-2.5%"
   }
@@ -12965,6 +13025,7 @@
    "score": 1.014,
    "gap_pct": -0.58,
    "pool_n": 15,
+   "margin": 0.222,
    "pos_frac": 0.5
   },
   {
@@ -12987,6 +13048,7 @@
    "score": 2.057,
    "gap_pct": -1.56,
    "pool_n": 22,
+   "margin": 1.388,
    "pos_frac": 1.0
   },
   {
@@ -13009,6 +13071,7 @@
    "score": 2.185,
    "gap_pct": -3.06,
    "pool_n": 33,
+   "margin": 1.11,
    "pos_frac": 0.6
   },
   {
@@ -13031,6 +13094,7 @@
    "score": 1.096,
    "gap_pct": -0.02,
    "pool_n": 22,
+   "margin": 0.023,
    "pos_frac": 1.0
   },
   {
@@ -13053,6 +13117,7 @@
    "score": 1.17,
    "gap_pct": -1.21,
    "pool_n": 11,
+   "margin": 0.374,
    "pos_frac": 1.0
   },
   {
@@ -13075,6 +13140,7 @@
    "score": 1.109,
    "gap_pct": 0.05,
    "pool_n": 6,
+   "margin": 0.599,
    "pos_frac": 0.3
   },
   {
@@ -13097,6 +13163,7 @@
    "score": 1.407,
    "gap_pct": -1.15,
    "pool_n": 19,
+   "margin": 0.047,
    "pos_frac": 1.0
   },
   {
@@ -13119,6 +13186,7 @@
    "score": 1.442,
    "gap_pct": -0.78,
    "pool_n": 22,
+   "margin": 0.24,
    "pos_frac": 1.0
   },
   {
@@ -13141,6 +13209,7 @@
    "score": 1.07,
    "gap_pct": -0.47,
    "pool_n": 7,
+   "margin": 0.595,
    "pos_frac": 0.3
   },
   {
@@ -13163,6 +13232,7 @@
    "score": 1.394,
    "gap_pct": 0.54,
    "pool_n": 62,
+   "margin": 0.175,
    "pos_frac": 1.0
   },
   {
@@ -13185,6 +13255,7 @@
    "score": 1.088,
    "gap_pct": -0.13,
    "pool_n": 9,
+   "margin": 0.465,
    "pos_frac": 0.3
   },
   {
@@ -13207,6 +13278,7 @@
    "score": 2.051,
    "gap_pct": -0.47,
    "pool_n": 44,
+   "margin": 0.728,
    "pos_frac": 1.0
   },
   {
@@ -13229,6 +13301,7 @@
    "score": 2.04,
    "gap_pct": -0.09,
    "pool_n": 32,
+   "margin": 0.3,
    "pos_frac": 1.0
   },
   {
@@ -13251,6 +13324,7 @@
    "score": 1.505,
    "gap_pct": 0.03,
    "pool_n": 33,
+   "margin": 0.183,
    "pos_frac": 1.0
   },
   {
@@ -13273,6 +13347,7 @@
    "score": 1.319,
    "gap_pct": 0.05,
    "pool_n": 16,
+   "margin": 0.122,
    "pos_frac": 0.5
   },
   {
@@ -13295,6 +13370,7 @@
    "score": 1.535,
    "gap_pct": -0.2,
    "pool_n": 12,
+   "margin": 0.811,
    "pos_frac": 0.5
   },
   {
@@ -13317,6 +13393,7 @@
    "score": 1.57,
    "gap_pct": 0.89,
    "pool_n": 13,
+   "margin": 0.321,
    "pos_frac": 0.3
   },
   {
@@ -13339,6 +13416,7 @@
    "score": 1.228,
    "gap_pct": -0.47,
    "pool_n": 10,
+   "margin": 0.489,
    "pos_frac": 0.3
   },
   {
@@ -13361,6 +13439,7 @@
    "score": 1.685,
    "gap_pct": -0.68,
    "pool_n": 31,
+   "margin": 0.459,
    "pos_frac": 1.0
   },
   {
@@ -13383,6 +13462,7 @@
    "score": 1.337,
    "gap_pct": 3.29,
    "pool_n": 24,
+   "margin": 0.155,
    "pos_frac": 0.6
   },
   {
@@ -13405,6 +13485,7 @@
    "score": 1.401,
    "gap_pct": 0.0,
    "pool_n": 18,
+   "margin": 0.034,
    "pos_frac": 0.5
   },
   {
@@ -13427,6 +13508,7 @@
    "score": 1.024,
    "gap_pct": 1.72,
    "pool_n": 9,
+   "margin": 0.175,
    "pos_frac": 0.18
   },
   {
@@ -13449,6 +13531,7 @@
    "score": 1.042,
    "gap_pct": -1.71,
    "pool_n": 15,
+   "margin": 0.077,
    "pos_frac": 1.0
   },
   {
@@ -13471,6 +13554,7 @@
    "score": 1.163,
    "gap_pct": -0.16,
    "pool_n": 0,
+   "margin": 0.284,
    "pos_frac": 1.0
   },
   {
@@ -13493,6 +13577,7 @@
    "score": 1.199,
    "gap_pct": -0.65,
    "pool_n": 12,
+   "margin": 0.187,
    "pos_frac": 0.5
   },
   {
@@ -13515,6 +13600,7 @@
    "score": 1.118,
    "gap_pct": 0.0,
    "pool_n": 7,
+   "margin": 0.585,
    "pos_frac": 0.3
   },
   {
@@ -13537,6 +13623,7 @@
    "score": 1.052,
    "gap_pct": -2.62,
    "pool_n": 6,
+   "margin": 1.048,
    "pos_frac": 0.4
   },
   {
@@ -13559,6 +13646,7 @@
    "score": 1.541,
    "gap_pct": -0.56,
    "pool_n": 28,
+   "margin": 0.349,
    "pos_frac": 1.0
   },
   {
@@ -13581,6 +13669,7 @@
    "score": 1.639,
    "gap_pct": -0.36,
    "pool_n": 31,
+   "margin": 0.11,
    "pos_frac": 1.0
   },
   {
@@ -13603,6 +13692,7 @@
    "score": 1.106,
    "gap_pct": -0.74,
    "pool_n": 7,
+   "margin": 0.487,
    "pos_frac": 0.3
   },
   {
@@ -13625,6 +13715,7 @@
    "score": 1.667,
    "gap_pct": -1.08,
    "pool_n": 33,
+   "margin": 0.629,
    "pos_frac": 1.0
   },
   {
@@ -13647,6 +13738,7 @@
    "score": 1.097,
    "gap_pct": 1.02,
    "pool_n": 5,
+   "margin": 0.714,
    "pos_frac": 0.18
   },
   {
@@ -13669,6 +13761,7 @@
    "score": 1.024,
    "gap_pct": -0.55,
    "pool_n": 21,
+   "margin": 0.269,
    "pos_frac": 1.0
   },
   {
@@ -13691,6 +13784,7 @@
    "score": 1.347,
    "gap_pct": 0.55,
    "pool_n": 49,
+   "margin": 0.227,
    "pos_frac": 0.6
   },
   {
@@ -13713,6 +13807,7 @@
    "score": 1.097,
    "gap_pct": -0.37,
    "pool_n": 57,
+   "margin": 0.186,
    "pos_frac": 1.0
   },
   {
@@ -13735,6 +13830,7 @@
    "score": 1.197,
    "gap_pct": -0.38,
    "pool_n": 19,
+   "margin": 0.195,
    "pos_frac": 0.5
   },
   {
@@ -13757,6 +13853,7 @@
    "score": 1.323,
    "gap_pct": 0.69,
    "pool_n": 14,
+   "margin": 0.22,
    "pos_frac": 0.3
   },
   {
@@ -13779,6 +13876,7 @@
    "score": 1.287,
    "gap_pct": -0.35,
    "pool_n": 5,
+   "margin": 0.955,
    "pos_frac": 0.3
   },
   {
@@ -13801,6 +13899,7 @@
    "score": 1.278,
    "gap_pct": -0.52,
    "pool_n": 15,
+   "margin": 0.499,
    "pos_frac": 0.5
   },
   {
@@ -13823,6 +13922,7 @@
    "score": 1.578,
    "gap_pct": -4.02,
    "pool_n": 12,
+   "margin": 1.095,
    "pos_frac": 0.4
   },
   {
@@ -13845,6 +13945,7 @@
    "score": 2.2,
    "gap_pct": -0.84,
    "pool_n": 22,
+   "margin": 1.432,
    "pos_frac": 1.0
   },
   {
@@ -13867,6 +13968,7 @@
    "score": 1.812,
    "gap_pct": -0.11,
    "pool_n": 103,
+   "margin": 0.025,
    "pos_frac": 1.0
   },
   {
@@ -13889,6 +13991,7 @@
    "score": 1.075,
    "gap_pct": -0.19,
    "pool_n": 9,
+   "margin": 0.299,
    "pos_frac": 0.3
   },
   {
@@ -13911,6 +14014,7 @@
    "score": 1.493,
    "gap_pct": -0.34,
    "pool_n": 0,
+   "margin": 0.315,
    "pos_frac": 1.0
   },
   {
@@ -13933,6 +14037,7 @@
    "score": 1.217,
    "gap_pct": -0.49,
    "pool_n": 30,
+   "margin": 0.114,
    "pos_frac": 1.0
   },
   {
@@ -13955,6 +14060,7 @@
    "score": 1.421,
    "gap_pct": -1.33,
    "pool_n": 84,
+   "margin": 0.144,
    "pos_frac": 1.0
   },
   {
@@ -13977,6 +14083,7 @@
    "score": 1.313,
    "gap_pct": 4.12,
    "pool_n": 0,
+   "margin": 0.323,
    "pos_frac": 0.6
   },
   {
@@ -13999,6 +14106,7 @@
    "score": 1.198,
    "gap_pct": -1.25,
    "pool_n": 38,
+   "margin": 0.021,
    "pos_frac": 1.0
   },
   {
@@ -14021,6 +14129,7 @@
    "score": 1.659,
    "gap_pct": 1.87,
    "pool_n": 80,
+   "margin": 0.272,
    "pos_frac": 1.0
   },
   {
@@ -14043,6 +14152,7 @@
    "score": 1.559,
    "gap_pct": 0.1,
    "pool_n": 18,
+   "margin": 0.642,
    "pos_frac": 0.5
   },
   {
@@ -14065,6 +14175,7 @@
    "score": 1.067,
    "gap_pct": 0.48,
    "pool_n": 19,
+   "margin": 0.079,
    "pos_frac": 1.0
   },
   {
@@ -14087,6 +14198,7 @@
    "score": 2.236,
    "gap_pct": -1.4,
    "pool_n": 11,
+   "margin": 1.957,
    "pos_frac": 1.0
   },
   {
@@ -14109,6 +14221,7 @@
    "score": 1.373,
    "gap_pct": -0.04,
    "pool_n": 13,
+   "margin": 0.087,
    "pos_frac": 0.5
   },
   {
@@ -14131,6 +14244,7 @@
    "score": 1.111,
    "gap_pct": 0.07,
    "pool_n": 22,
+   "margin": 0.132,
    "pos_frac": 1.0
   },
   {
@@ -14153,6 +14267,7 @@
    "score": 1.401,
    "gap_pct": -0.54,
    "pool_n": 18,
+   "margin": 0.362,
    "pos_frac": 0.5
   },
   {
@@ -14175,6 +14290,7 @@
    "score": 1.595,
    "gap_pct": 0.84,
    "pool_n": 39,
+   "margin": 0.153,
    "pos_frac": 0.9
   },
   {
@@ -14197,6 +14313,7 @@
    "score": 1.334,
    "gap_pct": -1.09,
    "pool_n": 0,
+   "margin": 0.318,
    "pos_frac": 1.0
   },
   {
@@ -14219,6 +14336,7 @@
    "score": 1.244,
    "gap_pct": 0.63,
    "pool_n": 60,
+   "margin": 0.002,
    "pos_frac": 1.0
   },
   {
@@ -14241,6 +14359,7 @@
    "score": 1.675,
    "gap_pct": -0.6,
    "pool_n": 18,
+   "margin": 0.213,
    "pos_frac": 0.5
   },
   {
@@ -14263,6 +14382,7 @@
    "score": 1.692,
    "gap_pct": 0.83,
    "pool_n": 29,
+   "margin": 0.001,
    "pos_frac": 1.0
   },
   {
@@ -14285,6 +14405,7 @@
    "score": 1.428,
    "gap_pct": -2.34,
    "pool_n": 19,
+   "margin": 0.533,
    "pos_frac": 1.0
   },
   {
@@ -14307,6 +14428,7 @@
    "score": 1.769,
    "gap_pct": -1.13,
    "pool_n": 17,
+   "margin": 1.13,
    "pos_frac": 1.0
   },
   {
@@ -14329,6 +14451,7 @@
    "score": 1.155,
    "gap_pct": 0.29,
    "pool_n": 16,
+   "margin": 0.316,
    "pos_frac": 0.5
   },
   {
@@ -14351,6 +14474,7 @@
    "score": 1.285,
    "gap_pct": 3.58,
    "pool_n": 0,
+   "margin": 0.111,
    "pos_frac": 0.6
   },
   {
@@ -14373,6 +14497,7 @@
    "score": 1.408,
    "gap_pct": 2.91,
    "pool_n": 0,
+   "margin": 0.129,
    "pos_frac": 0.6
   },
   {
@@ -14395,6 +14520,7 @@
    "score": 1.548,
    "gap_pct": -0.13,
    "pool_n": 26,
+   "margin": 0.262,
    "pos_frac": 1.0
   },
   {
@@ -14417,6 +14543,7 @@
    "score": 1.697,
    "gap_pct": 0.6,
    "pool_n": 343,
+   "margin": 0.004,
    "pos_frac": 1.0
   },
   {
@@ -14439,6 +14566,7 @@
    "score": 1.712,
    "gap_pct": -0.93,
    "pool_n": 141,
+   "margin": 0.011,
    "pos_frac": 1.0
   },
   {
@@ -14461,6 +14589,7 @@
    "score": 1.89,
    "gap_pct": -0.78,
    "pool_n": 65,
+   "margin": 0.329,
    "pos_frac": 1.0
   },
   {
@@ -14483,6 +14612,7 @@
    "score": 1.928,
    "gap_pct": -0.13,
    "pool_n": 43,
+   "margin": 0.463,
    "pos_frac": 1.0
   },
   {
@@ -14505,6 +14635,7 @@
    "score": 1.611,
    "gap_pct": -1.3,
    "pool_n": 302,
+   "margin": 0.361,
    "pos_frac": 1.0
   },
   {
@@ -14527,6 +14658,7 @@
    "score": 1.884,
    "gap_pct": -0.99,
    "pool_n": 234,
+   "margin": 0.04,
    "pos_frac": 1.0
   },
   {
@@ -14549,6 +14681,7 @@
    "score": 1.461,
    "gap_pct": -1.44,
    "pool_n": 0,
+   "margin": 0.118,
    "pos_frac": 1.0
   },
   {
@@ -14571,6 +14704,7 @@
    "score": 2.274,
    "gap_pct": 0.0,
    "pool_n": 90,
+   "margin": 0.744,
    "pos_frac": 1.0
   },
   {
@@ -14593,6 +14727,7 @@
    "score": 2.236,
    "gap_pct": -0.16,
    "pool_n": 145,
+   "margin": 0.197,
    "pos_frac": 1.0
   },
   {
@@ -14615,6 +14750,7 @@
    "score": 2.216,
    "gap_pct": -0.7,
    "pool_n": 393,
+   "margin": 0.03,
    "pos_frac": 1.0
   },
   {
@@ -14637,6 +14773,7 @@
    "score": 2.155,
    "gap_pct": 0.0,
    "pool_n": 124,
+   "margin": 0.171,
    "pos_frac": 1.0
   },
   {
@@ -14659,6 +14796,7 @@
    "score": 1.337,
    "gap_pct": -1.19,
    "pool_n": 0,
+   "margin": 0.297,
    "pos_frac": 1.0
   },
   {
@@ -14681,6 +14819,7 @@
    "score": 1.892,
    "gap_pct": -0.87,
    "pool_n": 188,
+   "margin": 0.144,
    "pos_frac": 1.0
   },
   {
@@ -14703,6 +14842,7 @@
    "score": 2.312,
    "gap_pct": -3.14,
    "pool_n": 88,
+   "margin": 0.56,
    "pos_frac": 1.0
   },
   {
@@ -14725,6 +14865,7 @@
    "score": 1.047,
    "gap_pct": -0.81,
    "pool_n": 33,
+   "margin": 0.059,
    "pos_frac": 1.0
   },
   {
@@ -14747,6 +14888,7 @@
    "score": 2.092,
    "gap_pct": 2.96,
    "pool_n": 15,
+   "margin": 1.865,
    "pos_frac": 0.5
   },
   {
@@ -14769,6 +14911,7 @@
    "score": 1.894,
    "gap_pct": 2.49,
    "pool_n": 27,
+   "margin": 0.264,
    "pos_frac": 1.0
   },
   {
@@ -14791,6 +14934,7 @@
    "score": 2.534,
    "gap_pct": -0.54,
    "pool_n": 220,
+   "margin": 0.541,
    "pos_frac": 1.0
   },
   {
@@ -14813,6 +14957,7 @@
    "score": 2.642,
    "gap_pct": 0.3,
    "pool_n": 202,
+   "margin": 0.797,
    "pos_frac": 1.0
   },
   {
@@ -14835,6 +14980,7 @@
    "score": 1.209,
    "gap_pct": -1.09,
    "pool_n": 0,
+   "margin": 0.625,
    "pos_frac": 1.0
   },
   {
@@ -14857,6 +15003,7 @@
    "score": 1.589,
    "gap_pct": -0.2,
    "pool_n": 20,
+   "margin": 0.456,
    "pos_frac": 0.5
   },
   {
@@ -14879,6 +15026,7 @@
    "score": 1.158,
    "gap_pct": 1.94,
    "pool_n": 17,
+   "margin": 0.191,
    "pos_frac": 0.3
   },
   {
@@ -14901,6 +15049,7 @@
    "score": 1.496,
    "gap_pct": -0.87,
    "pool_n": 0,
+   "margin": 0.077,
    "pos_frac": 1.0
   },
   {
@@ -14923,6 +15072,7 @@
    "score": 2.244,
    "gap_pct": -0.6,
    "pool_n": 28,
+   "margin": 1.295,
    "pos_frac": 1.0
   },
   {
@@ -14945,6 +15095,7 @@
    "score": 1.413,
    "gap_pct": -0.88,
    "pool_n": 94,
+   "margin": 0.048,
    "pos_frac": 1.0
   },
   {
@@ -14967,6 +15118,7 @@
    "score": 1.88,
    "gap_pct": 0.0,
    "pool_n": 260,
+   "margin": 0.37,
    "pos_frac": 1.0
   },
   {
@@ -14989,6 +15141,7 @@
    "score": 1.568,
    "gap_pct": -2.37,
    "pool_n": 29,
+   "margin": 0.003,
    "pos_frac": 1.0
   },
   {
@@ -15011,6 +15164,7 @@
    "score": 2.176,
    "gap_pct": -1.22,
    "pool_n": 45,
+   "margin": 0.948,
    "pos_frac": 1.0
   },
   {
@@ -15033,6 +15187,7 @@
    "score": 1.82,
    "gap_pct": -1.33,
    "pool_n": 27,
+   "margin": 1.042,
    "pos_frac": 1.0
   },
   {
@@ -15055,6 +15210,7 @@
    "score": 1.203,
    "gap_pct": 0.87,
    "pool_n": 42,
+   "margin": 0.023,
    "pos_frac": 0.6
   },
   {
@@ -15077,6 +15233,7 @@
    "score": 1.753,
    "gap_pct": -2.27,
    "pool_n": 14,
+   "margin": 1.033,
    "pos_frac": 1.0
   },
   {
@@ -15099,6 +15256,7 @@
    "score": 1.016,
    "gap_pct": 0.03,
    "pool_n": 9,
+   "margin": 0.307,
    "pos_frac": 0.3
   },
   {
@@ -15121,6 +15279,7 @@
    "score": 1.656,
    "gap_pct": -1.72,
    "pool_n": 69,
+   "margin": 0.387,
    "pos_frac": 1.0
   },
   {
@@ -15143,6 +15302,7 @@
    "score": 1.263,
    "gap_pct": 0.0,
    "pool_n": 48,
+   "margin": 0.009,
    "pos_frac": 1.0
   },
   {
@@ -15165,6 +15325,7 @@
    "score": 2.367,
    "gap_pct": 0.04,
    "pool_n": 35,
+   "margin": 1.202,
    "pos_frac": 1.0
   },
   {
@@ -15187,6 +15348,7 @@
    "score": 1.965,
    "gap_pct": -4.89,
    "pool_n": 53,
+   "margin": 0.507,
    "pos_frac": 0.6
   },
   {
@@ -15209,6 +15371,7 @@
    "score": 1.963,
    "gap_pct": -9.73,
    "pool_n": 12,
+   "margin": 0.987,
    "pos_frac": 0.4
   },
   {
@@ -15231,6 +15394,7 @@
    "score": 1.36,
    "gap_pct": 1.25,
    "pool_n": 0,
+   "margin": 0.156,
    "pos_frac": 0.6
   },
   {
@@ -15253,6 +15417,7 @@
    "score": 1.231,
    "gap_pct": -0.66,
    "pool_n": 8,
+   "margin": 0.501,
    "pos_frac": 0.3
   },
   {
@@ -15275,6 +15440,7 @@
    "score": 1.786,
    "gap_pct": 1.48,
    "pool_n": 104,
+   "margin": 0.361,
    "pos_frac": 1.0
   },
   {
@@ -15297,6 +15463,7 @@
    "score": 2.063,
    "gap_pct": -1.2,
    "pool_n": 30,
+   "margin": 0.728,
    "pos_frac": 1.0
   },
   {
@@ -15319,6 +15486,7 @@
    "score": 2.088,
    "gap_pct": -1.29,
    "pool_n": 88,
+   "margin": 0.61,
    "pos_frac": 1.0
   },
   {
@@ -15341,6 +15509,7 @@
    "score": 1.916,
    "gap_pct": 0.18,
    "pool_n": 56,
+   "margin": 0.435,
    "pos_frac": 1.0
   },
   {
@@ -15363,6 +15532,7 @@
    "score": 1.266,
    "gap_pct": -0.63,
    "pool_n": 55,
+   "margin": 0.201,
    "pos_frac": 1.0
   },
   {
@@ -15385,6 +15555,7 @@
    "score": 1.248,
    "gap_pct": -1.26,
    "pool_n": 31,
+   "margin": 0.244,
    "pos_frac": 1.0
   },
   {
@@ -15407,6 +15578,7 @@
    "score": 2.287,
    "gap_pct": -1.73,
    "pool_n": 101,
+   "margin": 0.883,
    "pos_frac": 1.0
   },
   {
@@ -15429,6 +15601,7 @@
    "score": 1.726,
    "gap_pct": 0.27,
    "pool_n": 16,
+   "margin": 0.831,
    "pos_frac": 0.75
   },
   {
@@ -15451,6 +15624,7 @@
    "score": 1.144,
    "gap_pct": -0.26,
    "pool_n": 9,
+   "margin": 0.603,
    "pos_frac": 0.3
   },
   {
@@ -15473,6 +15647,7 @@
    "score": 1.548,
    "gap_pct": 0.0,
    "pool_n": 12,
+   "margin": 0.932,
    "pos_frac": 0.5
   },
   {
@@ -15495,6 +15670,7 @@
    "score": 2.661,
    "gap_pct": -0.98,
    "pool_n": 115,
+   "margin": 0.594,
    "pos_frac": 1.0
   },
   {
@@ -15517,6 +15693,7 @@
    "score": 1.675,
    "gap_pct": 0.59,
    "pool_n": 12,
+   "margin": 0.141,
    "pos_frac": 0.5
   },
   {
@@ -15539,6 +15716,7 @@
    "score": 1.576,
    "gap_pct": -1.43,
    "pool_n": 17,
+   "margin": 0.857,
    "pos_frac": 1.0
   },
   {
@@ -15561,6 +15739,7 @@
    "score": 1.278,
    "gap_pct": -0.06,
    "pool_n": 30,
+   "margin": 0.008,
    "pos_frac": 1.0
   },
   {
@@ -15583,6 +15762,7 @@
    "score": 1.846,
    "gap_pct": 1.97,
    "pool_n": 45,
+   "margin": 0.406,
    "pos_frac": 1.0
   },
   {
@@ -15605,6 +15785,7 @@
    "score": 1.179,
    "gap_pct": -0.5,
    "pool_n": 18,
+   "margin": 0.095,
    "pos_frac": 0.5
   },
   {
@@ -15627,6 +15808,7 @@
    "score": 2.303,
    "gap_pct": -0.83,
    "pool_n": 63,
+   "margin": 0.492,
    "pos_frac": 1.0
   },
   {
@@ -15649,6 +15831,7 @@
    "score": 1.847,
    "gap_pct": -0.63,
    "pool_n": 35,
+   "margin": 0.701,
    "pos_frac": 1.0
   },
   {
@@ -15671,6 +15854,7 @@
    "score": 2.057,
    "gap_pct": -0.54,
    "pool_n": 62,
+   "margin": 0.358,
    "pos_frac": 1.0
   },
   {
@@ -15693,6 +15877,7 @@
    "score": 1.911,
    "gap_pct": -1.49,
    "pool_n": 23,
+   "margin": 0.323,
    "pos_frac": 1.0
   },
   {
@@ -15715,6 +15900,7 @@
    "score": 1.746,
    "gap_pct": 0.65,
    "pool_n": 25,
+   "margin": 0.929,
    "pos_frac": 1.0
   },
   {
@@ -15737,6 +15923,7 @@
    "score": 1.606,
    "gap_pct": 1.79,
    "pool_n": 133,
+   "margin": 0.011,
    "pos_frac": 1.0
   },
   {
@@ -15759,6 +15946,7 @@
    "score": 1.449,
    "gap_pct": -0.96,
    "pool_n": 17,
+   "margin": 0.244,
    "pos_frac": 0.5
   },
   {
@@ -15781,6 +15969,7 @@
    "score": 2.413,
    "gap_pct": -0.15,
    "pool_n": 58,
+   "margin": 0.672,
    "pos_frac": 1.0
   },
   {
@@ -15803,6 +15992,7 @@
    "score": 2.16,
    "gap_pct": -0.45,
    "pool_n": 260,
+   "margin": 0.108,
    "pos_frac": 1.0
   },
   {
@@ -15825,6 +16015,7 @@
    "score": 1.661,
    "gap_pct": -0.22,
    "pool_n": 47,
+   "margin": 0.071,
    "pos_frac": 1.0
   },
   {
@@ -15847,6 +16038,7 @@
    "score": 1.885,
    "gap_pct": 0.67,
    "pool_n": 69,
+   "margin": 0.519,
    "pos_frac": 1.0
   },
   {
@@ -15869,6 +16061,7 @@
    "score": 2.283,
    "gap_pct": 0.0,
    "pool_n": 77,
+   "margin": 0.677,
    "pos_frac": 1.0
   },
   {
@@ -15891,6 +16084,7 @@
    "score": 1.224,
    "gap_pct": -0.35,
    "pool_n": 16,
+   "margin": 0.253,
    "pos_frac": 0.5
   },
   {
@@ -15913,6 +16107,7 @@
    "score": 1.475,
    "gap_pct": 0.0,
    "pool_n": 27,
+   "margin": 0.374,
    "pos_frac": 1.0
   },
   {
@@ -15935,6 +16130,7 @@
    "score": 1.216,
    "gap_pct": -0.77,
    "pool_n": 17,
+   "margin": 0.367,
    "pos_frac": 0.5
   },
   {
@@ -15957,6 +16153,7 @@
    "score": 2.146,
    "gap_pct": -0.4,
    "pool_n": 81,
+   "margin": 0.762,
    "pos_frac": 1.0
   },
   {
@@ -15979,6 +16176,7 @@
    "score": 1.156,
    "gap_pct": 2.78,
    "pool_n": 37,
+   "margin": 0.117,
    "pos_frac": 0.6
   },
   {
@@ -16001,6 +16199,7 @@
    "score": 1.109,
    "gap_pct": -0.73,
    "pool_n": 13,
+   "margin": 0.447,
    "pos_frac": 1.0
   },
   {
@@ -16023,6 +16222,7 @@
    "score": 1.866,
    "gap_pct": -0.19,
    "pool_n": 51,
+   "margin": 0.1,
    "pos_frac": 1.0
   },
   {
@@ -16045,6 +16245,7 @@
    "score": 1.466,
    "gap_pct": 0.34,
    "pool_n": 19,
+   "margin": 0.512,
    "pos_frac": 0.5
   },
   {
@@ -16067,6 +16268,7 @@
    "score": 1.674,
    "gap_pct": -0.1,
    "pool_n": 23,
+   "margin": 0.433,
    "pos_frac": 1.0
   },
   {
@@ -16089,6 +16291,7 @@
    "score": 1.633,
    "gap_pct": -6.77,
    "pool_n": 95,
+   "margin": 0.072,
    "pos_frac": 1.0
   },
   {
@@ -16111,6 +16314,7 @@
    "score": 1.635,
    "gap_pct": -0.99,
    "pool_n": 62,
+   "margin": 0.032,
    "pos_frac": 1.0
   },
   {
@@ -16133,6 +16337,7 @@
    "score": 1.362,
    "gap_pct": -1.11,
    "pool_n": 28,
+   "margin": 0.174,
    "pos_frac": 1.0
   },
   {
@@ -16155,6 +16360,7 @@
    "score": 2.176,
    "gap_pct": 2.47,
    "pool_n": 22,
+   "margin": 1.366,
    "pos_frac": 1.0
   },
   {
@@ -16177,6 +16383,7 @@
    "score": 1.403,
    "gap_pct": 1.64,
    "pool_n": 29,
+   "margin": 0.141,
    "pos_frac": 0.6
   },
   {
@@ -16199,6 +16406,7 @@
    "score": 2.269,
    "gap_pct": -1.26,
    "pool_n": 49,
+   "margin": 1.215,
    "pos_frac": 1.0
   },
   {
@@ -16221,6 +16429,7 @@
    "score": 1.186,
    "gap_pct": -2.43,
    "pool_n": 23,
+   "margin": 0.051,
    "pos_frac": 1.0
   },
   {
@@ -16243,6 +16452,7 @@
    "score": 1.638,
    "gap_pct": 1.19,
    "pool_n": 24,
+   "margin": 0.297,
    "pos_frac": 1.0
   },
   {
@@ -16265,6 +16475,7 @@
    "score": 1.79,
    "gap_pct": -0.68,
    "pool_n": 24,
+   "margin": 0.259,
    "pos_frac": 1.0
   },
   {
@@ -16287,6 +16498,7 @@
    "score": 1.763,
    "gap_pct": 0.0,
    "pool_n": 67,
+   "margin": 0.048,
    "pos_frac": 1.0
   },
   {
@@ -16309,6 +16521,7 @@
    "score": 1.342,
    "gap_pct": -3.33,
    "pool_n": 37,
+   "margin": 0.073,
    "pos_frac": 0.4
   },
   {
@@ -16331,6 +16544,7 @@
    "score": 1.854,
    "gap_pct": 0.22,
    "pool_n": 22,
+   "margin": 0.566,
    "pos_frac": 1.0
   },
   {
@@ -16353,6 +16567,7 @@
    "score": 1.712,
    "gap_pct": 0.75,
    "pool_n": 21,
+   "margin": 0.13,
    "pos_frac": 1.0
   },
   {
@@ -16375,6 +16590,7 @@
    "score": 1.795,
    "gap_pct": 1.15,
    "pool_n": 44,
+   "margin": 0.196,
    "pos_frac": 1.0
   },
   {
@@ -16397,6 +16613,7 @@
    "score": 1.103,
    "gap_pct": -1.23,
    "pool_n": 11,
+   "margin": 0.313,
    "pos_frac": 1.0
   },
   {
@@ -16419,6 +16636,7 @@
    "score": 1.904,
    "gap_pct": 1.04,
    "pool_n": 33,
+   "margin": 0.582,
    "pos_frac": 1.0
   },
   {
@@ -16441,6 +16659,7 @@
    "score": 1.11,
    "gap_pct": -1.38,
    "pool_n": 7,
+   "margin": 0.658,
    "pos_frac": 1.0
   },
   {
@@ -16463,6 +16682,7 @@
    "score": 1.606,
    "gap_pct": -1.46,
    "pool_n": 23,
+   "margin": 0.159,
    "pos_frac": 1.0
   },
   {
@@ -16485,6 +16705,7 @@
    "score": 2.242,
    "gap_pct": 1.11,
    "pool_n": 157,
+   "margin": 0.009,
    "pos_frac": 1.0
   },
   {
@@ -16507,6 +16728,7 @@
    "score": 1.352,
    "gap_pct": -1.17,
    "pool_n": 22,
+   "margin": 0.21,
    "pos_frac": 1.0
   },
   {
@@ -16529,6 +16751,7 @@
    "score": 2.209,
    "gap_pct": -0.06,
    "pool_n": 20,
+   "margin": 1.316,
    "pos_frac": 0.5
   },
   {
@@ -16551,6 +16774,7 @@
    "score": 1.533,
    "gap_pct": -1.23,
    "pool_n": 140,
+   "margin": 0.002,
    "pos_frac": 1.0
   },
   {
@@ -16573,6 +16797,7 @@
    "score": 1.976,
    "gap_pct": -0.41,
    "pool_n": 72,
+   "margin": 0.581,
    "pos_frac": 1.0
   },
   {
@@ -16595,6 +16820,7 @@
    "score": 1.828,
    "gap_pct": 1.64,
    "pool_n": 107,
+   "margin": 0.12,
    "pos_frac": 1.0
   },
   {
@@ -16617,6 +16843,7 @@
    "score": 2.349,
    "gap_pct": -0.9,
    "pool_n": 62,
+   "margin": 0.792,
    "pos_frac": 1.0
   },
   {
@@ -16639,6 +16866,7 @@
    "score": 1.261,
    "gap_pct": 0.06,
    "pool_n": 29,
+   "margin": 0.024,
    "pos_frac": 1.0
   },
   {
@@ -16661,6 +16889,7 @@
    "score": 2.002,
    "gap_pct": 5.91,
    "pool_n": 59,
+   "margin": 0.575,
    "pos_frac": 1.0
   },
   {
@@ -16683,6 +16912,7 @@
    "score": 1.518,
    "gap_pct": 0.19,
    "pool_n": 14,
+   "margin": 0.677,
    "pos_frac": 0.5
   },
   {
@@ -16705,6 +16935,7 @@
    "score": 1.209,
    "gap_pct": -1.36,
    "pool_n": 7,
+   "margin": 0.551,
    "pos_frac": 1.0
   },
   {
@@ -16727,6 +16958,7 @@
    "score": 1.193,
    "gap_pct": -3.38,
    "pool_n": 11,
+   "margin": 0.133,
    "pos_frac": 0.4
   },
   {
@@ -16749,6 +16981,7 @@
    "score": 1.199,
    "gap_pct": 0.44,
    "pool_n": 14,
+   "margin": 0.071,
    "pos_frac": 0.5
   },
   {
@@ -16771,6 +17004,7 @@
    "score": 1.024,
    "gap_pct": 0.0,
    "pool_n": 22,
+   "margin": 0.151,
    "pos_frac": 1.0
   },
   {
@@ -16793,6 +17027,7 @@
    "score": 1.12,
    "gap_pct": -0.45,
    "pool_n": 0,
+   "margin": 0.23,
    "pos_frac": 1.0
   },
   {
@@ -16815,6 +17050,7 @@
    "score": 1.156,
    "gap_pct": -0.78,
    "pool_n": 32,
+   "margin": 0.19,
    "pos_frac": 1.0
   },
   {
@@ -16837,6 +17073,7 @@
    "score": 1.563,
    "gap_pct": -0.58,
    "pool_n": 81,
+   "margin": 0.347,
    "pos_frac": 1.0
   },
   {
@@ -16859,6 +17096,7 @@
    "score": 2.098,
    "gap_pct": -1.74,
    "pool_n": 70,
+   "margin": 0.834,
    "pos_frac": 1.0
   },
   {
@@ -16881,6 +17119,7 @@
    "score": 1.398,
    "gap_pct": 1.02,
    "pool_n": 25,
+   "margin": 0.365,
    "pos_frac": 0.6
   },
   {
@@ -16903,6 +17142,7 @@
    "score": 1.227,
    "gap_pct": -1.15,
    "pool_n": 21,
+   "margin": 0.318,
    "pos_frac": 1.0
   },
   {
@@ -16925,6 +17165,7 @@
    "score": 1.698,
    "gap_pct": 2.11,
    "pool_n": 66,
+   "margin": 0.308,
    "pos_frac": 1.0
   },
   {
@@ -16947,6 +17188,7 @@
    "score": 2.183,
    "gap_pct": -0.66,
    "pool_n": 131,
+   "margin": 0.238,
    "pos_frac": 1.0
   },
   {
@@ -16969,6 +17211,7 @@
    "score": 1.297,
    "gap_pct": -4.09,
    "pool_n": 24,
+   "margin": 0.021,
    "pos_frac": 0.4
   },
   {
@@ -16991,6 +17234,7 @@
    "score": 1.014,
    "gap_pct": -3.49,
    "pool_n": 18,
+   "margin": 0.252,
    "pos_frac": 0.4
   },
   {
@@ -17013,6 +17257,7 @@
    "score": 1.092,
    "gap_pct": -2.71,
    "pool_n": 41,
+   "margin": 0.191,
    "pos_frac": 0.4
   },
   {
@@ -17035,6 +17280,7 @@
    "score": 1.685,
    "gap_pct": 3.67,
    "pool_n": 13,
+   "margin": 0.849,
    "pos_frac": 0.75
   },
   {
@@ -17057,6 +17303,7 @@
    "score": 1.162,
    "gap_pct": -3.96,
    "pool_n": 0,
+   "margin": 0.335,
    "pos_frac": 1.0
   },
   {
@@ -17079,6 +17326,7 @@
    "score": 1.633,
    "gap_pct": -0.33,
    "pool_n": 36,
+   "margin": 0.422,
    "pos_frac": 1.0
   },
   {
@@ -17101,6 +17349,7 @@
    "score": 1.683,
    "gap_pct": 0.29,
    "pool_n": 88,
+   "margin": 0.148,
    "pos_frac": 1.0
   },
   {
@@ -17123,6 +17372,7 @@
    "score": 1.579,
    "gap_pct": -0.59,
    "pool_n": 57,
+   "margin": 0.201,
    "pos_frac": 1.0
   },
   {
@@ -17145,6 +17395,7 @@
    "score": 1.691,
    "gap_pct": -1.04,
    "pool_n": 21,
+   "margin": 0.604,
    "pos_frac": 1.0
   },
   {
@@ -17167,6 +17418,7 @@
    "score": 1.434,
    "gap_pct": -0.68,
    "pool_n": 36,
+   "margin": 0.209,
    "pos_frac": 1.0
   },
   {
@@ -17189,6 +17441,7 @@
    "score": 1.433,
    "gap_pct": -4.62,
    "pool_n": 33,
+   "margin": 0.199,
    "pos_frac": 1.0
   },
   {
@@ -17211,6 +17464,7 @@
    "score": 1.587,
    "gap_pct": -1.01,
    "pool_n": 73,
+   "margin": 0.082,
    "pos_frac": 1.0
   },
   {
@@ -17233,6 +17487,7 @@
    "score": 1.521,
    "gap_pct": 0.31,
    "pool_n": 29,
+   "margin": 0.121,
    "pos_frac": 1.0
   },
   {
@@ -17255,6 +17510,7 @@
    "score": 1.453,
    "gap_pct": -0.73,
    "pool_n": 20,
+   "margin": 0.075,
    "pos_frac": 0.5
   },
   {
@@ -17277,6 +17533,7 @@
    "score": 1.611,
    "gap_pct": -2.72,
    "pool_n": 44,
+   "margin": 0.031,
    "pos_frac": 0.6
   },
   {
@@ -17299,6 +17556,7 @@
    "score": 1.215,
    "gap_pct": -3.98,
    "pool_n": 25,
+   "margin": 0.086,
    "pos_frac": 0.6
   },
   {
@@ -17321,6 +17579,7 @@
    "score": 1.559,
    "gap_pct": -2.85,
    "pool_n": 11,
+   "margin": 0.957,
    "pos_frac": 0.4
   },
   {
@@ -17343,6 +17602,7 @@
    "score": 1.08,
    "gap_pct": 0.46,
    "pool_n": 4,
+   "margin": 1.24,
    "pos_frac": 0.3
   }
  ],
