@@ -59,3 +59,6 @@ output/pool_225b.parquet
 
 # 第232轮 559 个信号日分钟文件(2.3MB, fetch_mins_232.py 2.5 分钟可重建), 不入库
 output/mins_232/
+
+# 第234轮 全市场特征表(1543万行x44列, 1.7GB, build_features_234.py 约7分钟可重建), 不入库
+output/feat234/

@@ -375,6 +375,11 @@ def _select_one(
             df = df[_mv >= float(_mv_lo)]
         if _mv_hi:
             df = df[_mv <= float(_mv_hi)]
+    # 振幅下限(第二百三十四轮): 全样本 817 万低开样本上 amp 与次日收益单调 +0.919,
+    #   最小档 -0.001% vs 最大档 +0.197%, 13/17 年同向。默认不启用。
+    _amp_lo = uni_cfg.get("amp_min")
+    if _amp_lo and "amp_pct" in df.columns:
+        df = df[df["amp_pct"] >= float(_amp_lo)]
     stats["liquidity"] = int(len(df))
 
     df = df[df["bars"] >= uni_cfg["listed_min_bars"]]
