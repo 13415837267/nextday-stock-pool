@@ -1,11 +1,14 @@
 {
-  "signal_date": "20261113",
-  "idx_dist": 2.17,
+  "signal_date": "20261116",
+  "idx_dist": -0.31,
   "triggered": false,
   "rule": {
     "idx_dist_max": -3.51,
-    "dist_high60_max": -24.46
+    "high_win": 250,
+    "dist_high_max": -24.46,
+    "position": 0.7,
+    "cooldown_days": 20
   },
-  "how_to_trade": "单吊下列首选一只; T+1开盘买, T+2收盘卖; 仓位自选(满仓/30%)",
+  "how_to_trade": "单吊下列首选一只, 70% 仓位; T+1开盘买, T+2收盘卖",
   "candidates": []
 }

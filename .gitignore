@@ -62,3 +62,7 @@ output/mins_232/
 
 # 第234轮 全市场特征表(1543万行x44列, 1.7GB, build_features_234.py 约7分钟可重建), 不入库
 output/feat234/
+
+# 第243轮 全史价表/滚动高点缓存(503M/366M, 由 scan_243c.py / scan_243i.py 数分钟重建)
+output/w243c_px.parquet
+output/w243i_dh.parquet

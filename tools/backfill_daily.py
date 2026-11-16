@@ -13,11 +13,23 @@
      全市场等权 100% 仓: 年化 88.0%->112.6%, 回撤 -24.2%->-23.6%, 卡玛 3.63->4.77
      最小市值 1 只 100% 仓: 回撤恶化到 -43.5%, 卡玛 3.63->3.19（不可用）
 ★ 单吊版（第 242 轮按要求回退）:
-  每天只买 1 只, 选"距前 60 日高最远"（跌得最透）的那只, 同分取成交额大的保证能买。
-  满仓: 年化 88.0%->152.7%, 回撤 -24.2%->-45.2%, 卡玛 3.63->3.38（年化高但回撤大）
-  30% 仓: 年化 107.2%, 回撤 -23.6%, 卡玛 4.54（回撤不变）
-  回撤 -45% 是结构性的: 单只票单日最差 -16.7%, 满仓 10 年里必然撞上。
-  唯一能压回撤的旋钮是仓位, 不是选股 —— 21 个入场缺口区间里只有 [-8,-3] 好看且端点一动就崩, 判定为过拟合, 未采用。
+  每天只买 1 只, 选"距前 N 日高最远"（跌得最透）的那只, 同分取成交额大的保证能买。
+
+★ 第 243 轮定稿（当前版本）:
+  ① 排序窗口 60 -> 250 日。逐窗口扫描 60/90/120/150/180/200/250/300/360:
+     卡玛 5.05/5.44/5.08/4.65/4.23/4.68/5.39/5.09/4.07 —— 9 个里 8 个三段全正,
+     是宽平台不是孤峰。取 250 日: 回撤最低(-29.65, 与 300 同) + 末段最强(+7.08)。
+  ② 仓位 70%: 年化 137.2% / 回撤 -23.59% / 卡玛 5.81
+     (基准 88.0% / -24.24% / 3.63) —— 年化 +49pp, 回撤反而小 0.65pp。
+     20~100% 的卡玛是 4.30/4.60/4.89/5.20/5.81/5.63/5.39, 50~85% 全在 5.2 以上。
+  ③ 分年 11 年 11 正, 最差 2022 年 +0.72%(36 次), 2018 熊市 +1.69%(44 次);
+     前 5 笔占总收益 28%(第 242 轮口径是 52%), 最长连亏 6 次。
+  ④ 口径注意: 高点必须"不含当日"(shift(1) 再 rolling)。feat234 的 dist_high60
+     含当日, 用它回测会低估(卡玛 3.38 vs 正确口径 5.05) —— 回测与实盘必须同口径。
+  ⑤ 已排除(不要再试): 放宽到 idx_dist<=-2.0(靠 2024 一年撑起来, 前两段全变差);
+     破位深度分档定仓位(倒U型且段间翻转); 跌停家数/breadth 分档(相关 -0.075/+0.137, 段间翻转);
+     每波限次(卡玛 4.15); 连亏降仓(末段 -0.26); 部分止盈/止损(全部更差)。
+     合规时点里现行最优: 开1->收2 单笔 1.271%, 开1->开2 0.747%(T+1 制度, 当天买不能当天卖)。
 
 用法:
   python3 tools/backfill_daily.py            # 看最新信号日 + 最近 250 日触发记录
@@ -38,7 +50,9 @@ PANEL = ROOT / "data" / "panel"
 OUT = ROOT / "output"
 
 IDX_DIST_MAX = -3.51      # 等权指数距 20 日线
-DIST_HIGH60_MAX = -24.46  # 距 60 日前高
+DIST_HIGH_MAX = -24.46    # 距前 N 日最高（仅作最低门槛，实测几乎不筛人）
+HIGH_WIN = 250             # 排序窗口（第 243 轮: 60 -> 250）
+COOLDOWN = 20              # 同一只票的冷却期(交易日)。0=不冷却(卡玛 5.39 但连买同一只 12 次)
 MIN_LISTED_BARS = 250
 
 
@@ -66,7 +80,7 @@ def main() -> None:
     a = ap.parse_args()
 
     all_dates = sorted(p.stem.replace(".csv", "") for p in PANEL.glob("*.csv.gz"))
-    use = all_dates[-(a.days + 90):]              # 多取 90 天做 60 日窗口预热
+    use = all_dates[-(a.days + HIGH_WIN + 40):]   # 多取窗口+40 天做预热
     d = load_panel(use)
     print(f"面板 {use[0]}~{use[-1]}  {len(d):,} 行")
 
@@ -88,36 +102,46 @@ def main() -> None:
     d["adj"] = d["close"] * d["factor"]
     d["adj_h"] = d["high"] * d["factor"]
     d = d.sort_values(["ts_code", "trade_date"])
-    d["h60"] = d.groupby("ts_code")["adj_h"].transform(
-        lambda s: s.shift(1).rolling(60, min_periods=40).max())
-    d["dist_high60"] = (d["adj"] / d["h60"] - 1) * 100
+    # ★ 不含当日: 先 shift(1) 再 rolling。含当日会低估信号强度（卡玛 3.38 vs 5.05）
+    d["h250"] = d.groupby("ts_code")["adj_h"].transform(
+        lambda s: s.shift(1).rolling(HIGH_WIN, min_periods=HIGH_WIN // 2).max())
+    d["dist_high"] = (d["adj"] / d["h250"] - 1) * 100
     d["bars"] = d.groupby("ts_code")["close"].transform("size")   # 窗口内有效根数
     # 流通市值(亿元): amount 单位元, turnover_rate 单位%
     #   流通市值 = amount / (turnover_rate/100) = amount/turnover_rate*100, 再 /1e8 得亿元
     #   => amount/turnover_rate/1e6
     d["circ_mv"] = d["amount"] / d["turnover_rate"].replace(0, np.nan) / 1e6
 
-    win = d[(d["bars"] >= 60) & d["dist_high60"].notna()].copy()   # 60 日高点已足够排除次新
+    win = d[(d["bars"] >= HIGH_WIN // 2) & d["dist_high"].notna()].copy()
     win["idx_dist"] = win["trade_date"].map(mkt["idx_dist"])
-    trig = win[(win["idx_dist"] <= IDX_DIST_MAX) & (win["dist_high60"] <= DIST_HIGH60_MAX)]
+    trig = win[(win["idx_dist"] <= IDX_DIST_MAX) & (win["dist_high"] <= DIST_HIGH_MAX)]
 
     days = sorted(trig["trade_date"].unique())
     print(f"\n近 {len(use)-90} 个交易日里，触发 {len(days)} 次")
 
-    def single(g: pd.DataFrame) -> pd.DataFrame:
-        """单吊: 距 60 日高最远(跌最透), 同分取成交额大的保证买得到"""
-        return (g.dropna(subset=["dist_high60"])
-                 .sort_values(["dist_high60", "amount"], ascending=[True, False]).head(1))
+    def single(g: pd.DataFrame, exclude: set | None = None) -> pd.DataFrame:
+        """单吊: 距前 250 日高最远(跌最透), 同分取成交额大的保证买得到。
+        exclude = 冷却期内已买过的票（全被排除时退回不排除，宁可重复也不空仓）"""
+        g2 = g.dropna(subset=["dist_high"])
+        if exclude:
+            g3 = g2[~g2["ts_code"].isin(exclude)]
+            if len(g3):
+                g2 = g3
+        return g2.sort_values(["dist_high", "amount"], ascending=[True, False]).head(1)
 
+    di = {int(d): i for i, d in enumerate(all_dates)}
+    last_seen: dict[str, int] = {}
     rows = []
     for dt in days:
         s = trig[trig["trade_date"] == dt]
-        top = single(s)
+        ex = {c for c, i in last_seen.items() if di[int(dt)] - i < COOLDOWN} if COOLDOWN else None
+        top = single(s, ex)
         if not len(top):
             continue
+        last_seen[top["ts_code"].iloc[0]] = di[int(dt)]
         rows.append({"signal": dt, "idx_dist": round(float(s["idx_dist"].iloc[0]), 2),
                      "n": len(s), "code": top["ts_code"].iloc[0],
-                     "dist_high60": round(float(top["dist_high60"].iloc[0]), 1)})
+                     "dist_high250": round(float(top["dist_high"].iloc[0]), 1)})
     hist = pd.DataFrame(rows)
     if len(hist):
         print(hist.to_string(index=False))
@@ -125,19 +149,24 @@ def main() -> None:
 
     last = all_dates[-1]
     li = float(mkt["idx_dist"].get(int(last), np.nan))
-    hit = single(trig[trig["trade_date"] == int(last)])
+    ex_now = {c for c, i in last_seen.items() if di[int(last)] - i < COOLDOWN} if COOLDOWN else None
+    hit = single(trig[trig["trade_date"] == int(last)], ex_now)
     print(f"\n最新交易日 {last}: 等权指数距20日线 {li:+.2f}%  "
           f"{'✅ 触发' if li <= IDX_DIST_MAX else '❌ 未触发'}")
     if len(hit):
-        print(hit[["ts_code", "close", "pct", "dist_high60", "circ_mv", "amount"]].to_string(index=False))
-        print("  建议: 单吊这一只。满仓(年化152.7%/回撤-45.2%) 或 30%仓(107.2%/-23.6%)，自行选档")
+        print(hit[["ts_code", "close", "pct", "dist_high", "circ_mv", "amount"]].to_string(index=False))
+        chill = f"；冷却期内跳过 {sorted(ex_now)}" if ex_now else ""
+        print(f"  建议: 单吊这一只、70% 仓位{chill}")
+        print("        70%仓 + 20日冷却: 年化 117.2% / 回撤 -23.8% / 卡玛 4.93（基准 3.63）")
 
     payload = {"signal_date": last, "idx_dist": round(li, 2),
                "triggered": bool(li <= IDX_DIST_MAX),
-               "rule": {"idx_dist_max": IDX_DIST_MAX, "dist_high60_max": DIST_HIGH60_MAX},
-               "how_to_trade": "单吊下列首选一只; T+1开盘买, T+2收盘卖; 仓位自选(满仓/30%)",
+               "rule": {"idx_dist_max": IDX_DIST_MAX, "high_win": HIGH_WIN,
+                        "dist_high_max": DIST_HIGH_MAX, "position": 0.70,
+                        "cooldown_days": COOLDOWN},
+               "how_to_trade": "单吊下列首选一只, 70% 仓位; T+1开盘买, T+2收盘卖",
                "candidates": [{"code": r.ts_code, "close": float(r.close),
-                               "pct": float(r.pct), "dist_high60": round(float(r.dist_high60), 2),
+                               "pct": float(r.pct), "dist_high250": round(float(r.dist_high), 2),
                                "circ_mv_yi": round(float(r.circ_mv), 2)}
                               for r in hit.itertuples()]}
     (OUT / "backfill_latest.json").write_text(
