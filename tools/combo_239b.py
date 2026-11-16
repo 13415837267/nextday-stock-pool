@@ -46,6 +46,7 @@ def load() -> pd.DataFrame:
         d = pd.read_parquet(p, columns=COLS)
         d = d[(d["is_paused"] == 0) & (d["is_st"] == 0) & (d["n1_ok"] == True)]   # noqa: E712
         d = d[d["pct"].between(-11.5, 11.5) & d["y"].between(-40, 60) & (d["listed"] >= 250)]
+        d = d[d["ts_code"].str[:2].isin(["60", "00"])]
         if len(d):
             parts.append(d)
     return pd.concat(parts, ignore_index=True)
