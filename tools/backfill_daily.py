@@ -12,9 +12,12 @@
   => 执行形态必须反过来: 越分散越安全。
      全市场等权 100% 仓: 年化 88.0%->112.6%, 回撤 -24.2%->-23.6%, 卡玛 3.63->4.77
      最小市值 1 只 100% 仓: 回撤恶化到 -43.5%, 卡玛 3.63->3.19（不可用）
-  3 万本金做不到 1700 只 => 首选宽基 ETF（中证1000/中证500, 近似等权 beta）满仓;
-  买个股就"按流通市值分 20 档, 每档取成交额最大 2 只"= 40 只等权, 满仓（卡玛 4.81）。
-  注意: 不是挑最强的, 是挑最全的 —— 破位日没有选股 alpha, 只有分散收益。
+★ 单吊版（第 242 轮按要求回退）:
+  每天只买 1 只, 选"距前 60 日高最远"（跌得最透）的那只, 同分取成交额大的保证能买。
+  满仓: 年化 88.0%->152.7%, 回撤 -24.2%->-45.2%, 卡玛 3.63->3.38（年化高但回撤大）
+  30% 仓: 年化 107.2%, 回撤 -23.6%, 卡玛 4.54（回撤不变）
+  回撤 -45% 是结构性的: 单只票单日最差 -16.7%, 满仓 10 年里必然撞上。
+  唯一能压回撤的旋钮是仓位, 不是选股 —— 21 个入场缺口区间里只有 [-8,-3] 好看且端点一动就崩, 判定为过拟合, 未采用。
 
 用法:
   python3 tools/backfill_daily.py            # 看最新信号日 + 最近 250 日触发记录
@@ -101,22 +104,20 @@ def main() -> None:
     days = sorted(trig["trade_date"].unique())
     print(f"\n近 {len(use)-90} 个交易日里，触发 {len(days)} 次")
 
-    def layered(g: pd.DataFrame, n_grp: int = 20, per: int = 2) -> pd.DataFrame:
-        """流通市值分 n_grp 档, 每档取成交额最大的 per 只 —— 覆盖全谱, 不押单一因子"""
-        g = g.dropna(subset=["circ_mv"]).sort_values("circ_mv")
-        if len(g) < n_grp * per:
-            return g.nlargest(min(40, len(g)), "amount")
-        sel = [gg.nlargest(per, "amount")
-               for _, gg in g.groupby(pd.qcut(g["circ_mv"].rank(method="first"), n_grp, labels=False))]
-        return pd.concat(sel)
+    def single(g: pd.DataFrame) -> pd.DataFrame:
+        """单吊: 距 60 日高最远(跌最透), 同分取成交额大的保证买得到"""
+        return (g.dropna(subset=["dist_high60"])
+                 .sort_values(["dist_high60", "amount"], ascending=[True, False]).head(1))
 
     rows = []
     for dt in days:
         s = trig[trig["trade_date"] == dt]
-        top = layered(s).sort_values("circ_mv")
+        top = single(s)
+        if not len(top):
+            continue
         rows.append({"signal": dt, "idx_dist": round(float(s["idx_dist"].iloc[0]), 2),
-                     "n": len(s), "buy": len(top),
-                     "list": ",".join(top["ts_code"].tolist())})
+                     "n": len(s), "code": top["ts_code"].iloc[0],
+                     "dist_high60": round(float(top["dist_high60"].iloc[0]), 1)})
     hist = pd.DataFrame(rows)
     if len(hist):
         print(hist.to_string(index=False))
@@ -124,17 +125,17 @@ def main() -> None:
 
     last = all_dates[-1]
     li = float(mkt["idx_dist"].get(int(last), np.nan))
-    hit = layered(trig[trig["trade_date"] == int(last)]).sort_values("circ_mv")
+    hit = single(trig[trig["trade_date"] == int(last)])
     print(f"\n最新交易日 {last}: 等权指数距20日线 {li:+.2f}%  "
           f"{'✅ 触发' if li <= IDX_DIST_MAX else '❌ 未触发'}")
     if len(hit):
-        print(hit[["ts_code", "close", "pct", "dist_high60", "circ_mv"]].to_string(index=False))
-        print(f"  建议: 宽基 ETF 满仓（首选, 近似全市场等权 beta）; 或上表 {len(hit)} 只等权满仓")
+        print(hit[["ts_code", "close", "pct", "dist_high60", "circ_mv", "amount"]].to_string(index=False))
+        print("  建议: 单吊这一只。满仓(年化152.7%/回撤-45.2%) 或 30%仓(107.2%/-23.6%)，自行选档")
 
     payload = {"signal_date": last, "idx_dist": round(li, 2),
                "triggered": bool(li <= IDX_DIST_MAX),
                "rule": {"idx_dist_max": IDX_DIST_MAX, "dist_high60_max": DIST_HIGH60_MAX},
-               "how_to_trade": "宽基ETF满仓(首选) 或 下列名单等权满仓; T+1开盘买, T+2收盘卖",
+               "how_to_trade": "单吊下列首选一只; T+1开盘买, T+2收盘卖; 仓位自选(满仓/30%)",
                "candidates": [{"code": r.ts_code, "close": float(r.close),
                                "pct": float(r.pct), "dist_high60": round(float(r.dist_high60), 2),
                                "circ_mv_yi": round(float(r.circ_mv), 2)}
