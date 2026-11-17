@@ -2,8 +2,8 @@
  "meta": {
   "created": "2026-11-02",
   "version": 1,
-  "updated": "2026-11-17 12:55:55",
-  "n": 11
+  "updated": "2026-11-17 16:26:51",
+  "n": 12
  },
  "records": [
   {
@@ -292,8 +292,34 @@
    "floor_pct": -2.5,
    "condition": "风控中(连续第10日): 只接恐慌深跌 —— 开盘缺口≤-2.5%才买, 仓位按40%执行; 缺口不够深则当日空仓; 若竞价缺口 ≥0.5%→60% 则按该比例减仓(照常成交, 不弃单); 达标18只→50%仓(仅买评分第1名)(当日候选池偏窄=孤立回调、缺共振); 若竞价缺口 ≤-1% 且达标≥5只 → 撤销池深折价",
    "fallbacks": [],
-   "state": "planned",
+   "state": "void",
    "recorded_at": "2026-11-16 16:06:08",
+   "buy_px": null,
+   "sell_px": null,
+   "gap_pct": -0.122,
+   "ret_gross_pct": null,
+   "ret_net_pct": null,
+   "weighted_pct": null,
+   "exec": null,
+   "note": "风控未触发(缺口 -0.12% 未达 -2.5%), 按规则空仓"
+  },
+  {
+   "signal_date": "20261117",
+   "buy_date": "20261118",
+   "sell_date": "20261119",
+   "code": "002275.SZ",
+   "name": "桂林三金",
+   "rank": 1,
+   "score": 1.174,
+   "strategy": "dip",
+   "regime_ok": false,
+   "allow_buy": true,
+   "plan_pos_pct": 20.0,
+   "floor_pct": -2.5,
+   "condition": "风控中(连续第10日): 只接恐慌深跌 —— 开盘缺口≤-2.5%才买, 仓位按40%执行; 缺口不够深则当日空仓; 若竞价缺口 ≥0.5%→60% 则按该比例减仓(照常成交, 不弃单); 达标11只→50%仓(仅买评分第1名)(当日候选池偏窄=孤立回调、缺共振); 若竞价缺口 ≤-1% 且达标≥5只 → 撤销池深折价",
+   "fallbacks": [],
+   "state": "planned",
+   "recorded_at": "2026-11-17 16:26:48",
    "buy_px": null,
    "sell_px": null,
    "gap_pct": null,
@@ -305,13 +331,13 @@
   }
  ],
  "stats": {
-  "n_signal": 11,
+  "n_signal": 12,
   "n_closed": 0,
   "n_holding": 0,
   "n_planned": 1,
-  "n_void": 10,
+  "n_void": 11,
   "void_reasons": {
-   "风控未触发": 10
+   "风控未触发": 11
   }
  }
 }

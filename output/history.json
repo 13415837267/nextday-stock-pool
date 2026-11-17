@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-17",
+   "buy_date": "2026-11-18",
+   "sell_date": "2026-11-19",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "002275.SZ",
+     "name": "桂林三金",
+     "close": 12.92,
+     "pct": -3.15,
+     "reasons": "回调-3.1%、量比0.56(缩量)、20日动量7%、乖离-11.3%、换手4.8%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "6f9bcfdd5144"
+  },
+  {
    "publish_date": "2026-11-16",
    "buy_date": "2026-11-17",
    "sell_date": "2026-11-18",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "6f9bcfdd5144"
+   "config_fp": "6f9bcfdd5144",
+   "skip_chain": [
+    "第1名 晶华新材: 缺口-0.1%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-13",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "6f9bcfdd5144",
    "skip_chain": [
     "第1名 龙旗科技: 缺口-0.9%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "603341.SH"
    ]
   },
   {
