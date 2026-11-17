@@ -504,7 +504,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
 
     def do_buy_fill(pl: dict | None, d: str, idx: int = 0):
         """T+1 开盘: 按名单从上往下挑, 固定仓位买入。不参与主策略任何分档逻辑。"""
-        nonlocal cash, fee_total, fill_stat
+        nonlocal cash, fee_total
         if not fill_on or not pl:
             return False
         # 主策略还持着仓 -> T+1 收盘才卖, 钱不在这（等价于 248 的 busy 判定）
@@ -1332,7 +1332,6 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         if blocked or paused:
             risk_empty_days += 1
             pending_buy = (d, [])
-            _picks_today: list[dict] = []
             # 注: 大盘风控触发仅限制次一交易日不买入; 持仓(含当日买入票)
             #     均按既定 T+2(或之后)开盘卖出, 遵守T+1制度, 无任何当日卖出。
         else:
@@ -1345,14 +1344,12 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 第九十七轮: 当日候选池深度(通过 dip 筛选并完成评分的只数)随计划下发,
             # 用于诊断"机会丰度"; 纯观测字段, 不改变任何买入判定。
             _pn = int((_sel_stats or {}).get("scored") or 0)
-            _picks_today = list(picks)
             pending_buy = (d, [{**p, "signal_date": d, "_pool_n": _pn} for p in picks])
         # ---- 248 补位: 两条分支都要走 ----
         #   破位日几乎必然落在主策略的风控/空仓分支里（指数在 MA20 下方且跌 -3.5%以上），
         #   若只在 else 分支算补位，等于把"最该补位的日子"全漏掉。
         if fill_on:
-            _fidx = ctx.get("fill_idx")
-            _idxd = float(_fidx.get(d, np.nan)) if _fidx is not None else np.nan
+            _idxd = fillin.idx_dist_at(ctx.get("fill_idx"), d)
             _pl = fillin.plan(by_date[d], _idxd, fp)
             if _pl is not None:
                 fill_stat["trigger"] += 1

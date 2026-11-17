@@ -87,7 +87,11 @@ def _config_fp(cfg: dict) -> str:
         "soft_trend": (cfg.get("regime") or {}).get("soft_trend_frac"),  # 第一百一十三轮: 分档参与(可选)
         # 第一百七十六轮: 产物结构版本 —— plans(明日计划)是纯展示层, 不进"成交判定",
         # 但结构一变就必须重算一次(否则幂等跳过会留下没有 plans 的旧 latest.json)。
-        "plan_ver": 10,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 第二百五十轮: fillin(补位名单)进了 latest.json —— 参数一变名单就变, 必须进指纹;
+        #   同时 plan_ver 提到 11 强制重算一次, 否则 11-17 已存在同指纹的 latest.json,
+        #   幂等闸门会跳过, 页面上永远看不到 fillin 块。
+        "fillin": [(k, v) for k, v in sorted((cfg.get("fillin") or {}).items())],
+        "plan_ver": 11,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -927,12 +931,12 @@ def main():
 
     # ---- 2. 近期面板与指标 ----
     warm = max(cfg["regime"].get("warmup_days", 30), 25)
-    _fp = fillin.params(cfg)
-    if _fp["enabled"]:
+    fp = fillin.params(cfg)
+    if fp["enabled"]:
         # 第二百四十八轮: 补位腿要用 360 日窗口的"距前高" + 上市满 250 日过滤。
         # 面板不够长时 dh360 全 NaN、bars 恒小, 补位会静默失效 —— 这里把窗口拉够。
         # 主策略只用到 20 日窗口, 拉长面板不改变它的任何判定(regime 序列是相对量)。
-        warm = max(warm, 360 + int(_fp["min_listed_bars"]) + 10)
+        warm = max(warm, 360 + int(fp["min_listed_bars"]) + 10)
     panel_dates = cal[max(0, pos - warm + 1): pos + 1]
     panel = fetch_panel(client, panel_dates)
     if not len(panel):
@@ -944,9 +948,9 @@ def main():
               + (" ..." if len(miss) > 5 else "")
               + " —— 指标与风控基于实际可得日期计算, 请核查数据源")
     # ★ 补位指数必须在 build_indicators 之前算(它会把 pre_close<=0 的 pct 置 NaN)
-    fill_idx = fillin.market_dist(panel) if _fp["enabled"] else None
+    fill_idx = fillin.market_dist(panel) if fp["enabled"] else None
     panel = build_indicators(panel)
-    if _fp["enabled"]:
+    if fp["enabled"]:
         panel = fillin.add_indicators(panel)
     by_date = split_by_date(panel)
     reg = regime_series(panel, cfg)
@@ -1579,41 +1583,46 @@ def main():
     # 第二百四十八轮: 补位腿的明日名单。与回测/backfill_daily.py 同一套规则,
     # 输出的是"9:25 从上往下挑"的清单, 不是建议买入价。
     fill_info = None
-    if _fp["enabled"]:
+    if fp["enabled"]:
         try:
-            _sd_i = int(str(signal_date).replace("-", ""))
-            _idxd = float(fill_idx.get(_sd_i, float("nan"))) if fill_idx is not None \
-                else float("nan")
-            _pl = fillin.plan(by_date[signal_date], _idxd, _fp)
+            _idxd = fillin.idx_dist_at(fill_idx, signal_date)
+            _pl = fillin.plan(by_date[signal_date], _idxd, fp)
             if _pl is None:
-                fill_info = {"enabled": True, "path": None, "note": "今天两条路都不成立, 补位空仓"}
+                fill_info = {"enabled": True, "path": None, "cands": [],
+                             "note": "补位两条路都不成立（指数没破位、也没有够深的超跌票）"}
             else:
+                _day = by_date[signal_date]
+                _idx = _day.set_index(_day["ts_code"].astype(str))
                 _cands = []
                 for c in _pl["cands"]:
-                    _c = by_date[signal_date]
-                    _row = _c[_c["ts_code"].astype(str) == c["code"]]
+                    _fin = c["code"] in _idx.index
+                    _r = _idx.loc[c["code"]] if _fin else None
+                    if isinstance(_r, pd.DataFrame):
+                        _r = _r.iloc[0]
                     _cands.append({
                         "code": c["code"],
                         "name": names.get(c["code"], ""),
-                        "close": round(float(_row["close"].iloc[0]), 2) if len(_row) else None,
-                        "dh60": round(c["dh60"], 1), "rank": c["rk"],
+                        "close": round(float(_r["close"]), 2) if _fin else None,
+                        "pct": round(float(_r["pct"]), 2) if _fin else None,
+                        "dh60": round(c["dh60"], 1) if c["dh60"] == c["dh60"] else None,
+                        "rank": c["rk"],
                     })
                 fill_info = {
                     "enabled": True,
                     "path": _pl["path"],
                     "idx_dist": round(float(_idxd), 2) if _idxd == _idxd else None,
                     "broke": _pl["path"] == "破位",
-                    "pos": fillin.pos_of(_pl["path"], _fp),
+                    "pos": fillin.pos_of(_pl["path"], fp),
                     "cands": _cands,
-                    "let_way": bool(verified) and bool(_fp["let_way"]),
-                    "note": ("破位成立: 9:25 从上往下第一只开盘 <= 昨收x1.0005 的买入"
+                    # 让位: 9:25 补位成交则主策略停手(249 默认关闭)
+                    "let_way": bool(verified) and bool(fp["let_way"]),
+                    # 占用: 今天主策略有票 -> 这笔钱留给它, 补位不做
+                    "blocked": bool(verified) and not bool(fp["let_way"]),
+                    "note": ("破位成立 → 明早从上往下，第一只低开的买入"
                              if _pl["path"] == "破位" else
-                             f"前 {_fp['deep_rank_max']} 名里谁低开在 {_fp['deep_lo']}%~{_fp['deep_hi']}% 就买谁"),
+                             f"破位不成立 → 只做深低开：前 {fp['deep_rank_max']} 名里谁低开在 "
+                             f"{fp['deep_lo']}%~{fp['deep_hi']}% 就买谁"),
                 }
-                if fill_info["let_way"]:
-                    fill_info["note"] += " · 今天主策略也有票 → 补位成交则主策略停手"
-                elif verified:
-                    fill_info["note"] += " · 今天主策略有票 → 补位不做（钱留给主策略）"
         except Exception as _e:      # noqa: BLE001  补位失败不能拖垮主流程
             fill_info = {"enabled": True, "error": f"{type(_e).__name__}: {_e}"}
 

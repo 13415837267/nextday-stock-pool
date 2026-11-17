@@ -86,7 +86,27 @@ def market_dist(panel: pd.DataFrame, ma: int = 20) -> pd.Series:
     """
     st = panel.groupby("trade_date")["pct"].mean().sort_index()
     nav = (1 + st / 100).cumprod()
-    return (nav / nav.rolling(ma, min_periods=10).mean() - 1) * 100
+    dist = (nav / nav.rolling(ma, min_periods=10).mean() - 1) * 100
+    # ★ 索引统一成 int: 回测面板 trade_date 是 str(float32 路径按 dates 字符串拼),
+    #   实盘面板是 int64(csv 直读)。不归一化的话 get("20261117") 与 get(20261117)
+    #   只有一个能命中, 另一条链路会静默拿到 NaN → 破位判不出来(只剩深低开)。
+    try:
+        dist.index = dist.index.astype("int64")
+    except (TypeError, ValueError):
+        pass
+    return dist
+
+
+def idx_dist_at(dist: pd.Series | None, date) -> float:
+    """按日期取指数位置, str/int 都吃。取不到返回 NaN。"""
+    if dist is None or date is None:
+        return float("nan")
+    try:
+        k = int(str(date).replace("-", ""))
+    except (TypeError, ValueError):
+        return float("nan")
+    v = dist.get(k, np.nan)
+    return float(v) if v == v else float("nan")
 
 
 def _pool(day: pd.DataFrame, p: dict) -> pd.DataFrame:

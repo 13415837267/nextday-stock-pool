@@ -8,7 +8,7 @@
   :root {
     --bg: #0b0e14; --panel: #12161f; --panel2: #171c26; --border: #232a36;
     --text: #e6edf3; --muted: #8b949e; --gold: #d4a017; --red: #f85149;
-    --green: #3fb950; --blue: #58a6ff;
+    --green: #3fb950; --blue: #58a6ff; --purple: #a371f7;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text);
@@ -22,6 +22,7 @@
   /* 主计划卡片 */
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
           padding: 20px 20px 18px; margin-bottom: 16px; }
+  .card.fill { border-color: #2d3a4d; }
   .stock { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .stock .name { font-size: 26px; font-weight: 700; }
   .stock .code { color: var(--muted); font-size: 14px; }
@@ -47,6 +48,9 @@
   .order .k { color: var(--gold); font-size: 12px; font-weight: 600; letter-spacing: 2px; margin-bottom: 6px; }
   .order .rule { font-size: 15px; }
   .order .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .order.blue { border-color: var(--blue);
+                background: linear-gradient(180deg, rgba(88,166,255,.09), transparent); }
+  .order.blue .k { color: var(--blue); }
 
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
@@ -61,6 +65,25 @@
   .abort li b { color: var(--red); }
 
   .block-title { font-size: 13px; color: var(--gold); font-weight: 600; margin: 16px 0 8px; letter-spacing: 1px; }
+
+  /* 补位卡 */
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+           padding: 2px 8px; border-radius: 4px; background: rgba(88,166,255,.15);
+           color: var(--blue); border: 1px solid rgba(88,166,255,.35); }
+  .badge.deep { background: rgba(163,113,247,.15); color: var(--purple);
+                border-color: rgba(163,113,247,.35); }
+  .fill-head { display: flex; align-items: center; gap: 10px; }
+  .fill-head .path { font-size: 19px; font-weight: 700; }
+  .ctable { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+  .ctable th { color: var(--muted); font-weight: 500; font-size: 12px; text-align: right;
+               padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .ctable td { padding: 6px 8px; border-bottom: 1px solid rgba(35,42,54,.6); text-align: right;
+               font-variant-numeric: tabular-nums; }
+  .ctable th:first-child, .ctable td:first-child { text-align: left; }
+  .ctable th:nth-child(2), .ctable td:nth-child(2) { text-align: left; }
+  .ctable tr.top td { color: var(--gold); }
+  .warn { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px;
+          background: rgba(212,160,23,.1); border: 1px solid rgba(212,160,23,.35); color: var(--gold); }
 
   footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);
            color: var(--muted); font-size: 12px; }
@@ -83,11 +106,106 @@
 const esc = s => { const d = document.createElement("div"); d.textContent = (s == null ? "" : String(s)); return d.innerHTML; };
 const pctStr = v => (v == null || isNaN(v)) ? "-" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
 const pctCls = v => Number(v) > 0 ? "up" : (Number(v) < 0 ? "down" : "");
+const numStr = v => (v == null || isNaN(v)) ? "-" : Number(v).toFixed(2);
 
 function fmtDate(s) {
   if (!s) return "-";
   const p = String(s).split("-");
   return p.length === 3 ? `${p[1]}-${p[2]}` : s;
+}
+
+/* 主策略卡（原有结构，字段不变） */
+function mainCard(m, d) {
+  const step = (d.t1_decision && d.t1_decision.steps && d.t1_decision.steps[0]) || {};
+  const dt = m.dates || {};
+  const obs = Array.isArray(m.observe) ? m.observe : [];
+  const abt = Array.isArray(m.abort) ? m.abort : [];
+  return `
+  <div class="card">
+    <div class="stock">
+      <span class="name">${esc(m.name || "-")}</span>
+      <span class="code">${esc(m.code || "")}</span>
+      <span class="pct ${pctCls(m.pct)}">${pctStr(m.pct)}</span>
+    </div>
+    <div class="tagline">${m.signal ? esc(m.signal) : ""}</div>
+
+    <div class="timeline">
+      <div class="tnode"><span class="tnum">T</span><div class="tlabel">信号日</div><div class="tdate">${fmtDate(dt.signal)}</div></div>
+      <div class="tnode"><span class="tnum">T+1</span><div class="tlabel">买入日</div><div class="tdate">${fmtDate(dt.buy)}</div></div>
+      <div class="tnode"><span class="tnum">T+2</span><div class="tlabel">卖出日</div><div class="tdate">${fmtDate(dt.exit)}</div></div>
+    </div>
+
+    <div class="order">
+      <div class="k">明日操作</div>
+      <div class="rule">${esc(step.rule || m.exit || "-")}</div>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="kv"><div class="k">买入方式</div><div class="v">${esc((d.plan && d.plan.buy_point) || dt.buy || "-")}</div></div>
+      <div class="kv"><div class="k">卖出方式</div><div class="v">${esc((d.plan && d.plan.sell_point) || m.exit || "-")}</div></div>
+      <div class="kv"><div class="k">参考仓位</div><div class="v">${m.position_pct == null ? "-" : esc(m.position_pct) + "%"}</div></div>
+      <div class="kv"><div class="k">评分</div><div class="v">${m.score == null ? "-" : esc(Number(m.score).toFixed(2))}</div></div>
+    </div>
+
+    ${obs.length ? `<div class="block-title">观察</div><ul class="rules">${obs.map(x => "<li>" + esc(x) + "</li>").join("")}</ul>` : ""}
+    ${abt.length ? `<div class="block-title" style="color:var(--red)">放弃条件</div><ul class="rules abort">${abt.map(x => "<li>" + esc(x) + "</li>").join("")}</ul>` : ""}
+  </div>`;
+}
+
+/* 补位卡（第250轮新增：破位 / 深低开） */
+function fillCard(f, d) {
+  const broke = f.broke || f.path === "破位";
+  const pos = f.pos == null ? null : Math.round(Number(f.pos) * 100);
+  const cands = Array.isArray(f.cands) ? f.cands : [];
+  const pctTxt = (f.idx_dist == null) ? "-" : pctStr(f.idx_dist);
+  const rule = broke
+    ? "从上往下，第一只开盘价 ≤ 昨收 × 1.0005 的买入"
+    : "前 " + cands.length + " 名里，谁的开盘缺口落在 −9.5% ~ −5.0% 就买谁（取排名最好的）";
+  const sub = broke
+    ? "高开的跳过、看下一只；一只都不低开就空仓"
+    : "跌停开（≤ −9.5%）不做：买得到、卖不掉；缺口 > −5% 跌得不够，也不做";
+
+  const rows = cands.map((c, i) => `
+    <tr class="${i === 0 ? "top" : ""}">
+      <td>${c.rank == null ? i + 1 : c.rank}</td>
+      <td>${c.name && c.name !== c.code ? esc(c.name) + " " : ""}<span style="color:var(--muted)">${esc(c.code || "")}</span></td>
+      <td>${numStr(c.close)}</td>
+      <td>${c.dh60 == null ? "-" : numStr(c.dh60) + "%"}</td>
+    </tr>`).join("");
+
+  let warn = "";
+  if (f.let_way) warn = "今天主策略也有票：9:25 补位成交则主策略停手，二选一。";
+  else if (f.blocked) warn = "今天主策略有票 → 补位不做，钱留给主策略。";
+  else if (f.note) warn = "";
+
+  return `
+  <div class="card fill">
+    <div class="fill-head">
+      <span class="badge ${broke ? "" : "deep"}">补位</span>
+      <span class="path">${esc(f.path || "-")}</span>
+      <span class="pct ${pctCls(f.idx_dist)}" style="font-size:14px">指数 ${pctTxt}</span>
+    </div>
+    <div class="tagline">${esc(f.note || "")}</div>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="kv"><div class="k">路径仓位</div><div class="v">${pos == null ? "-" : pos + "%"}</div></div>
+      <div class="kv"><div class="k">候选</div><div class="v">${cands.length} 只 · 持有到 T+2 收盘</div></div>
+    </div>
+
+    <div class="order blue" style="margin-top:14px">
+      <div class="k">明早 9:25</div>
+      <div class="rule">${esc(rule)}</div>
+      <div class="sub">${esc(sub)}</div>
+    </div>
+
+    ${cands.length ? `<div class="block-title">候选（按 9 窗口超跌排名）</div>
+    <table class="ctable">
+      <thead><tr><th>#</th><th>股票</th><th>收盘</th><th>距60日高</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>` : ""}
+
+    ${warn ? `<div class="warn">${esc(warn)}</div>` : ""}
+  </div>`;
 }
 
 async function load() {
@@ -105,44 +223,24 @@ async function load() {
     meta.innerHTML = `数据获取时间 <b>${esc(t)}</b> · 信号日 <b>${esc(sd)}</b>`;
 
     const m = d.plans && d.plans.main;
-    if (!m) { el.innerHTML = '<div class="empty">今日无操作计划</div>'; }
-    else {
-      const step = (d.t1_decision && d.t1_decision.steps && d.t1_decision.steps[0]) || {};
-      const dt = m.dates || {};
-      const obs = Array.isArray(m.observe) ? m.observe : [];
-      const abt = Array.isArray(m.abort) ? m.abort : [];
+    const f = (d.fillin && d.fillin.enabled && !d.fillin.error
+               && Array.isArray(d.fillin.cands) && d.fillin.cands.length) ? d.fillin : null;
+    const fErr = d.fillin && d.fillin.error;
 
-      el.innerHTML = `
-      <div class="card">
-        <div class="stock">
-          <span class="name">${esc(m.name || "-")}</span>
-          <span class="code">${esc(m.code || "")}</span>
-          <span class="pct ${pctCls(m.pct)}">${pctStr(m.pct)}</span>
-        </div>
-        <div class="tagline">${m.signal ? esc(m.signal) : ""}</div>
-
-        <div class="timeline">
-          <div class="tnode"><span class="tnum">T</span><div class="tlabel">信号日</div><div class="tdate">${fmtDate(dt.signal)}</div></div>
-          <div class="tnode"><span class="tnum">T+1</span><div class="tlabel">买入日</div><div class="tdate">${fmtDate(dt.buy)}</div></div>
-          <div class="tnode"><span class="tnum">T+2</span><div class="tlabel">卖出日</div><div class="tdate">${fmtDate(dt.exit)}</div></div>
-        </div>
-
-        <div class="order">
-          <div class="k">明日操作</div>
-          <div class="rule">${esc(step.rule || m.exit || "-")}</div>
-        </div>
-
-        <div class="grid" style="margin-top:14px">
-          <div class="kv"><div class="k">买入方式</div><div class="v">${esc((d.plan && d.plan.buy_point) || dt.buy || "-")}</div></div>
-          <div class="kv"><div class="k">卖出方式</div><div class="v">${esc((d.plan && d.plan.sell_point) || m.exit || "-")}</div></div>
-          <div class="kv"><div class="k">参考仓位</div><div class="v">${m.position_pct == null ? "-" : esc(m.position_pct) + "%"}</div></div>
-          <div class="kv"><div class="k">评分</div><div class="v">${m.score == null ? "-" : esc(Number(m.score).toFixed(2))}</div></div>
-        </div>
-
-        ${obs.length ? `<div class="block-title">观察</div><ul class="rules">${obs.map(x => "<li>" + esc(x) + "</li>").join("")}</ul>` : ""}
-        ${abt.length ? `<div class="block-title" style="color:var(--red)">放弃条件</div><ul class="rules abort">${abt.map(x => "<li>" + esc(x) + "</li>").join("")}</ul>` : ""}
-      </div>`;
+    let html = "";
+    if (m) html += mainCard(m, d);
+    if (f) html += fillCard(f, d);
+    if (!m && !f) {
+      const why = fErr ? ("补位计算失败：" + fErr) : ((d.fillin && d.fillin.note) || "");
+      html = '<div class="empty">今日无操作计划'
+           + (why ? `<br><span style="font-size:12px">${esc(why)}</span>` : "")
+           + "</div>";
+    } else if (!m && f) {
+      html = '<div class="empty" style="padding:0 0 14px">主策略空仓 · 只做补位</div>' + html;
+    } else if (m && !f && fErr && d.fillin && d.fillin.enabled) {
+      html += `<div class="warn" style="margin-top:0">补位名单计算失败：${esc(fErr)}（主计划不受影响）</div>`;
     }
+    el.innerHTML = html;
 
     foot.innerHTML = esc(d.disclaimer || "本候选池为量化模型自动生成，仅供研究参考，不构成任何投资建议。股市有风险，入市需谨慎。");
   } catch (e) {
