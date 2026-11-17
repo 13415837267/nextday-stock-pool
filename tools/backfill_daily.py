@@ -72,12 +72,14 @@ PANEL = ROOT / "data" / "panel"
 OUT = ROOT / "output"
 
 IDX_DIST_MAX = -3.51       # 等权指数距 20 日线
-DIST_HIGH_MAX = -24.46     # 距前 60 日最高（破位门槛，几乎不筛人）
+DIST_HIGH_MAX = -35.0      # 距前 60 日最高（247: -24.46→-35，跌不够深的票反弹弹性不足）
 WINS = (60, 90, 120, 150, 180, 200, 250, 300, 360)
 MAX_WIN = 360
 MAX_TIMES = 8              # 同一只票最多买几次（替代冷却）
-POSITION = 0.40            # 单吊仓位
+POS_BREAK = 0.30           # 破位日仓位
+POS_DEEP = 0.50            # 深低开日仓位（单笔期望是破位的 1.8 倍，按比例给）
 DEEP_LO, DEEP_HI = -9.5, -5.0   # 个股自己崩的缺口区间（上界排除跌停开）
+DEEP_RANK_MAX = 10         # 深低开路径只做 9 窗口排名前 10 的票
 MIN_LISTED_BARS = 250
 N1_GAP_MAX = 0.05          # T+1 开盘 <= 昨收 x (1+0.05%) 才算低开
 TOP_N = 10                 # 输出前 N 只排序候选, 供 T+1 开盘从上往下挑
@@ -97,7 +99,15 @@ def load_panel(dates: list[str]) -> pd.DataFrame:
             continue
     if not frames:
         raise SystemExit("没有可用的面板缓存 data/panel/")
-    return pd.concat(frames, ignore_index=True)
+    d = pd.concat(frames, ignore_index=True)
+    del frames
+    # ★ 内存: 1200 日面板约 900 万行, float64 + object 会吃 3GB 以上, 加上 9 个
+    #   窗口的 dh 列必 OOM(实测 exit=137)。数值列一律降 float32, ts_code 驻留。
+    for c in d.columns:
+        if c != "ts_code":
+            d[c] = pd.to_numeric(d[c], errors="coerce", downcast="float")
+    d["ts_code"] = d["ts_code"].astype("str")
+    return d
 
 
 def main() -> None:
@@ -169,44 +179,62 @@ def main() -> None:
     di = {int(d): i for i, d in enumerate(all_dates)}
     ntimes: dict[str, int] = {}
     rows = []
-    byday = {int(k): g for k, g in win.groupby("trade_date")}
-    for dt in days:
+    # ★ 不要预先建 {date: DataFrame}, 那是把全量面板再复制一份(900 万行必 OOM)。
+    #   直接迭代 groupby, 只保留当天的切片。
+    want = set(int(x) for x in days)
+    last_group = None
+    for dt, g in win.groupby("trade_date", sort=True):
         dt = int(dt)
-        g = byday.get(dt)
-        if g is None or not len(g):
-            continue
+        if dt == int(all_dates[-1]):
+            last_group = g
+        # ★ 不要把窗口外的日子直接跳过: 单票限次(<=8)必须从面板最早一天开始累计,
+        #   否则实盘从"0 次"起算会比回测宽松得多(实测 1200 日窗口多做出 54 次交易)。
+        #   窗口外的日子只参与计数, 不写进 history。
         full = ranked(g)                       # 全池排名, 用来判断"今天最超跌的是谁"
         if not len(full):
             continue
+        full["rk"] = np.arange(1, len(full) + 1)
         top0 = full.iloc[0]
+        # ★ 破位判定只用 T 日可知的信息(指数 + 这只票自己的 dh60)。
+        #   246 曾经在"明天会低开的票"里取第一名去判破位 —— 那是未来的信息, 已修。
         broke = (float(top0["idx_dist"]) <= IDX_DIST_MAX
                  and float(top0["dh60"]) <= DIST_HIGH_MAX)
-        deep = DEEP_LO < float(top0["n1_gap"]) <= DEEP_HI
-        if not (broke or deep):
-            continue
-        # ★ T+1 开盘: 从排名名单从上往下, 第一只低开且未超限次的
-        ok = full[(full["n1_gap"] <= N1_GAP_MAX)
-                  & (full["ts_code"].map(lambda c: ntimes.get(c, 0) < MAX_TIMES))]
-        if not len(ok):
-            rows.append({"signal": dt, "idx_dist": round(float(top0["idx_dist"]), 2),
-                         "n": len(g), "code": "-", "mr": np.nan, "gap": np.nan,
-                         "why": "破位" if broke else "深低开"})
-            continue
-        top = ok.iloc[0]
+        free = full["ts_code"].map(lambda c: ntimes.get(c, 0) < MAX_TIMES).to_numpy()
+        low = (full["n1_gap"] <= N1_GAP_MAX).to_numpy()
+        if broke:
+            sel_ = full[low & free]
+            why = "破位"
+        else:
+            # ★ 深低开: T+1 9:25 全池都能看到开盘价, 不必只盯 T 日第一名。
+            #   排名前 DEEP_RANK_MAX 里, 谁崩了 5~9.5% 就买谁(取排名最好的)。
+            keep = (low & free
+                    & full["n1_gap"].between(DEEP_LO, DEEP_HI, inclusive="right").to_numpy()
+                    & (full["rk"] <= DEEP_RANK_MAX).to_numpy())
+            sel_ = full[keep]
+            why = "深低开"
+        if not len(sel_):
+            if broke and dt in want:   # 破位成立但一只低开的都没有 —— 值得留痕
+                rows.append({"signal": dt, "idx_dist": round(float(top0["idx_dist"]), 2),
+                             "n": len(g), "code": "-", "mr": np.nan, "gap": np.nan,
+                             "why": why})
+            continue       # 深低开没候选 = 这天本来就没事, 不记
+        top = sel_.iloc[0]
         ntimes[top["ts_code"]] = ntimes.get(top["ts_code"], 0) + 1
+        if dt not in want:
+            continue
         r = {"signal": dt, "idx_dist": round(float(top0["idx_dist"]), 2),
              "n": len(g), "code": top["ts_code"],
              "mr": round(float(top["mr"]), 3),
-             "gap": round(float(top["n1_gap"]), 2),
-             "why": "破位+深低开" if (broke and deep) else ("破位" if broke else "深低开")}
+             "gap": round(float(top["n1_gap"]), 2), "why": why,
+             "pos": POS_BREAK if broke else POS_DEEP}
         for W in WINS:
             r[f"dh{W}"] = round(float(top[f"dh{W}"]), 1)
         rows.append(r)
     hist = pd.DataFrame(rows)
     if len(hist):
         ok = hist[hist["code"] != "-"]
-        print(hist[["signal", "idx_dist", "n", "why", "code", "mr", "gap", "dh60"]]
-              .to_string(index=False))
+        cols = ["signal", "idx_dist", "n", "why", "code", "mr", "gap", "pos"]
+        print(hist[[c for c in cols if c in hist.columns]].to_string(index=False))
         print(f"\n回放: 触发 {len(hist)} 次, 成交 {len(ok)} 次"
               + (f", 平均低开 {ok['gap'].mean():.2f}%" if len(ok) else ""))
         if len(ok):
@@ -216,7 +244,7 @@ def main() -> None:
     # ---- 最新交易日: 只给排序名单, 开盘价明天才知道 ----
     last = all_dates[-1]
     li = float(mkt["idx_dist"].get(int(last), np.nan))
-    gl = byday.get(int(last))
+    gl = last_group
     print(f"\n最新交易日 {last}: 等权指数距20日线 {li:+.2f}%")
     if gl is not None and len(gl):
         cand = ranked(gl)
@@ -228,13 +256,18 @@ def main() -> None:
         show = cand.head(TOP_N)
         print(show[["ts_code", "close", "pct", "mr", "dh60", "dh250", "dh360", "amount"]]
               .to_string(index=False))
-        print("\n  ★ 明早 9:25 开盘后的两条判断:")
-        print(f"    ① 指数破位条件 {'成立' if broke else '不成立'}")
-        print(f"    ② 看 {top0['ts_code']} 的开盘缺口: 若在 {DEEP_LO}% ~ {DEEP_HI}% 之间 → 也做")
-        print(f"    ①或②成立 → 按上表从上往下, 第一只开盘价 <= 昨收×1.0005 的买入")
-        print(f"    仓位 {POSITION:.0%}, 后天收盘卖出")
-        print(f"    历史(246 定稿): 年化 131.7% / 回撤 -25.5% / 卡玛 5.16  (256 笔)")
-        print(f"    前情(245, 已修正): 198 笔 117.2/-23.8/4.93 —— 那份样本每年 1 月无信号")
+        print("\n  ★ 明早 9:25 开盘后, 两条路二选一:")
+        print(f"    ① 破位路径 {'✅ 今天成立' if broke else '❌ 今天不成立'}"
+              f" (指数 {li:+.2f}% <= {IDX_DIST_MAX}% 且 第一名距60日高 {d60:.1f}% <= {DIST_HIGH_MAX}%)")
+        print(f"       → 按上表从上往下, 第一只开盘价 <= 昨收×1.0005 的买入, 仓位 {POS_BREAK:.0%}")
+        print(f"    {'②' if not broke else '②(备选)'} 深低开路径: 上表前 {DEEP_RANK_MAX} 名里,"
+              f" 谁的开盘缺口落在 {DEEP_LO}% ~ {DEEP_HI}% 就买谁(取排名最好的), 仓位 {POS_DEEP:.0%}")
+        print(f"       注意: 缺口 <= {DEEP_LO}% 是跌停开, 不做(买得到卖不掉);")
+        print(f"             缺口 > {DEEP_HI}% 跌得不够, 也不做(单笔只有 1.4%)")
+        print("    破位成立时走①(两条都成立也走①), 只有②成立时走②, 都不成立就空仓")
+        print("    持有: T+1 开盘买入 → T+2 收盘卖出, 不挂限价单(247 验证过, 挂单必更差)")
+        print(f"    历史(247 定稿): 年化 128.4% / 回撤 -23.6% / 卡玛 5.44  (290 笔, 11/11 正年)")
+        print("    (246 报的 5.16 含未来信息: 用'明天会低开的票'判破位, 同口径只有 4.03)")
 
 
 def _write_json() -> None:

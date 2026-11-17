@@ -43,12 +43,27 @@ def main() -> None:
     d["adj_c"] = d["close"] * d["factor"]
     d["adj_h"] = d["high"] * d["factor"]
     d["adj_o"] = d["open"] * d["factor"]
+
+    # ---- 标签: T+1 开买, T+2 收卖; T+1 缺口 ----
+    # ★★ 必须在过滤股票池之前算 shift。实盘的"明天开盘价"就是下一个有行情的交易日,
+    #    不管那天停牌与否。247 轮发现: 若先删掉停牌/ST 行再 shift, "T+1"会落到更晚的
+    #    一天, n1_gap 全变, 实盘脚本与回测的选股只有 84% 一致(2021+ 140 天里 22 天不同)。
+    d = d.sort_values(["ts_code", "trade_date"])
+    g0 = d.groupby("ts_code", sort=False)
+    d["n1_o"] = g0["adj_o"].shift(-1)
+    d["n1_c"] = g0["adj_c"].shift(-1)
+    d["n2_c"] = g0["adj_c"].shift(-2)
+    d["n1_gap"] = (d["n1_o"] / d["adj_c"] - 1) * 100
+    d["y"] = (d["n2_c"] / d["n1_o"] - 1) * 100
+    d["y_1d"] = (d["n1_c"] / d["n1_o"] - 1) * 100
+
     # ★ 先过滤股票池再 merge, 把待 merge 的行数压到最小(否则两次 merge 会 OOM)
     d = d[(d["is_paused"] == 0) & (d["is_st"] == 0)]
     d = d[d["pct"].between(-11.5, 11.5)]
     d = d[d["ts_code"].str[:2].isin(["60", "00"])]
     d = d[["ts_code", "trade_date", "adj_c", "adj_h", "adj_o", "pct",
-           "amount", "turnover_rate"]]
+           "amount", "turnover_rate", "n1_o", "n1_c", "n2_c", "n1_gap",
+           "y", "y_1d"]]
     print(f"  过滤后 {len(d):,} 行", flush=True)
 
     # ---- 宽表 rolling: 前 250 个交易日(不含当日)的最高复权价 ----
@@ -75,16 +90,6 @@ def main() -> None:
         d[f"dh{W}"] = (d["adj_c"] / d[f"dh{W}"] - 1) * 100
     d.sort_values(["ts_code", "trade_date"], inplace=True)
     d["listed"] = d.groupby("ts_code").cumcount() + 1
-
-    # ---- 标签: T+1 开买, T+2 收卖; T+1 缺口 ----
-    d = d.sort_values(["ts_code", "trade_date"])
-    g = d.groupby("ts_code", sort=False)
-    d["n1_o"] = g["adj_o"].shift(-1)
-    d["n1_c"] = g["adj_c"].shift(-1)
-    d["n2_c"] = g["adj_c"].shift(-2)
-    d["y"] = (d["n2_c"] / d["n1_o"] - 1) * 100
-    d["y_1d"] = (d["n1_c"] / d["n1_o"] - 1) * 100
-    d["n1_gap"] = (d["n1_o"] / d["adj_c"] - 1) * 100
 
     keep = (["ts_code", "trade_date", "listed", "n1_gap", "n1_c", "y", "y_1d",
              "pct", "amount", "turnover_rate", "adj_c", "n1_o"]

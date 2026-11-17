@@ -73,3 +73,7 @@ output/w244_pool2/
 
 # 第246轮: 全交易日候选面板(302M, scan_246b 约 40 秒可重建)
 output/w246b_all.parquet
+
+# 第247轮: 深低开排名扫描的各档明细(可从 w247_picks 重建)
+output/w247b_N*.csv
+output/w247i_*.csv
