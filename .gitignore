@@ -77,3 +77,12 @@ output/w246b_all.parquet
 # 第247轮: 深低开排名扫描的各档明细(可从 w247_picks 重建)
 output/w247b_N*.csv
 output/w247i_*.csv
+
+# 第248轮: 候选全集/调度明细(可从 scan_248b/248c 重建), 只留定稿明细
+output/w248_daily_state.csv
+output/w248_picks_S0.csv
+output/w248_nav_S2.csv
+output/w248_nav_cmp.csv
+output/w248_overlap.csv
+output/w248_overlap_detail.csv
+output/w248_trades_tag.csv

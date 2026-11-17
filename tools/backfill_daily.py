@@ -1,4 +1,17 @@
-"""补位信号（第 246 轮定稿：并列触发 + 单票限次）
+"""补位信号（第 248 轮定稿：精确资金占用 + 重叠日让位）
+
+★ 第 248 轮改了两处「资金调度」, 都不涉及信号本身:
+  1) 占用口径从粗改精。旧版把主策略的 {signal, buy, sell} 三天全排, 但主策略是
+     T+1 开盘买、T+2 收盘卖, sell 日收盘卖出后资金 T+1 开盘就能用 —— 而补位正好是
+     T+1 开盘买。所以真正冲突的只有「补位的买入日落在主策略持仓区间内」,
+     等价于「T 是主策略的 signal 日或 buy 日」。少排 sell 日, 多释放 27 天。
+  2) 48 天两边都想要(主策略有信号、补位也有候选), 旧版一律让主策略。改成让补位:
+     这 48 天主策略单笔 +0.52%, 补位 +2.84%; 其中深低开 41 天主策 +1.27% vs 补位 +4.01%,
+     破位 7 天主策 -3.91% vs 补位 -4.06%(但补位只 30% 仓, 让位等于减仓避险)。
+     执行含义: 这 48 天主策略停手, 只做补位。
+  合计: 290 笔/5.41 → 317 笔/5.48(只改口径) → 375 笔/5.76(再加让位)。
+  深低开样本 61→119 笔, t 值 1.69→2.70, 247 遗留的"不显著"问题被样本量解决。
+  代价: 分年 5 胜 5 负(2018/2020/2023 改善, 2021/2022/2024 变差), 不是处处更好。
 
 规则:
   1) 触发（满足其一就做, 两者都是 T 日收盘 / T+1 9:25 可知）:
@@ -110,6 +123,34 @@ def load_panel(dates: list[str]) -> pd.DataFrame:
     return d
 
 
+def load_main_signals() -> tuple[set[int], set[int]]:
+    """主策略的 {signal 日} 与 {buy 日}。这两个集合 = 补位的真占用区间。
+
+    补位是 T+1 开盘买; 主策略 buy 日 T+1 开盘时钱还没回来(sell 日收盘才卖), 所以
+    T ∈ {signal, buy} 时补位做不了。T = sell 日时不冲突(资金当日回笼, 次日开盘可用)。
+    """
+    sig: set[int] = set()
+    buy: set[int] = set()
+    f = OUT / "w232_trades.csv"
+    if f.exists():
+        t = pd.read_csv(f, usecols=["signal", "buy"])
+        sig |= set(int(x) for x in t.signal)
+        buy |= set(int(x) for x in t.buy)
+    lj = ROOT / "site" / "data" / "latest.json"
+    if lj.exists():
+        try:
+            j = json.loads(lj.read_text(encoding="utf-8"))
+            sd = str(j.get("signal_date") or "").replace("-", "")
+            bd = str((j.get("plan") or {}).get("buy_date") or "").replace("-", "")
+            if sd.isdigit():
+                sig.add(int(sd))
+            if bd.isdigit():
+                buy.add(int(bd))
+        except Exception:      # noqa: BLE001
+            pass
+    return sig, buy
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=250)
@@ -177,6 +218,8 @@ def main() -> None:
         return g2.sort_values(["mr", "amount"], ascending=[True, False])
 
     di = {int(d): i for i, d in enumerate(all_dates)}
+    main_sig, main_buy = load_main_signals()
+    print(f"主策略占用: {len(main_sig)} 个信号日 / {len(main_buy)} 个买入日")
     ntimes: dict[str, int] = {}
     rows = []
     # ★ 不要预先建 {date: DataFrame}, 那是把全量面板再复制一份(900 万行必 OOM)。
@@ -216,8 +259,13 @@ def main() -> None:
             if broke and dt in want:   # 破位成立但一只低开的都没有 —— 值得留痕
                 rows.append({"signal": dt, "idx_dist": round(float(top0["idx_dist"]), 2),
                              "n": len(g), "code": "-", "mr": np.nan, "gap": np.nan,
-                             "why": why})
+                             "why": why, "let": False})
             continue       # 深低开没候选 = 这天本来就没事, 不记
+        # ★ 资金占用（248）: 主策略 signal 日 / buy 日的钱不在这。
+        #   唯一例外: 今天主策略发了信号、补位又有候选 —— 让补位做, 主策略停手。
+        let_way = dt in main_sig
+        if (dt in main_sig or dt in main_buy) and not let_way:
+            continue
         top = sel_.iloc[0]
         ntimes[top["ts_code"]] = ntimes.get(top["ts_code"], 0) + 1
         if dt not in want:
@@ -226,14 +274,14 @@ def main() -> None:
              "n": len(g), "code": top["ts_code"],
              "mr": round(float(top["mr"]), 3),
              "gap": round(float(top["n1_gap"]), 2), "why": why,
-             "pos": POS_BREAK if broke else POS_DEEP}
+             "pos": POS_BREAK if broke else POS_DEEP, "let": let_way}
         for W in WINS:
             r[f"dh{W}"] = round(float(top[f"dh{W}"]), 1)
         rows.append(r)
     hist = pd.DataFrame(rows)
     if len(hist):
         ok = hist[hist["code"] != "-"]
-        cols = ["signal", "idx_dist", "n", "why", "code", "mr", "gap", "pos"]
+        cols = ["signal", "idx_dist", "n", "why", "code", "mr", "gap", "pos", "let"]
         print(hist[[c for c in cols if c in hist.columns]].to_string(index=False))
         print(f"\n回放: 触发 {len(hist)} 次, 成交 {len(ok)} 次"
               + (f", 平均低开 {ok['gap'].mean():.2f}%" if len(ok) else ""))
@@ -266,8 +314,13 @@ def main() -> None:
         print(f"             缺口 > {DEEP_HI}% 跌得不够, 也不做(单笔只有 1.4%)")
         print("    破位成立时走①(两条都成立也走①), 只有②成立时走②, 都不成立就空仓")
         print("    持有: T+1 开盘买入 → T+2 收盘卖出, 不挂限价单(247 验证过, 挂单必更差)")
-        print(f"    历史(247 定稿): 年化 128.4% / 回撤 -23.6% / 卡玛 5.44  (290 笔, 11/11 正年)")
-        print("    (246 报的 5.16 含未来信息: 用'明天会低开的票'判破位, 同口径只有 4.03)")
+        print(f"    资金占用(248): 主策略卖出日不排(资金当日回笼), 只排 signal 日与买入日")
+        ms = int(last) in main_sig
+        print(f"    今天主策略{'✅ 有信号' if ms else '❌ 没信号'} —— "
+              + ("**主策略停手, 只做补位**(248: 重叠日 48 天主策 +0.52% vs 补位 +2.84%)"
+                 if ms else "补位与主策略不冲突"))
+        print(f"    历史(248 定稿): 年化 135.9% / 回撤 -23.6% / 卡玛 5.76  (375 笔, 11/11 正年)")
+        print("    对照: 247 定稿 290 笔 5.44(粗占用) → 只改占用口径 317 笔 5.48 → 加让位 375 笔 5.76")
 
 
 def _write_json() -> None:
