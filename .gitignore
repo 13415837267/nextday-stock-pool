@@ -70,3 +70,6 @@ output/w243i_dh.parquet
 # 第244轮: 9 窗口候选池缓存(各 38M, scan_244a/244g 各 1 分钟可重建)
 output/w244_pool/
 output/w244_pool2/
+
+# 第246轮: 全交易日候选面板(302M, scan_246b 约 40 秒可重建)
+output/w246b_all.parquet

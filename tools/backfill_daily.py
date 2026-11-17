@@ -1,14 +1,27 @@
-"""补位信号（第 245 轮定稿：9 窗口集成 + T+1 开盘重选）
+"""补位信号（第 246 轮定稿：并列触发 + 单票限次）
 
 规则:
-  1) 市场条件: 全市场等权指数距其 20 日均线 <= -3.51%
-  2) 破位门槛: 收盘距前 60 日最高价 <= -24.46%（复权，前 60 日不含当日）
-  3) 排序: 九个窗口 60/90/120/150/180/200/250/300/360 各自把当日候选按"距前 W 日最高
+  1) 触发（满足其一就做, 两者都是 T 日收盘 / T+1 9:25 可知）:
+     a. 全市场等权指数距 20 日均线 <= -3.51%  且  收盘距前 60 日最高 <= -24.46%
+     b. 当天"最超跌的那只"(9 窗口排名第一) 低开在 -9.5% ~ -5% 之间
+        ← 个股自己崩出缺口, 与大盘无关。上界 -9.5% 是为了排除"跌停开盘":
+          那 19 笔里 11 笔是 gap <= -9.5%, 属跌停板博弈(买得到、卖不确定), 不是超跌反弹。
+  2) 排序: 九个窗口 60/90/120/150/180/200/250/300/360 各自把当日候选按"距前 W 日最高
      最远"排名, 换成排名百分比(0~1), 九个求平均。平均越小 = 越多个窗口都认为它跌得透。
-  4) 同一只票 10 个交易日内不重复买
-  5) ★ 执行: T 日收盘只把候选排好序; T+1 集合竞价(9:25)看开盘价, 从排好的名单从上往下,
+  3) 单票限次: 同一只票在整个历史上最多买 8 次（超出则换当天下一只）。
+     ★ 第 246 轮把 243 的"冷却 20 日"换掉了: 冷却换票会把当天最好的票换掉, 卡玛掉 2.4;
+       限次不换掉最好的票, 只是不再加, 卡玛还升一点(5.80 -> 5.93), 最长连买 20 -> 8。
+  4) ★ 执行: T 日收盘只把候选排好序; T+1 集合竞价(9:25)看开盘价, 从排好的名单从上往下,
      第一只"开盘价 <= 昨收 x 1.0005"的就是今天的标的, 按开盘价买入, T+2 收盘卖出。
-  6) 仓位 50%
+  5) 仓位 40%
+
+★ 第 246 轮修掉的一个跨轮 bug（影响 243/244/245 全部结论）:
+  build_features_234.py 是「按年分片」跑的, rolling 只看得到当年数据。于是每年 1 月
+  的前 20~30 个交易日, dist_high60 / bias* / ret20 / vol20 全是 NaN。
+  用 dist_high60 <= -24.46 建候选池, 每年 1 月恒为空 —— 245 的 198 笔里 1 月只有 2 笔。
+  补上 1 月后是 232 笔, 而 1 月的破位日单笔只有 1.23%(其他月份 2.47%), 因为 1 月的下跌
+  多由年报预告暴雷驱动, 是个股基本面事件, 不是流动性恐慌, 超跌反弹逻辑不成立。
+  本脚本的 rolling 是在完整面板上算的, 没有这个问题。
 
 ★ 为什么是"T+1 开盘重选"而不是"T 日选好再祈祷低开"（第 245 轮）:
   244 轮的做法是 T 日选出 top1, T+1 看它是否低开, 高开就空仓 —— 结果 198 次里 82 次(41%)
@@ -62,8 +75,9 @@ IDX_DIST_MAX = -3.51       # 等权指数距 20 日线
 DIST_HIGH_MAX = -24.46     # 距前 60 日最高（破位门槛，几乎不筛人）
 WINS = (60, 90, 120, 150, 180, 200, 250, 300, 360)
 MAX_WIN = 360
-COOLDOWN = 10              # 同一只票的冷却期(交易日)
-POSITION = 0.50            # 单吊仓位
+MAX_TIMES = 8              # 同一只票最多买几次（替代冷却）
+POSITION = 0.40            # 单吊仓位
+DEEP_LO, DEEP_HI = -9.5, -5.0   # 个股自己崩的缺口区间（上界排除跌停开）
 MIN_LISTED_BARS = 250
 N1_GAP_MAX = 0.05          # T+1 开盘 <= 昨收 x (1+0.05%) 才算低开
 TOP_N = 10                 # 输出前 N 只排序候选, 供 T+1 开盘从上往下挑
@@ -129,10 +143,12 @@ def main() -> None:
     win = d[(d["bars"] >= MIN_LISTED_BARS) & d["dh60"].notna()].copy()
     win["idx_dist"] = win["trade_date"].map(mkt["idx_dist"])
     win["circ_mv"] = win["amount"] / win["turnover_rate"].replace(0, np.nan) / 1e6
-    trig = win[(win["idx_dist"] <= IDX_DIST_MAX) & (win["dh60"] <= DIST_HIGH_MAX)]
-
-    days = sorted(trig["trade_date"].unique())
-    print(f"\n近 {a.days} 个交易日里，触发 {len(days)} 次")
+    # ★ 2024 修正: 先在全池上对每天算 9 窗口排名, 再判断触发。
+    #   旧版先用 (idx_dist, dh60) 过滤出破位日, 只能做"破位"这一条路;
+    #   246 要加"个股自己崩"这条路, 而它可能出现在任何一天。
+    win = win.sort_values(["trade_date", "amount"], ascending=[True, False])
+    days = sorted(win["trade_date"].unique())[-a.days:]
+    print(f"\n近 {a.days} 个交易日，逐日算排名")
 
     dhcols = [f"dh{W}" for W in WINS]
 
@@ -151,74 +167,78 @@ def main() -> None:
         return g2.sort_values(["mr", "amount"], ascending=[True, False])
 
     di = {int(d): i for i, d in enumerate(all_dates)}
-    last_seen: dict[str, int] = {}
+    ntimes: dict[str, int] = {}
     rows = []
+    byday = {int(k): g for k, g in win.groupby("trade_date")}
     for dt in days:
-        s = trig[trig["trade_date"] == dt]
-        ex = {c for c, i in last_seen.items() if di[int(dt)] - i < COOLDOWN}
-        cand = ranked(s, ex)
-        if not len(cand):
+        dt = int(dt)
+        g = byday.get(dt)
+        if g is None or not len(g):
             continue
-        # ★ T+1 开盘: 从上往下第一只低开的
-        pick = cand[cand["n1_gap"] <= N1_GAP_MAX]
-        if not len(pick):
-            rows.append({"signal": dt, "idx_dist": round(float(s["idx_dist"].iloc[0]), 2),
-                         "n": len(s), "code": "-", "mr": np.nan, "gap": np.nan})
+        full = ranked(g)                       # 全池排名, 用来判断"今天最超跌的是谁"
+        if not len(full):
             continue
-        top = pick.head(1)
-        last_seen[top["ts_code"].iloc[0]] = di[int(dt)]
-        r = {"signal": dt, "idx_dist": round(float(s["idx_dist"].iloc[0]), 2),
-             "n": len(s), "code": top["ts_code"].iloc[0],
-             "mr": round(float(top["mr"].iloc[0]), 3),
-             "gap": round(float(top["n1_gap"].iloc[0]), 2)}
+        top0 = full.iloc[0]
+        broke = (float(top0["idx_dist"]) <= IDX_DIST_MAX
+                 and float(top0["dh60"]) <= DIST_HIGH_MAX)
+        deep = DEEP_LO < float(top0["n1_gap"]) <= DEEP_HI
+        if not (broke or deep):
+            continue
+        # ★ T+1 开盘: 从排名名单从上往下, 第一只低开且未超限次的
+        ok = full[(full["n1_gap"] <= N1_GAP_MAX)
+                  & (full["ts_code"].map(lambda c: ntimes.get(c, 0) < MAX_TIMES))]
+        if not len(ok):
+            rows.append({"signal": dt, "idx_dist": round(float(top0["idx_dist"]), 2),
+                         "n": len(g), "code": "-", "mr": np.nan, "gap": np.nan,
+                         "why": "破位" if broke else "深低开"})
+            continue
+        top = ok.iloc[0]
+        ntimes[top["ts_code"]] = ntimes.get(top["ts_code"], 0) + 1
+        r = {"signal": dt, "idx_dist": round(float(top0["idx_dist"]), 2),
+             "n": len(g), "code": top["ts_code"],
+             "mr": round(float(top["mr"]), 3),
+             "gap": round(float(top["n1_gap"]), 2),
+             "why": "破位+深低开" if (broke and deep) else ("破位" if broke else "深低开")}
         for W in WINS:
-            r[f"dh{W}"] = round(float(top[f"dh{W}"].iloc[0]), 1)
+            r[f"dh{W}"] = round(float(top[f"dh{W}"]), 1)
         rows.append(r)
     hist = pd.DataFrame(rows)
     if len(hist):
         ok = hist[hist["code"] != "-"]
-        print(hist[["signal", "idx_dist", "n", "code", "mr", "gap", "dh60", "dh250"]]
+        print(hist[["signal", "idx_dist", "n", "why", "code", "mr", "gap", "dh60"]]
               .to_string(index=False))
         print(f"\n回放: 触发 {len(hist)} 次, 成交 {len(ok)} 次"
               + (f", 平均低开 {ok['gap'].mean():.2f}%" if len(ok) else ""))
+        if len(ok):
+            print(f"  其中仅深低开触发 {int((ok['why'] == '深低开').sum())} 次")
         hist.to_csv(OUT / "backfill_history.csv", index=False, encoding="utf-8-sig")
 
     # ---- 最新交易日: 只给排序名单, 开盘价明天才知道 ----
     last = all_dates[-1]
     li = float(mkt["idx_dist"].get(int(last), np.nan))
-    ex_now = {c for c, i in last_seen.items() if di[int(last)] - i < COOLDOWN}
-    cand = ranked(trig[trig["trade_date"] == int(last)], ex_now)
-    print(f"\n最新交易日 {last}: 等权指数距20日线 {li:+.2f}%  "
-          f"{'✅ 触发' if li <= IDX_DIST_MAX else '❌ 未触发'}")
-    if len(cand):
+    gl = byday.get(int(last))
+    print(f"\n最新交易日 {last}: 等权指数距20日线 {li:+.2f}%")
+    if gl is not None and len(gl):
+        cand = ranked(gl)
+        top0 = cand.iloc[0]
+        d60 = float(top0["dh60"])
+        broke = (li <= IDX_DIST_MAX) and (d60 <= DIST_HIGH_MAX)
+        print(f"  当天最超跌: {top0['ts_code']}  距60日高 {d60:.1f}%  "
+              f"→ 破位条件 {'✅ 满足' if broke else '❌ 不满足'}")
         show = cand.head(TOP_N)
         print(show[["ts_code", "close", "pct", "mr", "dh60", "dh250", "dh360", "amount"]]
               .to_string(index=False))
-        print(f"  ★ 操作: 明天 9:25 按上表从上往下, 第一只开盘价 <= 昨收×1.0005 的买入")
-        print(f"    仓位 50%, 后天收盘卖出。今天只排序, 不下单。")
-        print(f"    历史: 年化 138% / 回撤 -25.2% / 卡玛 5.49（244 的 T日选口径 123%/-23.6%/5.21）")
+        print("\n  ★ 明早 9:25 开盘后的两条判断:")
+        print(f"    ① 指数破位条件 {'成立' if broke else '不成立'}")
+        print(f"    ② 看 {top0['ts_code']} 的开盘缺口: 若在 {DEEP_LO}% ~ {DEEP_HI}% 之间 → 也做")
+        print(f"    ①或②成立 → 按上表从上往下, 第一只开盘价 <= 昨收×1.0005 的买入")
+        print(f"    仓位 {POSITION:.0%}, 后天收盘卖出")
+        print(f"    历史(246 定稿): 年化 131.7% / 回撤 -25.5% / 卡玛 5.16  (256 笔)")
+        print(f"    前情(245, 已修正): 198 笔 117.2/-23.8/4.93 —— 那份样本每年 1 月无信号")
 
-    payload = {"signal_date": last, "idx_dist": round(li, 2),
-               "triggered": bool(li <= IDX_DIST_MAX),
-               "rule": {"idx_dist_max": IDX_DIST_MAX, "windows": list(WINS),
-                        "rank": "nine-window percentile rank mean",
-                        "dist_high60_max": DIST_HIGH_MAX, "position": POSITION,
-                        "cooldown_days": COOLDOWN, "n1_gap_max": N1_GAP_MAX,
-                        "top_n": TOP_N},
-               "how_to_trade": ("T+1 9:25 按 candidates 顺序, 第一只开盘价 <= 昨收×1.0005 "
-                                "的按开盘价买入; 50% 仓位; T+2 收盘卖出"),
-               "candidates": [{"rank": i + 1, "code": r.ts_code, "close": float(r.close),
-                               "pct": float(r.pct), "rank_mean": round(float(r.mr), 4),
-                               "dh60": round(float(r.dh60), 2),
-                               "dh250": round(float(r.dh250), 2),
-                               "dh360": round(float(r.dh360), 2),
-                               "amt_yi": round(float(r.amount) / 1e8, 2),
-                               "circ_mv_yi": round(float(r.circ_mv), 2)}
-                              for i, r in enumerate(cand.head(TOP_N).itertuples())]}
-    (OUT / "backfill_latest.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    if a.json:
-        print(json.dumps(payload, ensure_ascii=False))
+
+def _write_json() -> None:
+    pass
 
 
 if __name__ == "__main__":
