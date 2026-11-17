@@ -785,7 +785,15 @@ def main():
     # 历史: trade_days只含已过去交易日; 未来: 确定信号日后用区间查询补齐——
     # 否则最新发布日的T+1/T+2越界为None → 持仓sell_date为空,
     # 竞价确认卖出侧永不触发(2026-10-24修复)
-    cal = client.trade_days(days=cfg["regime"].get("warmup_days", 30) + 45)
+    # ★ 第250轮: 日历必须比面板窗口长。补位要 360 日窗口 + 上市 250 日, 面板要 620 天;
+    #   原先这里只取 warmup+45=75 天, 于是下面 panel_dates=cal[pos-warm+1:pos+1] 只能切出
+    #   75 天 —— dh360 全 NaN, rank_day 的 dropna 把全池剔空, fillin.plan 静默返回 None,
+    #   页面显示"两条路都不成立"(2026-11-18 00:37 那次 CI 就是这样, 名单是空的)。
+    _fp0 = fillin.params(cfg)
+    _need = int(cfg["regime"].get("warmup_days", 30)) + 45
+    if _fp0["enabled"]:
+        _need = max(_need, 360 + int(_fp0["min_listed_bars"]) + 55)
+    cal = client.trade_days(days=_need)
     signal_date = None
     day_df = None
     # 先探测最近两个交易日的行数, 识别"当日行情只发布了部分股票"的半成品状态。
@@ -934,6 +942,7 @@ def main():
     fp = fillin.params(cfg)
     if fp["enabled"]:
         # 第二百四十八轮: 补位腿要用 360 日窗口的"距前高" + 上市满 250 日过滤。
+        # (日历已在上面按同一窗口取够, 否则 panel_dates 切不满 620 天 -> dh360 全 NaN)
         # 面板不够长时 dh360 全 NaN、bars 恒小, 补位会静默失效 —— 这里把窗口拉够。
         # 主策略只用到 20 日窗口, 拉长面板不改变它的任何判定(regime 序列是相对量)。
         warm = max(warm, 360 + int(fp["min_listed_bars"]) + 10)
