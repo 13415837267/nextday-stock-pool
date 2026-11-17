@@ -91,7 +91,9 @@ def _config_fp(cfg: dict) -> str:
         #   同时 plan_ver 提到 11 强制重算一次, 否则 11-17 已存在同指纹的 latest.json,
         #   幂等闸门会跳过, 页面上永远看不到 fillin 块。
         "fillin": [(k, v) for k, v in sorted((cfg.get("fillin") or {}).items())],
-        "plan_ver": 11,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 12: 250 补位面板从 75 天拉够 620 天(日历同步), 名单才会非空; 前面 11 那次
+        #     CI 的 fillin 是空名单, 而日历修复不改任何参数, 只能靠版本号触发重算。
+        "plan_ver": 12,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
