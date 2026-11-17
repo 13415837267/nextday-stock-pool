@@ -261,11 +261,12 @@ def main() -> None:
                              "n": len(g), "code": "-", "mr": np.nan, "gap": np.nan,
                              "why": why, "let": False})
             continue       # 深低开没候选 = 这天本来就没事, 不记
-        # ★ 资金占用（248）: 主策略 signal 日 / buy 日的钱不在这。
-        #   唯一例外: 今天主策略发了信号、补位又有候选 —— 让补位做, 主策略停手。
-        let_way = dt in main_sig
-        if (dt in main_sig or dt in main_buy) and not let_way:
+        # ★ 资金占用（249 定稿）: 主策略 signal 日 / buy 日的钱不在这, 补位不做。
+        #   248 曾让补位在重叠日顶掉主策略（let_way），合入真实引擎后测出是负贡献
+        #   （2500 日卡玛 4.64 → 4.27），已关闭。卖出日不排（资金当日回笼）。
+        if dt in main_sig or dt in main_buy:
             continue
+        let_way = False
         top = sel_.iloc[0]
         ntimes[top["ts_code"]] = ntimes.get(top["ts_code"], 0) + 1
         if dt not in want:
@@ -317,10 +318,10 @@ def main() -> None:
         print(f"    资金占用(248): 主策略卖出日不排(资金当日回笼), 只排 signal 日与买入日")
         ms = int(last) in main_sig
         print(f"    今天主策略{'✅ 有信号' if ms else '❌ 没信号'} —— "
-              + ("**主策略停手, 只做补位**(248: 重叠日 48 天主策 +0.52% vs 补位 +2.84%)"
-                 if ms else "补位与主策略不冲突"))
-        print(f"    历史(248 定稿): 年化 135.9% / 回撤 -23.6% / 卡玛 5.76  (375 笔, 11/11 正年)")
-        print("    对照: 247 定稿 290 笔 5.44(粗占用) → 只改占用口径 317 笔 5.48 → 加让位 375 笔 5.76")
+              + ("补位不做（钱要留给主策略，249: 让位实测是负贡献）"
+                 if ms else "补位可以做（主策略明天不占用资金）"))
+        print(f"    历史(249 合入, 2500日真实账户): 108.1% / -23.3% / 4.64  (补位 306 笔)")
+        print("    对照: 主策略单独 84.1% / -18.6% / 4.52; 248 拼接口径的 5.76 是满仓假象")
 
 
 def _write_json() -> None:

@@ -86,3 +86,6 @@ output/w248_nav_cmp.csv
 output/w248_overlap.csv
 output/w248_overlap_detail.csv
 output/w248_trades_tag.csv
+
+# 第249轮: 合入回测的三组净值明细(bt_fillin_248.py 可重建, 每次 7 分钟)
+output/w249_combo_*.json

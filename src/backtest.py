@@ -41,6 +41,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from . import fillin
 from .config import ROOT, load_config
 from .data_api import ZZClient
 from .rule_text import rules_line
@@ -250,8 +251,20 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
         raise RuntimeError(f"交易日不足: 需要{n_days + warmup}日, 仅获取{len(all_days)}日")
     panel_dates = all_days[-(n_days + warmup):]
     panel = fetch_panel(client, panel_dates, float32=True)
+    _fp0 = fillin.params(cfg)
+    # ★ 必须在 build_indicators 之前算: 它会把 pre_close<=0 的 pct 置 NaN(数据卫生),
+    #   而补位的 -3.51% 阈值是在"未清洗"口径下扫出来的(feat234/backfill_daily 都没清洗)。
+    #   晚一步算, 同一天的指数会从 -0.79% 变成 -4.48%, 破位日直接判错一大片。
+    fill_idx = fillin.market_dist(panel) if _fp0["enabled"] else None
     print(f"[2/4] 计算指标(共{len(panel):,}行)...")
     panel = build_indicators(panel)
+    _fp = _fp0
+    if _fp["enabled"]:
+        # 第二百四十八轮: 补位腿要 9 个窗口的"距前 W 日最高", 主策略只用 20 日。
+        # 只在这一条打开时才算, 关闭时面板列与旧口径逐字节一致(内存也一分不多吃)。
+        print(f"  补位指标: {len(fillin.WINS)} 个窗口...")
+        panel = fillin.add_indicators(panel, progress=lambda i, n: print(f"    {i}/{n}", end="\r"))
+        print()
     panel = _downcast_float(panel)   # 指标新增列同步降float32(长窗口内存)
     by_date = split_by_date(panel)
     reg_base = regime_base(panel, cfg)
@@ -272,7 +285,7 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
     except Exception:
         pass
     return {"main_dates": main_dates, "by_date": by_date, "reg": reg, "reg_base": reg_base,
-            "per_code": per_code, "names": names}
+            "per_code": per_code, "names": names, "fill_idx": fill_idx}
 
 
 def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) -> dict:
@@ -475,6 +488,85 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     _ml = (cfg.get("risk") or {}).get("month_loss_cap") or {}
     ml_cap, ml_cut = float(_ml.get("loss_pct", 0) or 0), float(_ml.get("cut_frac", 1.0) or 1.0)
     month_key, month_start_nav = None, None
+
+    # ------------------------------------------------------------------
+    # 第二百四十八轮: 破位/深低开补位腿（fillin.enabled=false 时全段不生效）
+    #   与主策略共用同一个 cash / holding / curve —— 不是"两条净值曲线相加",
+    #   而是一个账户在两个策略之间轮换: 主策略有信号就做主策略, 没有就做补位,
+    #   两边同一天都有信号时让补位（248: 48 天里主策略 +0.52% vs 补位 +2.84%）。
+    # ------------------------------------------------------------------
+    fp = fillin.params(cfg)
+    fill_on = bool(fp["enabled"])
+    fill_ntimes: dict[str, int] = {}
+    pending_fill: dict | None = None        # 前一交易日收盘算出的补位名单
+    fill_stat = {"trigger": 0, "fill": 0, "skip": 0, "let_way": 0, "busy": 0,
+                 "break": 0, "deep": 0, "cost": 0.0}
+
+    def do_buy_fill(pl: dict | None, d: str, idx: int = 0):
+        """T+1 开盘: 按名单从上往下挑, 固定仓位买入。不参与主策略任何分档逻辑。"""
+        nonlocal cash, fee_total, fill_stat
+        if not fill_on or not pl:
+            return False
+        # 主策略还持着仓 -> T+1 收盘才卖, 钱不在这（等价于 248 的 busy 判定）
+        if any(not h.get("_fillin") for h in holding):
+            fill_stat["busy"] += 1
+            return False
+        day = by_date.get(d)
+        if day is None:
+            return False
+        got = fillin.choose(pl, day, fp)
+        if got is None:
+            fill_stat["skip"] += 1
+            return False
+        code, info = got
+        if fill_ntimes.get(code, 0) >= int(fp["max_times"]):
+            fill_stat["skip"] += 1
+            return False
+        sub = per_code.get(code)
+        if sub is None or d not in sub.index:
+            fill_stat["skip"] += 1
+            return False
+        row = sub.loc[d]
+        lot = int(ex.get("lot_size", 0) or 0)
+        eq = cash + pending_cash + sum(
+            h["units"] * float(per_code[h["code"]].loc[d]["open_adj"])
+            for h in holding if d in per_code[h["code"]].index)
+        want = float(fillin.pos_of(info["path"], fp)) * eq
+        px = float(row["open_adj"]) * (1 + slip_buy)
+        if px <= 0 or want <= 0:
+            return False
+        units = want / (px * (1 + comm))
+        if lot > 0:
+            units = float(int(units // lot) * lot)
+            if units <= 0:
+                fill_stat["skip"] += 1
+                return False
+        alloc = units * px * (1 + comm)
+        if alloc > cash:            # 现金不足(主策略当日用了钱)则按可用现金缩量, 不够一手就放弃
+            if cash <= 0 or lot > 0:
+                fill_stat["skip"] += 1
+                return False
+            units = cash / (px * (1 + comm))
+            alloc = units * px * (1 + comm)
+        fee = alloc * comm
+        fee_total += fee
+        fill_stat["cost"] += fee
+        cash -= alloc
+        fill_ntimes[code] = fill_ntimes.get(code, 0) + 1
+        fill_stat["fill"] += 1
+        fill_stat["break" if info["path"] == "破位" else "deep"] += 1
+        _f = (float(row["close_adj"]) / float(row["close"]) if float(row["close"]) else 0.0)
+        holding.append({
+            "code": code, "name": names.get(code, ""), "pool": "fill", "_fillin": True,
+            "signal_date": pl.get("_signal_date", ""), "buy_date": d,
+            "units": units, "buy_eff": px, "buy_adj": float(row["open_adj"]),
+            "buy_px_raw": round(float(row["open"]) if _f else float(row["open"]), 4),
+            "fill": "open", "buy_idx": idx, "due_idx": idx + 1,
+            "pos_frac": round(float(fillin.pos_of(info["path"], fp)), 4),
+            "score": np.nan, "_top2": np.nan, "_gap": info["gap"] / 100.0,
+            "_path": info["path"], "_rk": info["rk"],
+        })
+        return True
 
     def do_buy(picks: list[dict], d: str, idx: int = 0):
         nonlocal cash, fee_total, interest_total
@@ -1149,16 +1241,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "margin": (round(float(h["score"]) - float(h["_top2"]), 3)
                            if h.get("_top2") is not None and h.get("score") is not None else None),
                 "pos_frac": h.get("pos_frac"),
+                "_fillin": bool(h.get("_fillin")),      # 248: 这条腿不是主策略
             })
             if _defer_units > 0:
                 # 尾腿: 保留原成本价与前收, 仅把应卖日推到 defer_days 之后(仍按同样规则卖出)
                 remaining.append({**h, "units": _defer_units,
                                   "due_idx": cur_idx + max(1, int(ex.get("defer_days", 1) or 1)),
                                   "_deferred": True, "buy_idx": cur_idx})
-            if r <= 0:
-                loss_streak += 1
-            else:
-                loss_streak = 0
+            if not h.get("_fillin"):        # 连亏熔断是主策略的参数, 不被补位污染
+                if r <= 0:
+                    loss_streak += 1
+                else:
+                    loss_streak = 0
         holding[:] = remaining
 
     print("[3/4] 逐日模拟交易...")
@@ -1196,10 +1290,20 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     break
             lev_now[0] = _lv
         do_sell(d, idx, has_buy=bool(pending_buy is not None and pending_buy[1]))
-        if pending_buy is not None:
-            _, picks = pending_buy
-            do_buy(picks, d, idx)
-            pending_buy = None
+        # 248: 9:25 两个名单都在眼前 —— 补位先试，成交了主策略就不买（这才是可执行的让位：
+        # 收盘时无法预知 T+1 会不会低开，任何"收盘就决定让位"的做法都是未来信息）。
+        _let = False
+        if fill_on and bool(fp["let_way"]):
+            _let = do_buy_fill(pending_fill, d, idx)
+            if _let and pending_buy is not None and pending_buy[1]:
+                fill_stat["let_way"] += 1        # 今天主策略本来有票, 被补位顶掉
+        if not _let and pending_buy is not None:
+            _, _pk = pending_buy
+            do_buy(_pk, d, idx)
+        if fill_on and not bool(fp["let_way"]):
+            do_buy_fill(pending_fill, d, idx)
+        pending_buy = None
+        pending_fill = None
         # 收盘估值
         total = cash + pending_cash + sum(h["units"] * float(per_code[h["code"]].loc[d]["close_adj"])
                                           for h in holding if d in per_code[h["code"]].index)
@@ -1228,6 +1332,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         if blocked or paused:
             risk_empty_days += 1
             pending_buy = (d, [])
+            _picks_today: list[dict] = []
             # 注: 大盘风控触发仅限制次一交易日不买入; 持仓(含当日买入票)
             #     均按既定 T+2(或之后)开盘卖出, 遵守T+1制度, 无任何当日卖出。
         else:
@@ -1240,7 +1345,19 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 第九十七轮: 当日候选池深度(通过 dip 筛选并完成评分的只数)随计划下发,
             # 用于诊断"机会丰度"; 纯观测字段, 不改变任何买入判定。
             _pn = int((_sel_stats or {}).get("scored") or 0)
+            _picks_today = list(picks)
             pending_buy = (d, [{**p, "signal_date": d, "_pool_n": _pn} for p in picks])
+        # ---- 248 补位: 两条分支都要走 ----
+        #   破位日几乎必然落在主策略的风控/空仓分支里（指数在 MA20 下方且跌 -3.5%以上），
+        #   若只在 else 分支算补位，等于把"最该补位的日子"全漏掉。
+        if fill_on:
+            _fidx = ctx.get("fill_idx")
+            _idxd = float(_fidx.get(d, np.nan)) if _fidx is not None else np.nan
+            _pl = fillin.plan(by_date[d], _idxd, fp)
+            if _pl is not None:
+                fill_stat["trigger"] += 1
+                _pl["_signal_date"] = d
+            pending_fill = _pl
         # 若持仓未在开盘卖出(停牌顺延中), 继续每日估值
     print(f"  模拟完成, 耗时 {time.time()-t0:.0f}s")
 
@@ -1302,6 +1419,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             "跳过买入次数": sum(1 for t in trades if t["ret_pct"] is None),
             "总费用(元)": round(fee_total, 0),
             "同期市场等权基准%": round(float(bench_norm.iloc[-1] / bt_cfg["initial_capital"] - 1) * 100, 2) if len(bench_norm) else None,
+            **({"主策略笔数": sum(1 for t in real if not t.get("_fillin")),
+                "补位笔数": sum(1 for t in real if t.get("_fillin")),
+                "补位·破位": fill_stat["break"], "补位·深低开": fill_stat["deep"],
+                "补位触发": fill_stat["trigger"], "让位天数": fill_stat["let_way"],
+                "补位放弃": fill_stat["skip"] + fill_stat["busy"]} if fill_on else {}),
         },
         "equity": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in nav.items()],
         "benchmark": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in bench_norm.items()] if len(bench_norm) else [],
