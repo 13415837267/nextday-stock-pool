@@ -89,3 +89,8 @@ output/w248_trades_tag.csv
 
 # 第249轮: 合入回测的三组净值明细(bt_fillin_248.py 可重建, 每次 7 分钟)
 output/w249_combo_*.json
+
+# 第251轮: 冷却/门槛扫描的中间产物(bt_fillin_251.py 与 scan_251*.py 可重建)
+output/w251_*.pkl
+output/w251_grid.csv
+output/w251_brk.csv

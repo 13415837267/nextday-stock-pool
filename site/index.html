@@ -152,18 +152,45 @@ function mainCard(m, d) {
   </div>`;
 }
 
-/* 补位卡（第250轮新增：破位 / 深低开） */
+/* 当前系统策略摘要 —— 全部从 latest.json 的 fillin.params 生成 */
+function ruleSummary(P) {
+  const parts = [];
+  if (P.cooldown_days != null && Number(P.cooldown_days) > 0)
+    parts.push(`冷却 ${P.cooldown_days} 日`);
+  if (P.idx_dist_max != null) parts.push(`指数 ≤ ${P.idx_dist_max}%`);
+  if (P.dist_high60_max != null) parts.push(`距高 ≤ ${P.dist_high60_max}%`);
+  if (P.deep_lo != null && P.deep_hi != null) parts.push(`深低开 ${P.deep_lo}~${P.deep_hi}%`);
+  if (P.pos_break_pct != null && P.pos_deep_pct != null)
+    parts.push(`仓位 ${P.pos_break_pct}/${P.pos_deep_pct}%`);
+  if (P.max_times != null) parts.push(`单票 ${P.max_times} 次`);
+  return parts.length ? esc(parts.join(" · ")) : "-";
+}
+
+/* 补位卡（第250轮新增 / 第251轮参数化：文案全部来自 latest.json，不写死阈值） */
 function fillCard(f, d) {
   const broke = f.broke || f.path === "破位";
   const pos = f.pos == null ? null : Math.round(Number(f.pos) * 100);
   const cands = Array.isArray(f.cands) ? f.cands : [];
   const pctTxt = (f.idx_dist == null) ? "-" : pctStr(f.idx_dist);
+
+  // 参数一律以服务端下发的 params 为准；没有就退回旧默认（兼容历史 JSON）
+  const P = f.params || {};
+  const gl = P.n1_gap_max == null ? 0.05 : Number(P.n1_gap_max);
+  const lo = P.deep_lo == null ? -9.5 : Number(P.deep_lo);
+  const hi = P.deep_hi == null ? -5.0 : Number(P.deep_hi);
+  const nmax = P.deep_rank_max == null ? (cands.length || 10) : Number(P.deep_rank_max);
+  const cd = P.cooldown_days == null ? 0 : Number(P.cooldown_days);
+  const trig = (1 + gl / 100).toFixed(4);
+
   const rule = broke
-    ? "从上往下，第一只开盘价 ≤ 昨收 × 1.0005 的买入"
-    : "前 " + cands.length + " 名里，谁的开盘缺口落在 −9.5% ~ −5.0% 就买谁（取排名最好的）";
+    ? `从上往下，第一只开盘价 ≤ 昨收 × ${trig} 的买入`
+    : `前 ${nmax} 名里，谁的开盘缺口落在 ${lo}% ~ ${hi}% 就买谁（取排名最好的）`;
+  // 注意: 下界是"跌得太深不做"(实测 -9.5~-8 档单笔只有 0.99%), 不等于跌停, 别写成"跌停开"
   const sub = broke
     ? "高开的跳过、看下一只；一只都不低开就空仓"
-    : "跌停开（≤ −9.5%）不做：买得到、卖不掉；缺口 > −5% 跌得不够，也不做";
+      + (cd > 0 ? `；同路径成交后 ${cd} 个交易日内不再做` : "")
+    : `缺口低于 ${lo}% 的不做（跌得更深，次日反弹不确定）；高于 ${hi}% 也不做（跌不够）`
+      + (cd > 0 ? `；同路径成交后 ${cd} 个交易日内不再做` : "");
 
   const rows = cands.map((c, i) => `
     <tr class="${i === 0 ? "top" : ""}">
@@ -189,7 +216,7 @@ function fillCard(f, d) {
 
     <div class="grid" style="margin-top:14px">
       <div class="kv"><div class="k">路径仓位</div><div class="v">${pos == null ? "-" : pos + "%"}</div></div>
-      <div class="kv"><div class="k">候选</div><div class="v">${cands.length} 只 · 持有到 T+2 收盘</div></div>
+      <div class="kv"><div class="k">候选 / 实际</div><div class="v">${cands.length} 只候选 · 9:25 只买 1 只</div></div>
     </div>
 
     <div class="order blue" style="margin-top:14px">
@@ -220,7 +247,18 @@ async function load() {
     // ── 数据获取时间 ──
     const t = d.update_time || "-";
     const sd = d.signal_date || "-";
-    meta.innerHTML = `数据获取时间 <b>${esc(t)}</b> · 信号日 <b>${esc(sd)}</b>`;
+    // 数据超过 78 小时未更新 -> 顶上一根黄条（周五收盘到周一开盘最多约 66 小时）
+    let stale = "";
+    if (d.update_time) {
+      const age = (Date.now() - new Date(String(d.update_time).replace(/-/g, "/")).getTime()) / 36e5;
+      if (isFinite(age) && age > 78) {
+        stale = `<div class="warn" style="margin:10px 0 0">数据已 ${Math.floor(age / 24)} 天未更新`
+              + `（最近一次 ${esc(d.update_time)}），可能定时任务中断，勿据此下单。</div>`;
+      }
+    }
+    meta.innerHTML = `数据获取时间 <b>${esc(t)}</b> · 信号日 <b>${esc(sd)}</b>`
+      + (d.fillin && d.fillin.params ? `<div style="margin-top:6px">当前口径：` + ruleSummary(d.fillin.params) + `</div>` : "")
+      + stale;
 
     const m = d.plans && d.plans.main;
     const f = (d.fillin && d.fillin.enabled && !d.fillin.error

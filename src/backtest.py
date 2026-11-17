@@ -498,6 +498,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     fp = fillin.params(cfg)
     fill_on = bool(fp["enabled"])
     fill_ntimes: dict[str, int] = {}
+    fill_last: dict[str, int] = {}          # 251: 每条腿上次成交的交易日序号
     pending_fill: dict | None = None        # 前一交易日收盘算出的补位名单
     fill_stat = {"trigger": 0, "fill": 0, "skip": 0, "let_way": 0, "busy": 0,
                  "break": 0, "deep": 0, "cost": 0.0}
@@ -553,6 +554,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         fill_stat["cost"] += fee
         cash -= alloc
         fill_ntimes[code] = fill_ntimes.get(code, 0) + 1
+        fill_last[info["path"]] = idx          # 251: 冷却从成交日记
         fill_stat["fill"] += 1
         fill_stat["break" if info["path"] == "破位" else "deep"] += 1
         _f = (float(row["close_adj"]) / float(row["close"]) if float(row["close"]) else 0.0)
@@ -1353,7 +1355,18 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             _pl = fillin.plan(by_date[d], _idxd, fp)
             if _pl is not None:
                 fill_stat["trigger"] += 1
-                _pl["_signal_date"] = d
+                # 251: 冷却 —— 刚补过就不再连做。
+                #   破位 332 笔里 278 笔是"同一波的第 2 笔及以后", 单笔 1.40% vs 第 1 笔 1.76%,
+                #   且一次暴跌连做 20 天已经不是单吊, 是网格摊平。
+                #   ★ 按腿分开算, 不搞全局冷却: 全局冷却会再砍 10 笔(61 笔), 但实测卡玛
+                #     5.37 -> 4.63、回撤 -17.3 -> -20.4 —— 被砍的那 10 笔正好铺在几段回撤里。
+                _cd = int(fp.get("cooldown_days") or 0)
+                _l = fill_last.get(_pl["path"])
+                if _cd > 0 and _l is not None and (idx - _l) <= _cd:
+                    fill_stat["cool"] = fill_stat.get("cool", 0) + 1
+                    _pl = None
+                else:
+                    _pl["_signal_date"] = d
             pending_fill = _pl
         # 若持仓未在开盘卖出(停牌顺延中), 继续每日估值
     print(f"  模拟完成, 耗时 {time.time()-t0:.0f}s")
@@ -1420,6 +1433,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "补位笔数": sum(1 for t in real if t.get("_fillin")),
                 "补位·破位": fill_stat["break"], "补位·深低开": fill_stat["deep"],
                 "补位触发": fill_stat["trigger"], "让位天数": fill_stat["let_way"],
+                "补位冷却跳过": fill_stat.get("cool", 0),
                 "补位放弃": fill_stat["skip"] + fill_stat["busy"]} if fill_on else {}),
         },
         "equity": [{"d": _fmt_date(d), "nav": round(float(v), 0)} for d, v in nav.items()],

@@ -93,7 +93,9 @@ def _config_fp(cfg: dict) -> str:
         "fillin": [(k, v) for k, v in sorted((cfg.get("fillin") or {}).items())],
         # 12: 250 补位面板从 75 天拉够 620 天(日历同步), 名单才会非空; 前面 11 那次
         #     CI 的 fillin 是空名单, 而日历修复不改任何参数, 只能靠版本号触发重算。
-        "plan_ver": 12,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 13: 251 补位收敛(门槛 -5/-42/-8/8名 + 冷却10) —— 参数本身会改 config_fp,
+        #     但 cooldown_days 是新增键, 版本号也标一下, 便于从 JSON 反查是哪一版口径。
+        "plan_ver": 13,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1594,12 +1596,28 @@ def main():
     # 第二百四十八轮: 补位腿的明日名单。与回测/backfill_daily.py 同一套规则,
     # 输出的是"9:25 从上往下挑"的清单, 不是建议买入价。
     fill_info = None
+    # 251: 把"当前生效的参数"一并下发。页面文案全部由它生成, 改 config 即改页面,
+    #   不再有"代码里写死 -9.5%/-5.0%, 实际跑的是别的值"这种对不上账的情况。
+    _fpar = {
+        "idx_dist_max": float(fp["idx_dist_max"]),
+        "dist_high60_max": float(fp["dist_high60_max"]),
+        "deep_lo": float(fp["deep_lo"]),
+        "deep_hi": float(fp["deep_hi"]),
+        "deep_rank_max": int(fp["deep_rank_max"]),
+        "list_n": int(fp["list_n"]),
+        "pos_break_pct": round(float(fp["pos_break"]) * 100),
+        "pos_deep_pct": round(float(fp["pos_deep"]) * 100),
+        "max_times": int(fp["max_times"]),
+        "cooldown_days": int(fp.get("cooldown_days") or 0),
+        "n1_gap_max": float(fp["n1_gap_max"]),
+        "min_listed_bars": int(fp["min_listed_bars"]),
+    }
     if fp["enabled"]:
         try:
             _idxd = fillin.idx_dist_at(fill_idx, signal_date)
             _pl = fillin.plan(by_date[signal_date], _idxd, fp)
             if _pl is None:
-                fill_info = {"enabled": True, "path": None, "cands": [],
+                fill_info = {"enabled": True, "path": None, "cands": [], "params": _fpar,
                              "note": "补位两条路都不成立（指数没破位、也没有够深的超跌票）"}
             else:
                 _day = by_date[signal_date]
@@ -1625,6 +1643,7 @@ def main():
                     "broke": _pl["path"] == "破位",
                     "pos": fillin.pos_of(_pl["path"], fp),
                     "cands": _cands,
+                    "params": _fpar,
                     # 让位: 9:25 补位成交则主策略停手(249 默认关闭)
                     "let_way": bool(verified) and bool(fp["let_way"]),
                     # 占用: 今天主策略有票 -> 这笔钱留给它, 补位不做
