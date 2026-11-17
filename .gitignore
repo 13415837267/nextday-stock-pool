@@ -66,3 +66,7 @@ output/feat234/
 # 第243轮 全史价表/滚动高点缓存(503M/366M, 由 scan_243c.py / scan_243i.py 数分钟重建)
 output/w243c_px.parquet
 output/w243i_dh.parquet
+
+# 第244轮: 9 窗口候选池缓存(各 38M, scan_244a/244g 各 1 分钟可重建)
+output/w244_pool/
+output/w244_pool2/

@@ -2,13 +2,25 @@
   "signal_date": "20261116",
   "idx_dist": -0.31,
   "triggered": false,
+  "entry_rule": "T+1 集合竞价: 开盘价 <= 昨收*1.0005 才买, 否则放弃",
   "rule": {
     "idx_dist_max": -3.51,
-    "high_win": 250,
-    "dist_high_max": -24.46,
+    "windows": [
+      60,
+      90,
+      120,
+      150,
+      180,
+      200,
+      250,
+      300,
+      360
+    ],
+    "rank": "nine-window percentile rank mean",
+    "dist_high60_max": -24.46,
     "position": 0.7,
-    "cooldown_days": 20
+    "cooldown_days": 10
   },
-  "how_to_trade": "单吊下列首选一只, 70% 仓位; T+1开盘买, T+2收盘卖",
+  "how_to_trade": "单吊下列首选一只, 70% 仓位; T+1 集合竞价若开盘价高于昨收+0.05% 就放弃(空仓), 否则开盘价买入, T+2 收盘卖",
   "candidates": []
 }
