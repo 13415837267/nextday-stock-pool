@@ -101,7 +101,9 @@ def _config_fp(cfg: dict) -> str:
         #     指纹, 不升版本号 CI 会幂等跳过, 页面停在旧文案上。
         # 16: 253 池深分档改口径(11-20 满仓 / <11 不做) —— 参数在 _config_fp 里, 指纹本会变;
         #     但"池深=0 时显示当日不参与"是代码逻辑, 单看参数看不出, 版本号一并标上。
-        "plan_ver": 16,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 17: 254 把 11-20 拆成 16-20 满仓 / 11-15 半仓 —— 参数变了指纹本会变, 但这一档
+        #     直接决定"今天该买几成", 页面上必须能看到新档位, 版本号一并标上便于反查。
+        "plan_ver": 17,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]

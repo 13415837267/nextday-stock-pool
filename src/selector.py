@@ -129,6 +129,12 @@ def build_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     # 两边不等价)。pre_close 是交易所除权调整后的昨收, 除权日亦正确, 且与分子同口径 —— 免疫 flast。
     _pc = panel["pre_close"].replace(0, np.nan)
     panel["amp_pct"] = (panel["high"] - panel["low"]) / _pc * 100                        # 当日振幅%
+    # 第二百五十四轮: 20 日均振幅 —— "这笔的弹性刻度"。
+    #   495 笔按此四分档: Q1 0.69% / Q2 1.00% / Q3 1.82% / Q4 2.09%(去掉 2020-2021 仍单调),
+    #   高波组风险调整后同样更好(avg/sd 0.22 -> 0.44)。与现有评分相关仅 0.37, 有增量。
+    #   机制: dip 买的是"被砸之后", 弹性由这只票平时的波动幅度决定, 而不是由评分(z 分)决定。
+    #   默认权重 0 = 不参与, 面板加一列 float32(11.7M 行约 47MB)。
+    put("amp20", g["amp_pct"].transform(lambda s: s.rolling(20, min_periods=15).mean()))
     hl_rng = (panel["high"] - panel["low"]).replace(0, np.nan)
     panel["close_pos"] = ((panel["close"] - panel["low"]) / hl_rng).fillna(0.5)          # 收盘在当日区间位置(0=最低1=最高)
     del hl_rng
@@ -462,6 +468,8 @@ def _select_one(
             score = score + w["neg_vol_ratio"] * _zs(-df["vol_ratio"])   # 缩量越极致越好
         if w.get("low_tail"):
             score = score + w["low_tail"] * _zs(df["low_tail"])          # 下影线越长(盘中承接越强)越好
+        if w.get("amp20"):
+            score = score + w["amp20"] * _zs(df["amp20"])                # 20日均振幅越高(弹性越大)越好
         if w.get("neg_turnover_cool"):
             score = score + w["neg_turnover_cool"] * _zs(
                 -df["turnover_cool"].fillna(1.0))                        # 换手降温越快(3日/20日<1)越好

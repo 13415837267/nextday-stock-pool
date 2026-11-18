@@ -361,6 +361,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
     gap_above_tiers = ex.get("gap_above_tiers") or []   # 高开降仓: [{above: 0, mult: 0.5}, ...]
     gap_floor_tiers = ex.get("gap_floor_tiers") or []   # 深低开加仓下限: [{below: -1, min_pool: 11, floor: 0.8}]
     pool_tiers = ex.get("pool_n_tiers") or []           # 池深分档下注: [{min: 41, mult: 1.0}, ...]
+    # 第二百五十四轮: 池深改相对口径 —— [{min: 达标率‱, mult}]。非空时**取代** pool_n_tiers。
+    #   绝对只数没有跨年可比性: universe 从 2016 年的 2,948 只涨到 2026 年的 5,512 只(近翻倍),
+    #   同一个"11 只"在 2016 年等于 37.3‱、2026 年只有 20.0‱ —— 门槛在十年里悄悄严了 87%。
+    #   pool_n=0(备用池票)不参与本档(无"池深"概念), 与 pool_n_tiers 的处理保持一致。
+    pool_rate_tiers = ex.get("pool_rate_tiers") or []
     knife_tiers = ex.get("knife_tiers") or []           # 阴跌刀口保护(第一百零三轮): [{mkt_above, res_below, mult}]
     mkt_floor_tiers = ex.get("mkt_floor_tiers") or []   # 全市场恐慌日回满仓: [{mkt_below, floor}]
     mkt_boost_tiers = ex.get("mkt_boost_tiers") or []   # 第一百七十三轮: 恐慌日超配 [{mkt_below, mult}]
@@ -891,7 +896,16 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 池深分档下注(第九十九轮, 可选): 当日候选池深度 = 同风格票的"共振强度",
             # T 日盘后即已知(无未来函数)。池子越宽说明越多强势股同步回调、次日修复有板块共振,
             # 池子窄则是孤立回调 —— 实测几何期望从池41+的+1.28%单调掉到池11-20的+0.04%。
-            if pool_tiers:
+            if pool_rate_tiers:
+                _pn = int(p.get("_pool_n") or 0)
+                _uv = int(p.get("_univ") or 0)
+                if _pn > 0 and _uv > 0:
+                    _rt = _pn / _uv * 1e4
+                    for _t in pool_rate_tiers:
+                        if _rt >= float(_t["min"]):
+                            pick_frac *= float(_t.get("mult", 1.0))
+                            break
+            elif pool_tiers:
                 _pn = int(p.get("_pool_n") or 0)
                 for _t in pool_tiers:
                     if _pn >= int(_t["min"]):
@@ -1238,6 +1252,7 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                 "score": h.get("score"),
                 "gap_pct": (round(float(h["_gap"]) * 100, 2) if h.get("_gap") is not None else None),
                 "pool_n": h.get("_pool_n"),
+                "univ": h.get("_univ"),
                 # 第二百三十轮: top1 领先第2名的幅度(评分差), 与本笔收益一起落盘,
                 # 供"选择置信度是否与收益相关"的诊断使用。
                 "margin": (round(float(h["score"]) - float(h["_top2"]), 3)
@@ -1349,7 +1364,11 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
             # 第九十七轮: 当日候选池深度(通过 dip 筛选并完成评分的只数)随计划下发,
             # 用于诊断"机会丰度"; 纯观测字段, 不改变任何买入判定。
             _pn = int((_sel_stats or {}).get("scored") or 0)
-            pending_buy = (d, [{**p, "signal_date": d, "_pool_n": _pn} for p in picks])
+            # 第254轮: _univ = 当日面板行数(可交易只数), 与 select_stocks 的入参同一个表,
+            # 盘后即知, 无未来函数。只给相对口径的池深分档用。
+            _univ = len(by_date[d])
+            pending_buy = (d, [{**p, "signal_date": d, "_pool_n": _pn, "_univ": _univ}
+                               for p in picks])
         # ---- 248 补位: 两条分支都要走 ----
         #   破位日几乎必然落在主策略的风控/空仓分支里（指数在 MA20 下方且跌 -3.5%以上），
         #   若只在 else 分支算补位，等于把"最该补位的日子"全漏掉。
