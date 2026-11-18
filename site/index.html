@@ -116,7 +116,13 @@ function fmtDate(s) {
 
 /* 主策略卡（原有结构，字段不变） */
 function mainCard(m, d) {
-  const step = (d.t1_decision && d.t1_decision.steps && d.t1_decision.steps[0]) || {};
+  const tt = d.t1_decision || {};
+  const step = (tt.steps && tt.steps[0]) || {};
+  // 第253轮: 池深分档改成"11 只以下不做"之后, 用户看到"参考仓位 40%"会不知道 40% 从哪来。
+  // 把当日达标票数直接摆在仓位旁边 —— 它是仓位档位的唯一输入(盘后即知, 无未来函数)。
+  // pool_n=0 是备用池票(没有"池深"概念), 显示 "-" 而不是 "0 只"。
+  const pn = (tt.pool_n == null ? null : Number(tt.pool_n));
+  const pnTxt = (pn == null || pn <= 0) ? "" : `（当日达标 ${pn} 只）`;
   const dt = m.dates || {};
   const obs = Array.isArray(m.observe) ? m.observe : [];
   const abt = Array.isArray(m.abort) ? m.abort : [];
@@ -143,7 +149,7 @@ function mainCard(m, d) {
     <div class="grid" style="margin-top:14px">
       <div class="kv"><div class="k">买入方式</div><div class="v">${esc((d.plan && d.plan.buy_point) || dt.buy || "-")}</div></div>
       <div class="kv"><div class="k">卖出方式</div><div class="v">${esc((d.plan && d.plan.sell_point) || m.exit || "-")}</div></div>
-      <div class="kv"><div class="k">参考仓位</div><div class="v">${m.position_pct == null ? "-" : esc(m.position_pct) + "%"}</div></div>
+      <div class="kv"><div class="k">参考仓位</div><div class="v">${m.position_pct == null ? "-" : esc(m.position_pct) + "%"}${pnTxt ? `<span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:6px">${pnTxt}</span>` : ""}</div></div>
       <div class="kv"><div class="k">评分</div><div class="v">${m.score == null ? "-" : esc(Number(m.score).toFixed(2))}</div></div>
     </div>
 
