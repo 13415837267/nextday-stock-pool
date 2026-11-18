@@ -97,7 +97,9 @@ def _config_fp(cfg: dict) -> str:
         #     但 cooldown_days 是新增键, 版本号也标一下, 便于从 JSON 反查是哪一版口径。
         # 14: 252 补位池收到 3 只(破位改"挑开盘最低", 深低开跳最崩的 3 只) —— 参数变了,
         #     但"怎么挑"是代码逻辑(pick_break=lowest), 单看参数会漏, 版本号必须动。
-        "plan_ver": 14,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 15: 补位卡摘要文案修一个多余空格(第 4~6 名里 谁 -> 第 4~6 名里，谁); 文案不进
+        #     指纹, 不升版本号 CI 会幂等跳过, 页面停在旧文案上。
+        "plan_ver": 15,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1656,7 +1658,7 @@ def main():
                     "note": (f"破位成立 → 明早 {fp['list_n']} 只里挑开盘最低的那只"
                              if _pl["path"] == "破位" else
                              f"破位不成立 → 只做深低开：第 {int(fp.get('deep_skip') or 0) + 1}~"
-                             f"{int(fp.get('deep_skip') or 0) + int(fp['deep_rank_max'])} 名里 "
+                             f"{int(fp.get('deep_skip') or 0) + int(fp['deep_rank_max'])} 名里，"
                              f"谁低开在 {fp['deep_lo']}%~{fp['deep_hi']}% 就买谁"),
                 }
         except Exception as _e:      # noqa: BLE001  补位失败不能拖垮主流程
