@@ -122,3 +122,7 @@ output/w254*.pkl
 # 第255轮: 严格化对照的中间产物(bt_strict_255.py 可重建)
 output/w255*.log
 output/w255*.pkl
+
+# 第256轮: 补位漏斗对照的中间产物(bt_funnel_256.py 可重建)
+output/w256*.log
+output/w256*.pkl

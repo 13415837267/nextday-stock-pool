@@ -1,7 +1,7 @@
 {
- "update_time": "2026-11-19 00:42:27",
+ "update_time": "2026-11-19 01:09:00",
  "signal_date": "2026-11-18",
- "config_fp": "7002dee078e1",
+ "config_fp": "83bae3dfde5f",
  "plan": {
   "buy_date": "2026-11-19",
   "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
@@ -87,7 +87,7 @@
    "deep_rank_max": 3,
    "list_n": 3,
    "deep_skip": 3,
-   "pick_break": "lowest",
+   "pick_break": "best",
    "pos_break_pct": 30,
    "pos_deep_pct": 50,
    "max_times": 8,
@@ -98,7 +98,7 @@
   "let_way": false,
   "blocked": true,
   "gate_blocked": true,
-  "note": "破位不成立 → 只做深低开：第 4~6 名里，谁低开在 -8.0%~-5.0% 就买谁"
+  "note": "破位不成立 → 只做深低开：第 4~6 层，开盘跌 -8.0%~-5.0% 就买"
  },
  "plans": {
   "as_of": "2026-11-18",

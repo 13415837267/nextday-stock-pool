@@ -192,13 +192,13 @@ function fillCard(f, d) {
   const cd = P.cooldown_days == null ? 0 : Number(P.cooldown_days);
   const trig = (1 + gl / 100).toFixed(4);
 
-  // 252: 破位不再"从上往下第一只", 改成"名单里开盘最低的那只"（同批超跌票买最便宜的）
+  // 256: 漏斗式逐层递补 —— 每层 1 只, 第 1 层不合格才看第 2 层(最多 3 层)
   const rule = broke
-    ? `${nlist} 只里，开盘价最低的那只买入（且 ≤ 昨收 × ${trig}）`
-    : `第 ${nskip + 1}~${nskip + nmax} 名里，谁的开盘缺口落在 ${lo}% ~ ${hi}% 就买谁（取排名最好的）`;
+    ? `从第 1 层往下试：开盘 ≤ 昨收 × ${trig} 就在该层买入，不合格才看下一层`
+    : `从第 ${nskip + 1} 层往下试：谁的开盘缺口落在 ${lo}% ~ ${hi}% 就买谁`;
   // 注意: 下界是"跌得太深不做"(实测跌太深接不住), 不等于跌停, 别写成"跌停开"
   const sub = broke
-    ? (nlist > 1 ? "都比昨收高就空仓" : "高开就不做")
+    ? (nlist > 1 ? `三层都不合格就空仓（通常第 1 层就成交）` : "高开就不做")
       + (cd > 0 ? `；同路径成交后 ${cd} 个交易日内不再做` : "")
     : `缺口低于 ${lo}% 的不做（跌得更深，次日反弹不确定）；高于 ${hi}% 也不做（跌不够）`
       + (nskip > 0 ? `；跳过最崩的 ${nskip} 只（长期崩塌趋势，深低开后继续跌）` : "")
@@ -206,7 +206,7 @@ function fillCard(f, d) {
 
   const rows = cands.map((c, i) => `
     <tr class="${i === 0 ? "top" : ""}">
-      <td>${c.rank == null ? i + 1 : c.rank}</td>
+      <td>第 ${i + 1} 层</td>
       <td>${c.name && c.name !== c.code ? esc(c.name) + " " : ""}<span style="color:var(--muted)">${esc(c.code || "")}</span></td>
       <td>${numStr(c.close)}</td>
       <td>${c.dh60 == null ? "-" : numStr(c.dh60) + "%"}</td>
@@ -229,7 +229,7 @@ function fillCard(f, d) {
 
     <div class="grid" style="margin-top:14px">
       <div class="kv"><div class="k">路径仓位</div><div class="v">${pos == null ? "-" : pos + "%"}</div></div>
-      <div class="kv"><div class="k">候选 / 实际</div><div class="v">${cands.length} 只候选 · 9:25 只买 1 只</div></div>
+      <div class="kv"><div class="k">漏斗 / 实际</div><div class="v">${cands.length} 层 · 9:25 只买 1 只</div></div>
     </div>
 
     <div class="order blue" style="margin-top:14px">
@@ -238,9 +238,9 @@ function fillCard(f, d) {
       <div class="sub">${esc(sub)}</div>
     </div>
 
-    ${cands.length ? `<div class="block-title">候选（按 9 窗口超跌排名${nskip > 0 && !broke ? `，从第 ${nskip + 1} 名起` : ""}）</div>
+    ${cands.length ? `<div class="block-title">漏斗（按 9 窗口超跌排名${nskip > 0 && !broke ? `，从第 ${nskip + 1} 名起` : ""}；前一层不合格才看下一层）</div>
     <table class="ctable">
-      <thead><tr><th>#</th><th>股票</th><th>收盘</th><th>距60日高</th></tr></thead>
+      <thead><tr><th>层级</th><th>股票</th><th>收盘</th><th>距60日高</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>` : ""}
 
