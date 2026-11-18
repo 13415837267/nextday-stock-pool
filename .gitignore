@@ -126,3 +126,8 @@ output/w255*.pkl
 # 第256轮: 补位漏斗对照的中间产物(bt_funnel_256.py 可重建)
 output/w256*.log
 output/w256*.pkl
+
+# 第257轮: 全历史事件表与对照中间产物(mine_fillin_257.py / bt_mine_257.py 可重建)
+output/mine/
+output/w257*.pkl
+output/w257*.log

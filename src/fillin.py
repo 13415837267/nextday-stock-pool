@@ -66,6 +66,15 @@ DEFAULTS = {
     #   43 笔按名次分档: 1-3 名单笔 0.43%, 4-8 名 2.29% —— 距前高最远的那几只
     #   是长期崩塌趋势, 深低开后继续跌; 中段超跌才有反弹弹性。
     "deep_skip": 3,
+    # 第257轮: 全历史事件表(2009-2026, 4万行)挖出来的两个条件。
+    #   破位腿: 第1名当日跌幅 <= -5% —— 154 笔 2.15% -> 63 笔 4.19%(前后半 3.86/3.92),
+    #     逻辑是"指数在崩"还不够, 要"这只票自己也在崩"(当日 <=-5% 是跌停/接近跌停)。
+    #     当日 > -3% 的 72 笔只有 0.71%, 是纯噪声。
+    #   深低开腿: 缺口带 -8~-5 改 -6~-4 —— 全历史 4-6 名口径下 64 笔 2.03% -> 78 笔 2.97%,
+    #     笔数更多且单笔更高; -10~-8 只有 0.75%、<=-10 是 -2.19%(接飞刀), -5~-4 是 3.28%。
+    #   None = 不启用该条件(保持 256 行为)。
+    "break_pct_max": None,
+    "deep_pct_max": None,
 }
 
 
@@ -174,8 +183,12 @@ def plan(day: pd.DataFrame, idx_dist: float, p: dict) -> dict | None:
     if not len(d):
         return None
     top = d.iloc[0]
+    bpct = p.get("break_pct_max")
     broke = (float(idx_dist) <= float(p["idx_dist_max"])
              and float(top["dh60"]) <= float(p["dist_high60_max"]))
+    # 第257轮: 破位腿要求"这只票自己也在崩"。不满足 -> 不算破位, 落到深低开腿找机会。
+    if broke and bpct is not None and float(top["pct"]) > float(bpct):
+        broke = False
     if broke:
         c = d.head(int(p["list_n"]))
         path = "破位"
@@ -192,7 +205,8 @@ def plan(day: pd.DataFrame, idx_dist: float, p: dict) -> dict | None:
         return None
     return {"path": path,
             "cands": [{"code": str(r.ts_code), "rk": int(r.rk),
-                       "close_adj": float(r.close_adj), "dh60": float(r.dh60)}
+                       "close_adj": float(r.close_adj), "dh60": float(r.dh60),
+                       "pct": float(r.pct)}
                       for r in c.itertuples()]}
 
 
@@ -219,6 +233,10 @@ def choose(pl: dict | None, day: pd.DataFrame, p: dict) -> tuple[str, dict] | No
         if not np.isfinite(o) or cd["close_adj"] <= 0:
             continue
         gap = (o / cd["close_adj"] - 1) * 100
+        # 第257轮: 候选票当日跌幅上限（漏斗语义: 不合格就往下看一层）
+        dpct = p.get("deep_pct_max") if pl["path"] != "破位" else p.get("break_pct_max")
+        if dpct is not None and float(cd.get("pct", 0.0)) > float(dpct):
+            continue
         if pl["path"] == "破位":
             ok = gap <= float(p["n1_gap_max"])
         else:

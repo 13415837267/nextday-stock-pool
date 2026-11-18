@@ -167,6 +167,7 @@ function ruleSummary(P) {
   if (P.list_n != null) parts.push(`名单 ${P.list_n} 只`);
   if (P.idx_dist_max != null) parts.push(`指数 ≤ ${P.idx_dist_max}%`);
   if (P.dist_high60_max != null) parts.push(`距高 ≤ ${P.dist_high60_max}%`);
+  if (P.break_pct_max != null) parts.push(`破位需当日跌 ${P.break_pct_max}%`);
   if (P.deep_lo != null && P.deep_hi != null) parts.push(`深低开 ${P.deep_lo}~${P.deep_hi}%`);
   if (P.pos_break_pct != null && P.pos_deep_pct != null)
     parts.push(`仓位 ${P.pos_break_pct}/${P.pos_deep_pct}%`);
@@ -193,12 +194,15 @@ function fillCard(f, d) {
   const trig = (1 + gl / 100).toFixed(4);
 
   // 256: 漏斗式逐层递补 —— 每层 1 只, 第 1 层不合格才看第 2 层(最多 3 层)
+  // 257: 破位腿多一道"这只票自己也在崩"的门槛（当日跌幅 <= break_pct_max）
+  const bpct = P.break_pct_max == null ? null : Number(P.break_pct_max);
   const rule = broke
-    ? `从第 1 层往下试：开盘 ≤ 昨收 × ${trig} 就在该层买入，不合格才看下一层`
+    ? `从第 1 层往下试：${bpct == null ? "" : `当日跌幅 ≤ ${bpct}% 且 `}开盘 ≤ 昨收 × ${trig}，合格就买，不合格才看下一层`
     : `从第 ${nskip + 1} 层往下试：谁的开盘缺口落在 ${lo}% ~ ${hi}% 就买谁`;
   // 注意: 下界是"跌得太深不做"(实测跌太深接不住), 不等于跌停, 别写成"跌停开"
   const sub = broke
     ? (nlist > 1 ? `三层都不合格就空仓（通常第 1 层就成交）` : "高开就不做")
+      + (bpct == null ? "" : `；指数破了但这只票没跌到 ${bpct}% 的不做（指数崩、个股没崩是噪声）`)
       + (cd > 0 ? `；同路径成交后 ${cd} 个交易日内不再做` : "")
     : `缺口低于 ${lo}% 的不做（跌得更深，次日反弹不确定）；高于 ${hi}% 也不做（跌不够）`
       + (nskip > 0 ? `；跳过最崩的 ${nskip} 只（长期崩塌趋势，深低开后继续跌）` : "")

@@ -98,7 +98,8 @@ DEEP_SKIP = 3              # 252: 深低开从第 4 名起取（跳过距前高�
 MIN_LISTED_BARS = 250
 N1_GAP_MAX = 0.05          # T+1 开盘 <= 昨收 x (1+0.05%) 才算低开
 TOP_N = 3                  # 输出前 N 只排序候选（252: 10 -> 3）
-PICK_BREAK = "lowest"      # 252: 破位在名单里挑开盘最低的（原: 排名第一只达标的）
+PICK_BREAK = "best"        # 256: 漏斗逐层试（252 的 lowest 已退, 与 config 对齐）
+BREAK_PCT_MAX = -5.0       # 257: 破位腿要求第 1 名当日跌幅达标（全历史事件表挖出）
 
 
 def load_panel(dates: list[str]) -> pd.DataFrame:
@@ -245,7 +246,8 @@ def main() -> None:
         # ★ 破位判定只用 T 日可知的信息(指数 + 这只票自己的 dh60)。
         #   246 曾经在"明天会低开的票"里取第一名去判破位 —— 那是未来的信息, 已修。
         broke = (float(top0["idx_dist"]) <= IDX_DIST_MAX
-                 and float(top0["dh60"]) <= DIST_HIGH_MAX)
+                 and float(top0["dh60"]) <= DIST_HIGH_MAX
+                 and float(top0["pct"]) <= BREAK_PCT_MAX)
         free = full["ts_code"].map(lambda c: ntimes.get(c, 0) < MAX_TIMES).to_numpy()
         low = (full["n1_gap"] <= N1_GAP_MAX).to_numpy()
         if broke:
@@ -317,9 +319,12 @@ def main() -> None:
         cand = ranked(gl)
         top0 = cand.iloc[0]
         d60 = float(top0["dh60"])
-        broke = (li <= IDX_DIST_MAX) and (d60 <= DIST_HIGH_MAX)
+        broke = ((li <= IDX_DIST_MAX) and (d60 <= DIST_HIGH_MAX)
+                 and (float(top0["pct"]) <= BREAK_PCT_MAX))
         print(f"  当天最超跌: {top0['ts_code']}  距60日高 {d60:.1f}%  "
-              f"→ 破位条件 {'✅ 满足' if broke else '❌ 不满足'}")
+              f"当日 {float(top0['pct']):+.2f}%  "
+              f"→ 破位条件 {'✅ 满足' if broke else '❌ 不满足'}"
+              f"（需指数<={IDX_DIST_MAX}% / 距高<={DIST_HIGH_MAX}% / 当日<={BREAK_PCT_MAX}%）")
         # 252: 破位列前 TOP_N 只（在里头挑开盘最低的），深低开列第 4~6 名 —— 表与文案一致
         show = (cand.head(TOP_N) if broke
                 else cand.iloc[DEEP_SKIP:DEEP_SKIP + DEEP_RANK_MAX])

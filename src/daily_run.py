@@ -110,7 +110,9 @@ def _config_fp(cfg: dict) -> str:
         # 20: 255 池深档文案合并相邻同乘数(≥21/≥11 都满仓时只写一条) —— 纯展示, 不进指纹。
         # 21: 255 补位卡区分"有票"与"会买"(主策略被门槛否掉时改写"门槛未过, 仍不做")。
         # 22: 256 补位改漏斗(表头 层级 / 一层一只 / 逐层往下试) —— 纯展示, 不进指纹。
-        "plan_ver": 22,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 23: 257 破位腿加"当日跌幅 <= -5%"（参数变, 指纹本来就变；这里只是保证页面
+        #     的规则文案一定重算, 不靠指纹巧合）。
+        "plan_ver": 23,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1639,6 +1641,11 @@ def main():
     _fpar = {
         "idx_dist_max": float(fp["idx_dist_max"]),
         "dist_high60_max": float(fp["dist_high60_max"]),
+        # 257: 破位腿要求第 1 名当日跌幅达标（None 不下发, 页面按"无此条件"处理）
+        "break_pct_max": (None if fp.get("break_pct_max") is None
+                          else float(fp["break_pct_max"])),
+        "deep_pct_max": (None if fp.get("deep_pct_max") is None
+                         else float(fp["deep_pct_max"])),
         "deep_lo": float(fp["deep_lo"]),
         "deep_hi": float(fp["deep_hi"]),
         "deep_rank_max": int(fp["deep_rank_max"]),
@@ -1692,11 +1699,16 @@ def main():
                     # 但补位仍按"让位"处理(策略行为不变), 只是页面不能再写"钱留给主策略"。
                     "gate_blocked": bool(verified) and bool(_gate_blocked),
                     # 256: 漏斗式逐层递补 —— 页面文案必须说"一层一只", 不能再写"3 只里挑"
-                    "note": (f"破位成立 → 三层漏斗：第 1 层开盘不高于昨收就买，不合格才看下一层"
-                             if _pl["path"] == "破位" else
-                             f"破位不成立 → 只做深低开：第 {int(fp.get('deep_skip') or 0) + 1}~"
-                             f"{int(fp.get('deep_skip') or 0) + int(fp['deep_rank_max'])} 层，"
-                             f"开盘跌 {fp['deep_lo']}%~{fp['deep_hi']}% 就买"),
+                    # 257: 破位腿多了一句"这只票自己也在崩"的门槛, 文案必须说出来,
+                    #   否则读者会以为指数破位就买, 而实际还要第 1 名当日跌幅达标。
+                    "note": (("破位成立（第 1 名当日跌幅 ≤ %.1f%%）→ 三层漏斗："
+                              "第 1 层开盘不高于昨收就买，不合格才看下一层" % float(fp["break_pct_max"]))
+                             if (_pl["path"] == "破位" and fp.get("break_pct_max") is not None) else
+                             ("破位成立 → 三层漏斗：第 1 层开盘不高于昨收就买，不合格才看下一层"
+                              if _pl["path"] == "破位" else
+                              f"破位不成立 → 只做深低开：第 {int(fp.get('deep_skip') or 0) + 1}~"
+                              f"{int(fp.get('deep_skip') or 0) + int(fp['deep_rank_max'])} 层，"
+                              f"开盘跌 {fp['deep_lo']}%~{fp['deep_hi']}% 就买")),
                 }
         except Exception as _e:      # noqa: BLE001  补位失败不能拖垮主流程
             fill_info = {"enabled": True, "error": f"{type(_e).__name__}: {_e}"}
