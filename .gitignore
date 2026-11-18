@@ -118,3 +118,7 @@ output/w253b_*.pkl
 # 第254轮: 池深口径/振幅因子/全史复核的中间产物(bt_pool_254*.py 可重建)
 output/w254*.log
 output/w254*.pkl
+
+# 第255轮: 严格化对照的中间产物(bt_strict_255.py 可重建)
+output/w255*.log
+output/w255*.pkl

@@ -118,7 +118,7 @@ function fmtDate(s) {
 function mainCard(m, d) {
   const tt = d.t1_decision || {};
   const step = (tt.steps && tt.steps[0]) || {};
-  // 第253/254轮: 池深分档改成"16 只以上满仓、11-15 半仓、11 只以下不做"之后, 用户看到
+  // 第253/255轮: 池深分档收敛成两档("11 只以上满仓、11 只以下不做")之后, 用户看到
   // "参考仓位 40%"会不知道 40% 从哪来。
   // 把当日达标票数直接摆在仓位旁边 —— 它是仓位档位的唯一输入(盘后即知, 无未来函数)。
   // pool_n=0 是备用池票(没有"池深"概念), 显示 "-" 而不是 "0 只"。
@@ -214,6 +214,7 @@ function fillCard(f, d) {
 
   let warn = "";
   if (f.let_way) warn = "今天主策略也有票：9:25 补位成交则主策略停手，二选一。";
+  else if (f.blocked && f.gate_blocked) warn = "今天主策略有票但评分/池深未过（空仓）→ 补位仍不做，保持单腿纪律。";
   else if (f.blocked) warn = "今天主策略有票 → 补位不做，钱留给主策略。";
   else if (f.note) warn = "";
 

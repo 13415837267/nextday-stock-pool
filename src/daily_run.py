@@ -105,7 +105,11 @@ def _config_fp(cfg: dict) -> str:
         #     直接决定"今天该买几成", 页面上必须能看到新档位, 版本号一并标上便于反查。
         # 18: 254 主策略卡补一条"池深: 达标9只→当日不做" —— 纯展示文案, 不进指纹;
         #     不升版本号 CI 会幂等跳过, 页面停在"只写了评分原因"的旧口径上。
-        "plan_ver": 18,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 19: 255 池深档退回 253(11-15 由半仓改回不做) —— 参数变了指纹会变, 但页面
+        #     "参考仓位"必须立刻从 50% 回到"当日不做", 否则读者按旧档下单。
+        # 20: 255 池深档文案合并相邻同乘数(≥21/≥11 都满仓时只写一条) —— 纯展示, 不进指纹。
+        # 21: 255 补位卡区分"有票"与"会买"(主策略被门槛否掉时改写"门槛未过, 仍不做")。
+        "plan_ver": 21,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -310,10 +314,18 @@ def _position_note(ex: dict) -> str:
     ptiers = ex.get("pool_n_tiers") or []
     if ptiers:
         # 第253轮: 乘数 0 是"不做", 不是"0% 仓" —— 措辞必须跟着改, 否则规则说明与执行相反。
+        # 第255轮: 相邻同乘数的档合并(21/11 都满仓时只写"≥11只→100%"), 否则文案里会出现
+        #   两条一模一样的 100%, 读者以为少写了一档。
+        _merged: list[tuple] = []
+        for t in ptiers:            # ptiers 本身降序
+            _m = float(t.get("mult", 1.0))
+            if _merged and abs(_merged[-1][1] - _m) < 1e-9:
+                _merged[-1] = (t["min"], _m)
+            else:
+                _merged.append((t["min"], _m))
         seg = "/".join(
-            (f"≥{int(t['min'])}只→不做" if float(t.get("mult", 1.0)) <= 0
-             else f"≥{int(t['min'])}只→{float(t.get('mult', 1.0)):.0%}")
-            for t in ptiers)
+            (f"≥{int(mn)}只→不做" if m <= 0 else f"≥{int(mn)}只→{m:.0%}")
+            for mn, m in _merged)
         pos += (f"; 池深分档: 当日达标票 {seg}"
                 f"(达标≠买入只数, 恒买评分第1名; 标了不做的, 深低开仍可由下面的 gap_floor 回满仓)")
     for _t in (ex.get("gap_floor_tiers") or []):
@@ -1675,6 +1687,9 @@ def main():
                     "let_way": bool(verified) and bool(fp["let_way"]),
                     # 占用: 今天主策略有票 -> 这笔钱留给它, 补位不做
                     "blocked": bool(verified) and not bool(fp["let_way"]),
+                    # 第255轮: "有票"与"会买"是两件事 —— 评分/池深把票否掉时, 主策略其实空仓,
+                    # 但补位仍按"让位"处理(策略行为不变), 只是页面不能再写"钱留给主策略"。
+                    "gate_blocked": bool(verified) and bool(_gate_blocked),
                     # 252: 名单只 3 只, 破位改成"挑开盘最低的"; 深低开从第 4 名起取
                     "note": (f"破位成立 → 明早 {fp['list_n']} 只里挑开盘最低的那只"
                              if _pl["path"] == "破位" else
