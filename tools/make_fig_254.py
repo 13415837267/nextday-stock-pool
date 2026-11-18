@@ -180,7 +180,7 @@ def main() -> None:
     a5.text(2.5, base + 0.32, f"全样本 {base:.2f}%", ha="center", fontsize=8, color=DARK)
     a5.set_title("④ 连亏之后该做还是该停：没有「越亏越该停」这回事", fontsize=11.5, loc="left")
 
-    fig.suptitle("第 254 轮　池深档拆细（②）+ 三条被否掉的路（③④）",
+    fig.suptitle("第 254 轮　池深档拆细（②）与两条被否掉的路（③④）",
                  fontsize=13.5, x=0.07, ha="left", y=0.965)
     out = os.path.join(ROOT, "output/第254轮_三条路.png")
     fig.savefig(out, bbox_inches="tight", facecolor="white")
