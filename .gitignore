@@ -108,3 +108,9 @@ output/w252e_*.pkl
 output/w252e*.log
 output/w252f_*.pkl
 output/w252f*.log
+
+# 第253轮: 池深分档实验的中间产物与日志(bt_pool_253*.py 可重建)
+output/w253*.log
+output/w253*.pkl
+output/w253a_*.pkl
+output/w253b_*.pkl

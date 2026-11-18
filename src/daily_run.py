@@ -99,7 +99,9 @@ def _config_fp(cfg: dict) -> str:
         #     但"怎么挑"是代码逻辑(pick_break=lowest), 单看参数会漏, 版本号必须动。
         # 15: 补位卡摘要文案修一个多余空格(第 4~6 名里 谁 -> 第 4~6 名里，谁); 文案不进
         #     指纹, 不升版本号 CI 会幂等跳过, 页面停在旧文案上。
-        "plan_ver": 15,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 16: 253 池深分档改口径(11-20 满仓 / <11 不做) —— 参数在 _config_fp 里, 指纹本会变;
+        #     但"池深=0 时显示当日不参与"是代码逻辑, 单看参数看不出, 版本号一并标上。
+        "plan_ver": 16,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -144,6 +146,9 @@ def _pool_tier_mult(pool_n, ex: dict) -> tuple[float, str]:
             _m = float(t.get("mult", 1.0))
             # 第一百轮文案修正: pool_n 是"当日达标票数"(通过全部 dip 条件并完成评分),
             # 不是"买入只数"(恒为 1) —— 原写作"池深N只"与页面"候选 1 只"打架。
+            # 第253轮: 乘数为 0 是"不做", 不是"0% 仓位买入" —— 后者在页面读起来像还能成交。
+            if _m <= 0:
+                return _m, f"达标{_n}只→当日不做(池窄=孤立回调)"
             return _m, (f"达标{_n}只→{_m:.0%}仓(仅买评分第1名)" if _m != 1.0 else "")
     return 1.0, ""
 
@@ -300,9 +305,13 @@ def _position_note(ex: dict) -> str:
         pos += f"; 高开减仓: 竞价缺口 {seg}(照常成交, 只降仓位)"
     ptiers = ex.get("pool_n_tiers") or []
     if ptiers:
-        seg = "/".join(f"≥{int(t['min'])}只→{float(t.get('mult', 1.0)):.0%}"
-                       for t in ptiers)
-        pos += f"; 池深分档: 当日达标票 {seg}(只降仓位, 不弃单; 达标≠买入只数, 恒买评分第1名)"
+        # 第253轮: 乘数 0 是"不做", 不是"0% 仓" —— 措辞必须跟着改, 否则规则说明与执行相反。
+        seg = "/".join(
+            (f"≥{int(t['min'])}只→不做" if float(t.get("mult", 1.0)) <= 0
+             else f"≥{int(t['min'])}只→{float(t.get('mult', 1.0)):.0%}")
+            for t in ptiers)
+        pos += (f"; 池深分档: 当日达标票 {seg}"
+                f"(达标≠买入只数, 恒买评分第1名; 标了不做的, 深低开仍可由下面的 gap_floor 回满仓)")
     for _t in (ex.get("gap_floor_tiers") or []):
         pos += (f"; 深低开回满仓: 竞价缺口 ≤{float(_t['below']):g}% 且达标≥{int(_t.get('min_pool', 0))}只"
                 f" → 撤销池深折价、回{float(_t.get('floor', 1.0)):.0%}仓")
@@ -1492,8 +1501,10 @@ def main():
     # 第九十九轮: 池深分档 —— 与"评分档""高开档"同尺度叠乘, 只降仓不弃单。
     _pn_today = int(stats.get("scored") or 0)
     _pool_mult, _pool_txt = _pool_tier_mult((_pn_today if verified and verified[0].get("pool", "main") == "main" else None), ex)
-    if _pool_mult < 1.0 and allow_buy:
-        buy_note += f"; {_pool_txt}(当日候选池偏窄=孤立回调、缺共振)"
+    if _pool_mult <= 0 and allow_buy:
+        # 第253轮: 池深档 0 = 当日不做(池 <11 只)。但 gap_floor(缺口 ≤-1% 且池 ≥5)可能在
+        #   9:25 把它拉回满仓, 所以不用 allow_buy=False 一票否决, 只把话说清楚。
+        buy_note += f"; {_pool_txt}"
     # 第一百零一轮: 深低开撤销池深折价 —— 缺口 T+1 开盘才知道, 盘前只给规则
     _gft = ex.get("gap_floor_tiers") or []
     if _gft and allow_buy and _pool_mult < 1.0:
@@ -1554,7 +1565,7 @@ def main():
             "rule": ((f"评分 {float(_top_score):.2f} < 门槛 {float(_gate):g} → 不参与(空仓)"
                       if _gate_blocked else
                       (f"当日不参与 —— {buy_note}"
-                       if not allow_buy else
+                       if (not allow_buy or _pos_frac <= 0) else
                        (f"9:25集合竞价缺口 ≤ {_floor:g}% 且涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字 → 按{_pos_frac:.0%}仓位买入{_gat_rule}"
                         if _floor else
                         f"9:25集合竞价按开盘价直接买入(不设缺口门槛; 涨幅 < {float(ex['skip_open_gain']):g}%、未停牌未一字) → 按{_pos_frac:.0%}仓位买入{_gat_rule}")))),
