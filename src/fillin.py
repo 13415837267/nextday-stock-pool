@@ -1,15 +1,19 @@
-"""破位 / 深低开补位 —— 合入主策略引擎的一条并行腿（第 251 轮定稿）
+"""破位 / 深低开补位 —— 合入主策略引擎的一条并行腿（第 252 轮定稿）
 
 定位（251 重定）: 系统是单吊, 这条腿不是"补空档", 是"极端日伏击"。
-  248-250 一年做 30 笔, 把系统做成了周频轮动; 251 收敛到一年 7 笔。
+  248-250 一年做 30 笔, 把系统做成了周频轮动; 251 收敛到一年 7 笔, 252 进一步收到 4.6 笔。
 
 规则（与 tools/backfill_daily.py 完全同口径）:
 
   触发（T 日收盘可知 / T+1 9:25 可知）:
     a. 破位（优先）: 等权指数距 20 日线 <= -5.0%  且  当日 9 窗口排名第一的票
-       距前 60 日最高 <= -42%。T+1 开盘从排名往下, 第一只开盘 <= 昨收 x 1.0005 的买入。
-    b. 深低开（破位不成立时）: T+1 开盘缺口落在 -8.0% ~ -5.0%（含 -5%）, 只在前 8 名里挑,
-       取排名最好的。下界 -8% 不是跌停: 实测 -9.5~-8 一档单笔仅 0.99%, 跌太深接不住。
+       距前 60 日最高 <= -42%。名单只列前 3 只; T+1 开盘在这 3 只里挑**开盘最低**的
+       （且不高于昨收 x 1.0005）。252 实测: 28 笔破位, 单笔 1.90% -> 2.77%,
+       去掉最好的 3 笔后 0.45% -> 1.90% —— 不是靠极值, 是"同批超跌票里买最便宜的"。
+    b. 深低开（破位不成立时）: T+1 开盘缺口落在 -8.0% ~ -5.0%（含 -5%）。
+       名单只列 3 只, 且**跳过距前高最远的 3 只**（从第 4 名起取）。
+       43 笔分档: 1-3 名单笔 0.43%, 4-8 名 2.29% —— 距前高最远的那几只是长期
+       崩塌趋势, 深低开后继续跌; 中段超跌才有反弹弹性。
     c. 冷却: 同一条腿成交后 10 个交易日内不再做。
 
   仓位: 破位 30% / 深低开 50%。
@@ -37,18 +41,31 @@ DEFAULTS = {
     "dist_high60_max": -42.0,
     "deep_lo": -8.0,
     "deep_hi": -5.0,
-    "deep_rank_max": 8,
+    "deep_rank_max": 3,
     "pos_break": 0.30,
     "pos_deep": 0.50,
     "max_times": 8,
     "min_listed_bars": 250,
     "n1_gap_max": 0.05,
-    "list_n": 10,
+    "list_n": 3,
     "let_way": True,
     # 第251轮: 同一条腿成交后 N 个交易日内不再做。
     #   温故: 破位日 332 笔落在 54 波里(间隔 5 日算一波), 最长的波连续 23 个交易日都在破位 ——
     #   2008 式阴跌里"越跌越买"是摊平, 不是单吊。0 = 不限(248 行为)。
     "cooldown_days": 10,
+    # 第252轮: 名单内怎么挑。"best"=排名最好的那个; "lowest"=开盘缺口最深的那个(252 定稿)。
+    #   池宽压到 3 只后, 顺延空间没了, 问题从"挑得到吗"变成"挑得对吗":
+    #   破位 28 笔单笔 1.90% -> 2.77%, 去最好 3 笔 0.45% -> 1.90%。
+    "pick_break": "lowest",
+    "pick_deep": "best",
+    # 第252轮: 深低开腿的候选来源。"rank"=9 窗口排名(定稿); "pct"=当日跌幅榜前 N。
+    #   ★ 跌幅榜已证伪(252D): 135 笔单笔 -0.80%、胜率 44% —— "昨天跌最狠的"不是
+    #   "明天崩到位的", 是"接着崩的"。留着这个开关只为留证据, 不要打开。
+    "deep_pool": "rank",
+    # 第252轮: 深低开腿从排名第 deep_skip+1 名开始取（定稿 3 = 跳过最崩的 3 只）。
+    #   43 笔按名次分档: 1-3 名单笔 0.43%, 4-8 名 2.29% —— 距前高最远的那几只
+    #   是长期崩塌趋势, 深低开后继续跌; 中段超跌才有反弹弹性。
+    "deep_skip": 3,
 }
 
 
@@ -163,8 +180,14 @@ def plan(day: pd.DataFrame, idx_dist: float, p: dict) -> dict | None:
         c = d.head(int(p["list_n"]))
         path = "破位"
     else:
-        c = d.head(int(p["deep_rank_max"]))
         path = "深低开"
+        if str(p.get("deep_pool", "rank")) == "pct":
+            # 当日跌幅榜(升序)前 N —— 跌得最狠的明天更可能接着崩, 缺口命中率更高
+            c = d.sort_values(["pct", "amount"], ascending=[True, False]).head(int(p["deep_rank_max"]))
+            c = c.assign(rk=c["rk"])       # 保留 9 窗口名次供页面/诊断
+        else:
+            _sk = max(0, int(p.get("deep_skip", 0) or 0))
+            c = d.iloc[_sk:_sk + int(p["deep_rank_max"])]
     if not len(c):
         return None
     return {"path": path,
@@ -174,10 +197,15 @@ def plan(day: pd.DataFrame, idx_dist: float, p: dict) -> dict | None:
 
 
 def choose(pl: dict | None, day: pd.DataFrame, p: dict) -> tuple[str, dict] | None:
-    """T+1 开盘(9:25): 用开盘价在名单里从上往下挑第一只合格的。"""
+    """T+1 开盘(9:25): 用开盘价在名单里从上往下挑第一只合格的。
+
+    pick_* = "lowest" 时改成"合格的里面挑开盘缺口最深的那个"（第252轮实验项）。
+    """
     if not pl:
         return None
+    mode = str(p.get("pick_break" if pl["path"] == "破位" else "pick_deep", "best"))
     px = day.set_index(day["ts_code"].astype(str))
+    best = None
     for cd in pl["cands"]:
         code = cd["code"]
         if code not in px.index:
@@ -192,12 +220,17 @@ def choose(pl: dict | None, day: pd.DataFrame, p: dict) -> tuple[str, dict] | No
             continue
         gap = (o / cd["close_adj"] - 1) * 100
         if pl["path"] == "破位":
-            if gap <= float(p["n1_gap_max"]):
-                return code, {"gap": gap, "path": "破位", "rk": cd["rk"], "open_adj": o}
+            ok = gap <= float(p["n1_gap_max"])
         else:
-            if float(p["deep_lo"]) < gap <= float(p["deep_hi"]):
-                return code, {"gap": gap, "path": "深低开", "rk": cd["rk"], "open_adj": o}
-    return None
+            ok = float(p["deep_lo"]) < gap <= float(p["deep_hi"])
+        if not ok:
+            continue
+        info = {"gap": gap, "path": pl["path"], "rk": cd["rk"], "open_adj": o}
+        if mode != "lowest":
+            return code, info
+        if best is None or gap < best[1]["gap"]:
+            best = (code, info)
+    return best
 
 
 def pos_of(path: str, p: dict) -> float:

@@ -1244,6 +1244,9 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                            if h.get("_top2") is not None and h.get("score") is not None else None),
                 "pos_frac": h.get("pos_frac"),
                 "_fillin": bool(h.get("_fillin")),      # 248: 这条腿不是主策略
+                # 第252轮: 补位明细带路径与名次, 才能回答"池收窄后挑中的是第几名、值不值"
+                **({"fill_path": h.get("_path"), "fill_rk": h.get("_rk")}
+                   if h.get("_fillin") else {}),
             })
             if _defer_units > 0:
                 # 尾腿: 保留原成本价与前收, 仅把应卖日推到 defer_days 之后(仍按同样规则卖出)

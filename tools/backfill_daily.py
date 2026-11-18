@@ -93,10 +93,12 @@ COOLDOWN_DAYS = 10         # 第251轮: 同一条腿成交后 N 个交易日不�
 POS_BREAK = 0.30           # 破位日仓位
 POS_DEEP = 0.50            # 深低开日仓位（单笔期望是破位的 1.8 倍，按比例给）
 DEEP_LO, DEEP_HI = -8.0, -5.0   # 个股自己崩的缺口区间（下界: 跌太深接不住）
-DEEP_RANK_MAX = 8          # 深低开路径只做 9 窗口排名前 8 的票
+DEEP_RANK_MAX = 3          # 深低开名单只数（252: 8 -> 3）
+DEEP_SKIP = 3              # 252: 深低开从第 4 名起取（跳过距前高最远的 3 只）
 MIN_LISTED_BARS = 250
 N1_GAP_MAX = 0.05          # T+1 开盘 <= 昨收 x (1+0.05%) 才算低开
-TOP_N = 10                 # 输出前 N 只排序候选, 供 T+1 开盘从上往下挑
+TOP_N = 3                  # 输出前 N 只排序候选（252: 10 -> 3）
+PICK_BREAK = "lowest"      # 252: 破位在名单里挑开盘最低的（原: 排名第一只达标的）
 
 
 def load_panel(dates: list[str]) -> pd.DataFrame:
@@ -247,14 +249,17 @@ def main() -> None:
         free = full["ts_code"].map(lambda c: ntimes.get(c, 0) < MAX_TIMES).to_numpy()
         low = (full["n1_gap"] <= N1_GAP_MAX).to_numpy()
         if broke:
-            sel_ = full[low & free]
+            # 252: 同批低开票里挑开盘最低的那只（经济含义: 买最便宜的, 赚当日超卖反弹）
+            sel_ = full[low & free].sort_values("n1_gap") if PICK_BREAK == "lowest" else full[low & free]
             why = "破位"
         else:
             # ★ 深低开: T+1 9:25 全池都能看到开盘价, 不必只盯 T 日第一名。
-            #   排名前 DEEP_RANK_MAX 里, 谁崩了 5~9.5% 就买谁(取排名最好的)。
+            #   252: 名单 = 第 DEEP_SKIP+1 ~ DEEP_SKIP+DEEP_RANK_MAX 名（跳过最崩的 3 只）——
+            #   1-3 名单笔 0.43%, 4-8 名 2.29%, 距前高最远的是长期崩塌趋势。
             keep = (low & free
                     & full["n1_gap"].between(DEEP_LO, DEEP_HI, inclusive="right").to_numpy()
-                    & (full["rk"] <= DEEP_RANK_MAX).to_numpy())
+                    & (full["rk"] > DEEP_SKIP).to_numpy()
+                    & (full["rk"] <= DEEP_SKIP + DEEP_RANK_MAX).to_numpy())
             sel_ = full[keep]
             why = "深低开"
         if not len(sel_):
@@ -315,16 +320,19 @@ def main() -> None:
         broke = (li <= IDX_DIST_MAX) and (d60 <= DIST_HIGH_MAX)
         print(f"  当天最超跌: {top0['ts_code']}  距60日高 {d60:.1f}%  "
               f"→ 破位条件 {'✅ 满足' if broke else '❌ 不满足'}")
-        # 破位看前 TOP_N（要往下挑第一只低开的），深低开只看前 DEEP_RANK_MAX —— 表与文案一致
-        show = cand.head(TOP_N if broke else DEEP_RANK_MAX)
+        # 252: 破位列前 TOP_N 只（在里头挑开盘最低的），深低开列第 4~6 名 —— 表与文案一致
+        show = (cand.head(TOP_N) if broke
+                else cand.iloc[DEEP_SKIP:DEEP_SKIP + DEEP_RANK_MAX])
         print(show[["ts_code", "close", "pct", "mr", "dh60", "dh250", "dh360", "amount"]]
               .to_string(index=False))
         print("\n  ★ 明早 9:25 开盘后, 两条路二选一:")
         print(f"    ① 破位路径 {'✅ 今天成立' if broke else '❌ 今天不成立'}"
               f" (指数 {li:+.2f}% <= {IDX_DIST_MAX}% 且 第一名距60日高 {d60:.1f}% <= {DIST_HIGH_MAX}%)")
-        print(f"       → 按上表从上往下, 第一只开盘价 <= 昨收×1.0005 的买入, 仓位 {POS_BREAK:.0%}")
-        print(f"    {'②' if not broke else '②(备选)'} 深低开路径: 上表前 {DEEP_RANK_MAX} 名里,"
+        print(f"       → 上表 {TOP_N} 只里, **开盘价最低**的那只买入(且 <= 昨收×1.0005), 仓位 {POS_BREAK:.0%}")
+        print(f"    {'②' if not broke else '②(备选)'} 深低开路径: 上表这 {DEEP_RANK_MAX} 只里,"
               f" 谁的开盘缺口落在 {DEEP_LO}% ~ {DEEP_HI}% 就买谁(取排名最好的), 仓位 {POS_DEEP:.0%}")
+        print(f"       名单是 9 窗口排名第 {DEEP_SKIP + 1}~{DEEP_SKIP + DEEP_RANK_MAX} 名 —— "
+              f"最崩的 {DEEP_SKIP} 只不接(1-3 名单笔 0.43%, 4-8 名 2.29%)")
         print(f"       注意: 缺口 < {DEEP_LO}% 的不做(跌得更深, 次日反弹不确定);")
         print(f"             缺口 > {DEEP_HI}% 跌得不够, 也不做")
         print("    破位成立时走①(两条都成立也走①), 只有②成立时走②, 都不成立就空仓")
@@ -336,7 +344,7 @@ def main() -> None:
         print(f"    今天主策略{'✅ 有信号' if ms else '❌ 没信号'} —— "
               + ("补位不做（钱要留给主策略，249: 让位实测是负贡献）"
                  if ms else "补位可以做（主策略明天不占用资金）"))
-        print(f"    历史(251 定稿, 2500日真实账户): 93.0% / -17.3% / 5.37  (补位 71 笔)")
+        print(f"    历史(252 定稿, 2500日真实账户): 90.0% / -17.2% / 5.23  (补位 51 笔)")
         print("    注: 历史回放的\"主策略占用\"取自 w232_trades.csv(全期回测), 与任意单次回测窗口的")
         print("        主策略交易可能差几笔, 会连锁影响 10 日冷却窗口 —— 审计时个别日期对不上属正常。")
         print("    对照: 249 口径 108.1% / -23.3% / 4.64 (补位 306 笔) —— 笔数砍 77%, 年化 -15pp")

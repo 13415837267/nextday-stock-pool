@@ -157,6 +157,7 @@ function ruleSummary(P) {
   const parts = [];
   if (P.cooldown_days != null && Number(P.cooldown_days) > 0)
     parts.push(`冷却 ${P.cooldown_days} 日`);
+  if (P.list_n != null) parts.push(`名单 ${P.list_n} 只`);
   if (P.idx_dist_max != null) parts.push(`指数 ≤ ${P.idx_dist_max}%`);
   if (P.dist_high60_max != null) parts.push(`距高 ≤ ${P.dist_high60_max}%`);
   if (P.deep_lo != null && P.deep_hi != null) parts.push(`深低开 ${P.deep_lo}~${P.deep_hi}%`);
@@ -178,18 +179,22 @@ function fillCard(f, d) {
   const gl = P.n1_gap_max == null ? 0.05 : Number(P.n1_gap_max);
   const lo = P.deep_lo == null ? -9.5 : Number(P.deep_lo);
   const hi = P.deep_hi == null ? -5.0 : Number(P.deep_hi);
-  const nmax = P.deep_rank_max == null ? (cands.length || 10) : Number(P.deep_rank_max);
+  const nmax = P.deep_rank_max == null ? (cands.length || 3) : Number(P.deep_rank_max);
+  const nskip = P.deep_skip == null ? 0 : Number(P.deep_skip);
+  const nlist = P.list_n == null ? (cands.length || 3) : Number(P.list_n);
   const cd = P.cooldown_days == null ? 0 : Number(P.cooldown_days);
   const trig = (1 + gl / 100).toFixed(4);
 
+  // 252: 破位不再"从上往下第一只", 改成"名单里开盘最低的那只"（同批超跌票买最便宜的）
   const rule = broke
-    ? `从上往下，第一只开盘价 ≤ 昨收 × ${trig} 的买入`
-    : `前 ${nmax} 名里，谁的开盘缺口落在 ${lo}% ~ ${hi}% 就买谁（取排名最好的）`;
-  // 注意: 下界是"跌得太深不做"(实测 -9.5~-8 档单笔只有 0.99%), 不等于跌停, 别写成"跌停开"
+    ? `${nlist} 只里，开盘价最低的那只买入（且 ≤ 昨收 × ${trig}）`
+    : `第 ${nskip + 1}~${nskip + nmax} 名里，谁的开盘缺口落在 ${lo}% ~ ${hi}% 就买谁（取排名最好的）`;
+  // 注意: 下界是"跌得太深不做"(实测跌太深接不住), 不等于跌停, 别写成"跌停开"
   const sub = broke
-    ? "高开的跳过、看下一只；一只都不低开就空仓"
+    ? (nlist > 1 ? "都比昨收高就空仓" : "高开就不做")
       + (cd > 0 ? `；同路径成交后 ${cd} 个交易日内不再做` : "")
     : `缺口低于 ${lo}% 的不做（跌得更深，次日反弹不确定）；高于 ${hi}% 也不做（跌不够）`
+      + (nskip > 0 ? `；跳过最崩的 ${nskip} 只（长期崩塌趋势，深低开后继续跌）` : "")
       + (cd > 0 ? `；同路径成交后 ${cd} 个交易日内不再做` : "");
 
   const rows = cands.map((c, i) => `
@@ -225,7 +230,7 @@ function fillCard(f, d) {
       <div class="sub">${esc(sub)}</div>
     </div>
 
-    ${cands.length ? `<div class="block-title">候选（按 9 窗口超跌排名）</div>
+    ${cands.length ? `<div class="block-title">候选（按 9 窗口超跌排名${nskip > 0 && !broke ? `，从第 ${nskip + 1} 名起` : ""}）</div>
     <table class="ctable">
       <thead><tr><th>#</th><th>股票</th><th>收盘</th><th>距60日高</th></tr></thead>
       <tbody>${rows}</tbody>

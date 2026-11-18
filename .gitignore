@@ -94,3 +94,17 @@ output/w249_combo_*.json
 output/w251_*.pkl
 output/w251_grid.csv
 output/w251_brk.csv
+
+# 第252轮: 池宽/选法扫描的中间产物与日志(bt_fillin_252*.py 可重建, 每组 1~2 分钟)
+output/w252_*.pkl
+output/w252_*.log
+output/w252b_*.pkl
+output/w252b*.log
+output/w252c_*.pkl
+output/w252c*.log
+output/w252d_*.pkl
+output/w252d*.log
+output/w252e_*.pkl
+output/w252e*.log
+output/w252f_*.pkl
+output/w252f*.log

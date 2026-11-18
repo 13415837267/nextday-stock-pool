@@ -95,7 +95,9 @@ def _config_fp(cfg: dict) -> str:
         #     CI 的 fillin 是空名单, 而日历修复不改任何参数, 只能靠版本号触发重算。
         # 13: 251 补位收敛(门槛 -5/-42/-8/8名 + 冷却10) —— 参数本身会改 config_fp,
         #     但 cooldown_days 是新增键, 版本号也标一下, 便于从 JSON 反查是哪一版口径。
-        "plan_ver": 13,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 14: 252 补位池收到 3 只(破位改"挑开盘最低", 深低开跳最崩的 3 只) —— 参数变了,
+        #     但"怎么挑"是代码逻辑(pick_break=lowest), 单看参数会漏, 版本号必须动。
+        "plan_ver": 14,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1605,6 +1607,8 @@ def main():
         "deep_hi": float(fp["deep_hi"]),
         "deep_rank_max": int(fp["deep_rank_max"]),
         "list_n": int(fp["list_n"]),
+        "deep_skip": int(fp.get("deep_skip") or 0),
+        "pick_break": str(fp.get("pick_break") or "best"),
         "pos_break_pct": round(float(fp["pos_break"]) * 100),
         "pos_deep_pct": round(float(fp["pos_deep"]) * 100),
         "max_times": int(fp["max_times"]),
@@ -1648,10 +1652,12 @@ def main():
                     "let_way": bool(verified) and bool(fp["let_way"]),
                     # 占用: 今天主策略有票 -> 这笔钱留给它, 补位不做
                     "blocked": bool(verified) and not bool(fp["let_way"]),
-                    "note": ("破位成立 → 明早从上往下，第一只低开的买入"
+                    # 252: 名单只 3 只, 破位改成"挑开盘最低的"; 深低开从第 4 名起取
+                    "note": (f"破位成立 → 明早 {fp['list_n']} 只里挑开盘最低的那只"
                              if _pl["path"] == "破位" else
-                             f"破位不成立 → 只做深低开：前 {fp['deep_rank_max']} 名里谁低开在 "
-                             f"{fp['deep_lo']}%~{fp['deep_hi']}% 就买谁"),
+                             f"破位不成立 → 只做深低开：第 {int(fp.get('deep_skip') or 0) + 1}~"
+                             f"{int(fp.get('deep_skip') or 0) + int(fp['deep_rank_max'])} 名里 "
+                             f"谁低开在 {fp['deep_lo']}%~{fp['deep_hi']}% 就买谁"),
                 }
         except Exception as _e:      # noqa: BLE001  补位失败不能拖垮主流程
             fill_info = {"enabled": True, "error": f"{type(_e).__name__}: {_e}"}
