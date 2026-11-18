@@ -103,7 +103,9 @@ def _config_fp(cfg: dict) -> str:
         #     但"池深=0 时显示当日不参与"是代码逻辑, 单看参数看不出, 版本号一并标上。
         # 17: 254 把 11-20 拆成 16-20 满仓 / 11-15 半仓 —— 参数变了指纹本会变, 但这一档
         #     直接决定"今天该买几成", 页面上必须能看到新档位, 版本号一并标上便于反查。
-        "plan_ver": 17,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 18: 254 主策略卡补一条"池深: 达标9只→当日不做" —— 纯展示文案, 不进指纹;
+        #     不升版本号 CI 会幂等跳过, 页面停在"只写了评分原因"的旧口径上。
+        "plan_ver": 18,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -578,6 +580,12 @@ def _build_plans(cfg: dict, day, signal_date: str, verified: list, ranked: list,
             _observe.append(
                 f"系统口径: 可按 {t1.get('position_pct')}% 仓位参与"
                 + (f"; {_gat}" if _gat else ""))
+        # 第254轮: 池深档降到 0(11 只以下不做)时, "参考仓位 0%"有两个可能的原因 ——
+        #   评分不够、或池子太窄。allow_buy=False 时上面那条只写了评分原因(来自 buy_note),
+        #   池深这条要单独补一句, 否则用户看到 "0%" 会以为"评分够了就能买"。
+        _ptn = t1.get("pool_tier_note") or ""
+        if _ptn and float(t1.get("pool_tier_mult") or 0) <= 0:
+            _observe.append(f"池深: {_ptn}")
         _observe.append(
             f"开盘涨幅 < {float(ex.get('skip_open_gain', 10.0)):g}% 且非一字/非停牌才买得到"
             " [回测口径]")
