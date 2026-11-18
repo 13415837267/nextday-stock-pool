@@ -109,7 +109,8 @@ def _config_fp(cfg: dict) -> str:
         #     "参考仓位"必须立刻从 50% 回到"当日不做", 否则读者按旧档下单。
         # 20: 255 池深档文案合并相邻同乘数(≥21/≥11 都满仓时只写一条) —— 纯展示, 不进指纹。
         # 21: 255 补位卡区分"有票"与"会买"(主策略被门槛否掉时改写"门槛未过, 仍不做")。
-        "plan_ver": 21,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 22: 256 补位改漏斗(表头 层级 / 一层一只 / 逐层往下试) —— 纯展示, 不进指纹。
+        "plan_ver": 22,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1690,12 +1691,12 @@ def main():
                     # 第255轮: "有票"与"会买"是两件事 —— 评分/池深把票否掉时, 主策略其实空仓,
                     # 但补位仍按"让位"处理(策略行为不变), 只是页面不能再写"钱留给主策略"。
                     "gate_blocked": bool(verified) and bool(_gate_blocked),
-                    # 252: 名单只 3 只, 破位改成"挑开盘最低的"; 深低开从第 4 名起取
-                    "note": (f"破位成立 → 明早 {fp['list_n']} 只里挑开盘最低的那只"
+                    # 256: 漏斗式逐层递补 —— 页面文案必须说"一层一只", 不能再写"3 只里挑"
+                    "note": (f"破位成立 → 三层漏斗：第 1 层开盘不高于昨收就买，不合格才看下一层"
                              if _pl["path"] == "破位" else
                              f"破位不成立 → 只做深低开：第 {int(fp.get('deep_skip') or 0) + 1}~"
-                             f"{int(fp.get('deep_skip') or 0) + int(fp['deep_rank_max'])} 名里，"
-                             f"谁低开在 {fp['deep_lo']}%~{fp['deep_hi']}% 就买谁"),
+                             f"{int(fp.get('deep_skip') or 0) + int(fp['deep_rank_max'])} 层，"
+                             f"开盘跌 {fp['deep_lo']}%~{fp['deep_hi']}% 就买"),
                 }
         except Exception as _e:      # noqa: BLE001  补位失败不能拖垮主流程
             fill_info = {"enabled": True, "error": f"{type(_e).__name__}: {_e}"}
