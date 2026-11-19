@@ -123,7 +123,14 @@ function mainCard(m, d) {
   // 把当日达标票数直接摆在仓位旁边 —— 它是仓位档位的唯一输入(盘后即知, 无未来函数)。
   // pool_n=0 是备用池票(没有"池深"概念), 显示 "-" 而不是 "0 只"。
   const pn = (tt.pool_n == null ? null : Number(tt.pool_n));
-  const pnTxt = (pn == null || pn <= 0) ? "" : `（当日达标 ${pn} 只）`;
+  // 第258轮: 风控日(连续下跌第 N 日)会把仓位再压一档, 页面若只写"当日达标 12 只"而
+  //   仓位是 40%, 读者会以为 12 只对应 40%。把池深档与风控压降分别说出来。
+  const _tier = (tt.pool_tier_mult == null ? null : Math.round(Number(tt.pool_tier_mult) * 100));
+  const _risk = /风控中/.test(String(tt.buy_note || ""));
+  const pnTxt = (pn == null || pn <= 0) ? ""
+    : (_risk && _tier != null && m.position_pct != null && _tier > Number(m.position_pct))
+      ? `（当日达标 ${pn} 只→池深档 ${_tier}%，风控日压到 ${Number(m.position_pct)}%）`
+      : `（当日达标 ${pn} 只）`;
   const dt = m.dates || {};
   const obs = Array.isArray(m.observe) ? m.observe : [];
   const abt = Array.isArray(m.abort) ? m.abort : [];
@@ -210,7 +217,7 @@ function fillCard(f, d) {
 
   const rows = cands.map((c, i) => `
     <tr class="${i === 0 ? "top" : ""}">
-      <td>第 ${i + 1} 层</td>
+      <td>第 ${c.rank != null ? c.rank : i + 1} 层</td>
       <td>${c.name && c.name !== c.code ? esc(c.name) + " " : ""}<span style="color:var(--muted)">${esc(c.code || "")}</span></td>
       <td>${numStr(c.close)}</td>
       <td>${c.dh60 == null ? "-" : numStr(c.dh60) + "%"}</td>

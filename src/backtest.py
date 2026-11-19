@@ -256,6 +256,8 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
     #   而补位的 -3.51% 阈值是在"未清洗"口径下扫出来的(feat234/backfill_daily 都没清洗)。
     #   晚一步算, 同一天的指数会从 -0.79% 变成 -4.48%, 破位日直接判错一大片。
     fill_idx = fillin.market_dist(panel) if _fp0["enabled"] else None
+    # 258: 深低开腿的中期环境闸门用"距 60 日线"(口径同 market_dist, 只把 ma 换成 60)
+    fill_idx60 = fillin.market_dist(panel, 60) if _fp0["enabled"] else None
     print(f"[2/4] 计算指标(共{len(panel):,}行)...")
     panel = build_indicators(panel)
     _fp = _fp0
@@ -285,7 +287,8 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
     except Exception:
         pass
     return {"main_dates": main_dates, "by_date": by_date, "reg": reg, "reg_base": reg_base,
-            "per_code": per_code, "names": names, "fill_idx": fill_idx}
+            "per_code": per_code, "names": names, "fill_idx": fill_idx,
+            "fill_idx60": fill_idx60}
 
 
 def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) -> dict:
@@ -1374,7 +1377,8 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
         #   若只在 else 分支算补位，等于把"最该补位的日子"全漏掉。
         if fill_on:
             _idxd = fillin.idx_dist_at(ctx.get("fill_idx"), d)
-            _pl = fillin.plan(by_date[d], _idxd, fp)
+            _pl = fillin.plan(by_date[d], _idxd, fp,
+                              fillin.idx_dist_at(ctx.get("fill_idx60"), d))
             if _pl is not None:
                 fill_stat["trigger"] += 1
                 # 251: 冷却 —— 刚补过就不再连做。

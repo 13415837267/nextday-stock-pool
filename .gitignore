@@ -131,3 +131,7 @@ output/w256*.pkl
 output/mine/
 output/w257*.pkl
 output/w257*.log
+
+# 第258轮: 补位对照中间产物(bt_skip_258.py 可重建)
+output/w258*.pkl
+output/w258*.log

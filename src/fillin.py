@@ -173,7 +173,8 @@ def rank_day(day: pd.DataFrame, p: dict) -> pd.DataFrame:
     return out
 
 
-def plan(day: pd.DataFrame, idx_dist: float, p: dict) -> dict | None:
+def plan(day: pd.DataFrame, idx_dist: float, p: dict,
+         idx_dist60: float | None = None) -> dict | None:
     """T 日收盘: 产出补位计划。返回 None = 今天两条路都不成立。
 
     返回 {"path": "破位"/"深低开", "cands": [{code, rk, close_adj, dh60}]}
@@ -194,6 +195,17 @@ def plan(day: pd.DataFrame, idx_dist: float, p: dict) -> dict | None:
         path = "破位"
     else:
         path = "深低开"
+        # 第258轮: 深低开只在"中期调整"里做。全历史事件表(非破位/第1-3层/缺口-9~-6, 65笔):
+        #   指数距 60 日线 <= 2% 的 45 笔 4.24%, > 2% 的 20 笔 0.36%(胜率 50%)。
+        #   逻辑: 指数在 60 日线上方 = 中期上升趋势, 此时个股深低开是个股自己出事
+        #   (利空/爆雷/减持), 不是跟着大盘跌, 反弹概率低; 指数在 60 日线下方才是"跟跌"。
+        _d60 = p.get("deep_dist60_max")
+        if _d60 is not None and idx_dist60 is not None:
+            try:
+                if not np.isnan(float(idx_dist60)) and float(idx_dist60) > float(_d60):
+                    return None
+            except (TypeError, ValueError):
+                pass
         if str(p.get("deep_pool", "rank")) == "pct":
             # 当日跌幅榜(升序)前 N —— 跌得最狠的明天更可能接着崩, 缺口命中率更高
             c = d.sort_values(["pct", "amount"], ascending=[True, False]).head(int(p["deep_rank_max"]))

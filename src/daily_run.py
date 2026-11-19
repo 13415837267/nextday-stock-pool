@@ -112,7 +112,8 @@ def _config_fp(cfg: dict) -> str:
         # 22: 256 补位改漏斗(表头 层级 / 一层一只 / 逐层往下试) —— 纯展示, 不进指纹。
         # 23: 257 破位腿加"当日跌幅 <= -5%"（参数变, 指纹本来就变；这里只是保证页面
         #     的规则文案一定重算, 不靠指纹巧合）。
-        "plan_ver": 23,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 24: 258 池深档 11-15 只 100% -> 50%（"参考仓位"必须立刻变, 否则读者按旧档下单）。
+        "plan_ver": 24,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1000,6 +1001,7 @@ def main():
               + " —— 指标与风控基于实际可得日期计算, 请核查数据源")
     # ★ 补位指数必须在 build_indicators 之前算(它会把 pre_close<=0 的 pct 置 NaN)
     fill_idx = fillin.market_dist(panel) if fp["enabled"] else None
+    fill_idx60 = fillin.market_dist(panel, 60) if fp["enabled"] else None   # 258
     panel = build_indicators(panel)
     if fp["enabled"]:
         panel = fillin.add_indicators(panel)
@@ -1662,7 +1664,8 @@ def main():
     if fp["enabled"]:
         try:
             _idxd = fillin.idx_dist_at(fill_idx, signal_date)
-            _pl = fillin.plan(by_date[signal_date], _idxd, fp)
+            _pl = fillin.plan(by_date[signal_date], _idxd, fp,
+                              fillin.idx_dist_at(fill_idx60, signal_date))
             if _pl is None:
                 fill_info = {"enabled": True, "path": None, "cands": [], "params": _fpar,
                              "note": "补位两条路都不成立（指数没破位、也没有够深的超跌票）"}
