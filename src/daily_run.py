@@ -113,7 +113,9 @@ def _config_fp(cfg: dict) -> str:
         # 23: 257 破位腿加"当日跌幅 <= -5%"（参数变, 指纹本来就变；这里只是保证页面
         #     的规则文案一定重算, 不靠指纹巧合）。
         # 24: 258 池深档 11-15 只 100% -> 50%（"参考仓位"必须立刻变, 否则读者按旧档下单）。
-        "plan_ver": 24,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 25: 260 新增 capacity 块（开盘一笔能装多少钱）。策略参数零变更, 但 latest 多一个
+        #     字段就必须重算一次, 否则页面上永远看不到它。
+        "plan_ver": 25,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1716,6 +1718,30 @@ def main():
         except Exception as _e:      # noqa: BLE001  补位失败不能拖垮主流程
             fill_info = {"enabled": True, "error": f"{type(_e).__name__}: {_e}"}
 
+    # ---- 第260轮: 开盘容量提示 ----
+    # 730 笔买入日分钟线实测: 首分钟(含集合竞价)成交额只占全天 2.78%(中位),
+    # 按 5% 参与率, "开盘一笔"能装的钱 = 全天成交额 x 2.78% x 5% ≈ 全天 x 0.14%。
+    # 规模更大就必须拉长买入窗口, 用下表(各窗口累计成交额占全天比, 中位)反查等待时间。
+    # 这张表是实测分布, 不是参数: 改它等于改对市场的描述。
+    _CAP_SHARE = [(1, .0278), (3, .0538), (5, .0765), (10, .1260), (15, .1689),
+                  (30, .2733), (60, .4178), (120, .6087), (240, 1.0)]
+    _cap = None
+    try:
+        if verified:
+            _c0 = verified[0]["code"]
+            _amt = float(day_df.loc[day_df["ts_code"] == _c0, "amount"].iloc[0])
+            _part = 0.05
+            _cap_open = _amt * 0.0278 * _part
+            _lad = []
+            for _wan in (10, 30, 100, 300):
+                _need = _wan * 1e4 / (_amt * _part)
+                _w = next((w for w, sh in _CAP_SHARE if sh >= _need), None)
+                _lad.append({"wan": _wan, "wait": _w})
+            _cap = {"code": _c0, "amt_yi": round(_amt / 1e8, 2),
+                    "cap_open_wan": round(_cap_open / 1e4, 1), "ladder": _lad}
+    except Exception as _e:      # noqa: BLE001  容量提示失败不能拖垮主流程
+        _cap = {"error": f"{type(_e).__name__}: {_e}"}
+
     latest = {
         "update_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
@@ -1740,6 +1766,7 @@ def main():
         "regime": regime_info,
         "stats": {k: v for k, v in stats.items()},
         "picks": verified,
+        "capacity": _cap,         # 第二百六十轮: 开盘一笔能装多少钱(实盘执行口径)
         "fillin": fill_info,      # 第二百四十八轮: 补位腿(破位/深低开)的明日名单
         "plans": _plans,          # 第一百七十六轮: 明日计划(双方案, 人工执行)
         "t1_decision": t1_decision,

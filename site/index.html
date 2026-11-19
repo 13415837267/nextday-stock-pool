@@ -134,6 +134,15 @@ function mainCard(m, d) {
   const dt = m.dates || {};
   const obs = Array.isArray(m.observe) ? m.observe : [];
   const abt = Array.isArray(m.abort) ? m.abort : [];
+  // 第260轮: 开盘容量。730 笔买入日分钟线实测: 开盘一笔(含集合竞价)只能吃掉全天成交额的
+  //   ~0.14%(2.78% 首分钟占比 x 5% 参与率)。钱多了就必须拉长窗口, 页面把这条摆出来,
+  //   否则"参考仓位 100%"会被读成"可以随便放大"。
+  const cap = d.capacity && !d.capacity.error ? d.capacity : null;
+  const capTxt = !cap ? "" : (
+    `今日成交 ${cap.amt_yi} 亿 · 开盘一笔约可装 ${cap.cap_open_wan} 万` +
+    ((cap.ladder || []).filter(x => x.wait).map(x => `买 ${x.wan} 万需前 ${x.wait} 分钟`).join("；")
+      .replace(/^/, "；") || "")
+  );
   return `
   <div class="card">
     <div class="stock">
@@ -161,6 +170,7 @@ function mainCard(m, d) {
       <div class="kv"><div class="k">评分</div><div class="v">${m.score == null ? "-" : esc(Number(m.score).toFixed(2))}</div></div>
     </div>
 
+    ${capTxt ? `<div class="order" style="margin-top:12px"><div class="k">开盘容量</div><div class="rule">${esc(capTxt)}</div></div>` : ""}
     ${obs.length ? `<div class="block-title">观察</div><ul class="rules">${obs.map(x => "<li>" + esc(x) + "</li>").join("")}</ul>` : ""}
     ${abt.length ? `<div class="block-title" style="color:var(--red)">放弃条件</div><ul class="rules abort">${abt.map(x => "<li>" + esc(x) + "</li>").join("")}</ul>` : ""}
   </div>`;
