@@ -837,7 +837,16 @@ def select_stocks(
     # 备用策略只在"主力策略当日完全没有信号"的交易日补位。与"层层顺延"相比,
     # 这条模式避开的是主力已出票但竞价缺口不达标的日子(逆向选择最严重的一天)。
     if sel_cfg.get("fallback_slot") and picks:
-        return picks, stats
+        # 第二百五十九轮(可选): 主力有候选但**质量不达标**时, 让备用族接。
+        # 第九十一轮的单槽漏斗把"主力出票"一律视作"今天已经有票", 于是一年里有 28% 的交易日
+        # (评分 < min_top1_score 的那些) 既不买主力(评分门拦下)也没有备用族(选择阶段就没算)——
+        # 账面空仓, 但空仓的原因不是"今天没有机会", 而是"唯一的机会质量差"。
+        # 这里只在"主力首选评分确定低于门槛"时并入备用池: 评分在 T 日收盘后即知,
+        # 不含未来函数; 缺口不达标的日子(另一种空仓来源)不在此列, 仍维持单槽漏斗。
+        _g = float((cfg.get("execution") or {}).get("min_top1_score") or 0.0)
+        _sc = picks[0].get("score")
+        if not (sel_cfg.get("fb_on_score_gate") and _sc is not None and float(_sc) < _g):
+            return picks, stats
     have = {p["code"] for p in picks}
     seen = {"main": 1}
     for i, fb in enumerate(fbs, 1):
