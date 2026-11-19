@@ -1,7 +1,7 @@
 {
- "update_time": "2026-11-20 00:41:42",
+ "update_time": "2026-11-20 01:51:10",
  "signal_date": "2026-11-19",
- "config_fp": "5a2ebbbd61eb",
+ "config_fp": "6ae8f589500f",
  "plan": {
   "buy_date": "2026-11-20",
   "buy_point": "开盘集合竞价(09:15-09:25挂单, 09:25成交)",
@@ -67,6 +67,25 @@
    {
     "wan": 300,
     "wait": 60
+   }
+  ],
+  "sell_open_wan": 21.2,
+  "sell_ladder": [
+   {
+    "wan": 10,
+    "wait": 5
+   },
+   {
+    "wan": 30,
+    "wait": 15
+   },
+   {
+    "wan": 100,
+    "wait": 60
+   },
+   {
+    "wan": 300,
+    "wait": 240
    }
   ]
  },

@@ -139,9 +139,13 @@ function mainCard(m, d) {
   //   否则"参考仓位 100%"会被读成"可以随便放大"。
   const cap = d.capacity && !d.capacity.error ? d.capacity : null;
   const capTxt = !cap ? "" : (
-    `今日成交 ${cap.amt_yi} 亿 · 开盘一笔约可装 ${cap.cap_open_wan} 万` +
+    `今日成交 ${cap.amt_yi} 亿 · 买：开盘一笔约可装 ${cap.cap_open_wan} 万` +
     ((cap.ladder || []).filter(x => x.wait).map(x => `买 ${x.wan} 万需前 ${x.wait} 分钟`).join("；")
-      .replace(/^/, "；") || "")
+      .replace(/^/, "；") || "") +
+    (cap.sell_open_wan == null ? "" :
+      `；卖：收盘前 5 分钟约装 ${cap.sell_open_wan} 万` +
+      ((cap.sell_ladder || []).filter(x => x.wait).map(x => `${x.wan} 万需前 ${x.wait} 分钟`).join("；")
+        .replace(/^/, "，") || ""))
   );
   return `
   <div class="card">

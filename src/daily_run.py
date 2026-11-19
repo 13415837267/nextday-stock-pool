@@ -115,7 +115,8 @@ def _config_fp(cfg: dict) -> str:
         # 24: 258 池深档 11-15 只 100% -> 50%（"参考仓位"必须立刻变, 否则读者按旧档下单）。
         # 25: 260 新增 capacity 块（开盘一笔能装多少钱）。策略参数零变更, 但 latest 多一个
         #     字段就必须重算一次, 否则页面上永远看不到它。
-        "plan_ver": 25,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 26: 260b 容量块补卖端（收盘前 5 分钟可卖 / 100 万需提前多少分钟）。
+        "plan_ver": 26,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1725,6 +1726,11 @@ def main():
     # 这张表是实测分布, 不是参数: 改它等于改对市场的描述。
     _CAP_SHARE = [(1, .0278), (3, .0538), (5, .0765), (10, .1260), (15, .1689),
                   (30, .2733), (60, .4178), (120, .6087), (240, 1.0)]
+    # 卖端(第260轮b): 730 笔卖出日分钟线实测, 收盘最后 1/5/30/60 分钟成交额占全天
+    # 1.16%/2.92%/13.48%/22.08%。两端不对称: 尾盘是涨的, 分批卖到收盘的均价只比收盘价低
+    # 0.04%, 所以卖端"拉长窗口"几乎免费, 瓶颈全在买端(延迟是纯成本)。
+    _CAP_SHARE_SELL = [(1, .0116), (3, .0135), (5, .0292), (15, .0807), (30, .1348),
+                       (60, .2208), (120, .3972), (240, 1.0)]
     _cap = None
     try:
         if verified:
@@ -1737,8 +1743,14 @@ def main():
                 _need = _wan * 1e4 / (_amt * _part)
                 _w = next((w for w, sh in _CAP_SHARE if sh >= _need), None)
                 _lad.append({"wan": _wan, "wait": _w})
+            _sell_lad = []
+            for _wan in (10, 30, 100, 300):
+                _need = _wan * 1e4 / (_amt * _part)
+                _w = next((w for w, sh in _CAP_SHARE_SELL if sh >= _need), None)
+                _sell_lad.append({"wan": _wan, "wait": _w})
             _cap = {"code": _c0, "amt_yi": round(_amt / 1e8, 2),
-                    "cap_open_wan": round(_cap_open / 1e4, 1), "ladder": _lad}
+                    "cap_open_wan": round(_cap_open / 1e4, 1), "ladder": _lad,
+                    "sell_open_wan": round(_amt * 0.0292 * _part / 1e4, 1), "sell_ladder": _sell_lad}
     except Exception as _e:      # noqa: BLE001  容量提示失败不能拖垮主流程
         _cap = {"error": f"{type(_e).__name__}: {_e}"}
 
