@@ -808,7 +808,22 @@ def run_backtest(cfg: dict, days: int | None = None, ctx: dict | None = None) ->
                     return (0 if _in else 1, -float(p.get("score") or 0.0))
                 qualified.sort(key=_key)
             qualified = qualified[:max_n]
+        # 第二百六十一轮: 多票的池深闸门(可选) —— 池浅时第二只更可能是"凑数"而非共振。
+        # 只限"额外那几只", 第 1 名任何时候都买(不能因为池浅就空仓, 那是 253~259 轮已证伪的放宽/收紧)。
+        if qualified and ex.get("multi_min_pool"):
+            _pn0 = int(qualified[0].get("_pool_n") or 0)
+            if _pn0 < int(ex["multi_min_pool"]):
+                qualified = qualified[:1]
         frac = ex.get("alloc_frac_pct", 5.0) / 100.0
+        # 第二百六十一轮: 同日多票等分仓位(可选, 缺省关)。
+        # alloc_frac_pct 的语义是"当日总敞口": 买入 n 只时每只 1/n, 只数少时自动回满,
+        # 不会因为"这天只有一只达标"而变成半仓(那是把敞口和机会数混为一谈)。
+        # 动机: 第255轮实测 score 与收益相关 -0.018(五档非单调), 也就是"只买第 1 名"
+        # 在统计上没有依据 —— 第 1/2/3 名的期望是同一个数。既然如此, 同一天只用 1 份
+        # 预算就是白白放弃了 2/3 的正期望下注机会(单吊 = 每天只能复利一次)。
+        if ex.get("alloc_split_by_count") and qualified:
+            _na = max(1, len(qualified))
+            frac /= float(_na)
         if not day_ok:
             if day_frac:
                 frac *= day_frac.get(d, 0.0)  # 连续空仓超限后的降仓参与系数
