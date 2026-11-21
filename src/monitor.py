@@ -20,12 +20,13 @@ def compute_monitor(settled_rets: list[float], mon_cfg: dict) -> dict:
     """按事前注册阈值评估滚动失效状态。
 
     settled_rets: 已结算交易的单笔净收益(%)时间序列(旧→新);
-    mon_cfg: config.yaml 的 monitor 块(window/watch_mean_pct/warn_mean_pct/halt_mean_pct)。
+    mon_cfg: config.yaml 的 monitor 块(window/watch_mean_pct/warn_mean_pct/halt_mean_pct/benchmark_mean_pct)。
     """
     window = int(mon_cfg.get("window", 20))
     watch = float(mon_cfg.get("watch_mean_pct", 1.0))
     warn = float(mon_cfg.get("warn_mean_pct", 0.0))
     halt = float(mon_cfg.get("halt_mean_pct", -1.0))
+    benchmark = float(mon_cfg.get("benchmark_mean_pct", 1.14))
 
     recent = [float(r) for r in settled_rets[-window:]]
     n = len(recent)
@@ -45,7 +46,7 @@ def compute_monitor(settled_rets: list[float], mon_cfg: dict) -> dict:
                 f"建议新开仓降至最小试验仓并暂缓放大")
     elif mean < watch:
         level = "黄-观察带"
-        note = (f"近{window}笔均值{mean}%低于{watch}%观察线(回测基准+3.24%的一半), "
+        note = (f"近{window}笔均值{mean}%低于{watch}%观察线, "
                 f"缩短复盘周期, 关注承接线成交质量")
     else:
         level = "绿-正常"
@@ -58,6 +59,8 @@ def compute_monitor(settled_rets: list[float], mon_cfg: dict) -> dict:
         "mean_pct": mean,
         "win_pct": win,
         "note": note,
+        "benchmark_mean_pct": benchmark,
+        "drift_pct": round(mean - benchmark, 2) if mean is not None else None,
         "thresholds": {"watch_mean_pct": watch, "warn_mean_pct": warn,
                        "halt_mean_pct": halt, "window": window},
     }
