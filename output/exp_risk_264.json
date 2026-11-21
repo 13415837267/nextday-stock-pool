@@ -1,0 +1,223 @@
+{
+  "kelly": {
+    "daily_mean_pct": 0.3818,
+    "daily_std_pct": 2.767,
+    "full_kelly": 4.99,
+    "half_kelly": 2.49,
+    "quarter_kelly": 1.25
+  },
+  "grid_rf0": [
+    {
+      "f": 0.1,
+      "rf": 0.0,
+      "cagr_pct": 9.99,
+      "maxdd_pct": -3.02,
+      "underwater_days": 432,
+      "worst_year_pct": -1.15,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.2,
+      "rf": 0.0,
+      "cagr_pct": 20.75,
+      "maxdd_pct": -5.97,
+      "underwater_days": 432,
+      "worst_year_pct": -2.32,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.3,
+      "rf": 0.0,
+      "cagr_pct": 32.3,
+      "maxdd_pct": -8.84,
+      "underwater_days": 432,
+      "worst_year_pct": -3.52,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.4,
+      "rf": 0.0,
+      "cagr_pct": 44.69,
+      "maxdd_pct": -11.63,
+      "underwater_days": 432,
+      "worst_year_pct": -4.75,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.5,
+      "rf": 0.0,
+      "cagr_pct": 57.94,
+      "maxdd_pct": -14.36,
+      "underwater_days": 486,
+      "worst_year_pct": -6.0,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.6,
+      "rf": 0.0,
+      "cagr_pct": 72.08,
+      "maxdd_pct": -17.02,
+      "underwater_days": 486,
+      "worst_year_pct": -7.28,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.7,
+      "rf": 0.0,
+      "cagr_pct": 87.15,
+      "maxdd_pct": -19.61,
+      "underwater_days": 486,
+      "worst_year_pct": -8.58,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.8,
+      "rf": 0.0,
+      "cagr_pct": 103.16,
+      "maxdd_pct": -22.13,
+      "underwater_days": 486,
+      "worst_year_pct": -9.9,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.9,
+      "rf": 0.0,
+      "cagr_pct": 120.15,
+      "maxdd_pct": -24.58,
+      "underwater_days": 486,
+      "worst_year_pct": -11.25,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 1.0,
+      "rf": 0.0,
+      "cagr_pct": 138.13,
+      "maxdd_pct": -26.98,
+      "underwater_days": 486,
+      "worst_year_pct": -12.61,
+      "neg_years": 1,
+      "total_years": 13
+    }
+  ],
+  "grid_rf2": [
+    {
+      "f": 0.1,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 11.99,
+      "maxdd_pct": -2.91,
+      "underwater_days": 249,
+      "worst_year_pct": 0.59,
+      "neg_years": 0,
+      "total_years": 13
+    },
+    {
+      "f": 0.2,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 22.7,
+      "maxdd_pct": -5.87,
+      "underwater_days": 334,
+      "worst_year_pct": -0.79,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.3,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 34.17,
+      "maxdd_pct": -8.75,
+      "underwater_days": 337,
+      "worst_year_pct": -2.2,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.4,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 46.43,
+      "maxdd_pct": -11.57,
+      "underwater_days": 432,
+      "worst_year_pct": -3.64,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.5,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 59.52,
+      "maxdd_pct": -14.31,
+      "underwater_days": 432,
+      "worst_year_pct": -5.09,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.6,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 73.46,
+      "maxdd_pct": -16.98,
+      "underwater_days": 432,
+      "worst_year_pct": -6.56,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.7,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 88.27,
+      "maxdd_pct": -19.58,
+      "underwater_days": 432,
+      "worst_year_pct": -8.05,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.8,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 103.97,
+      "maxdd_pct": -22.11,
+      "underwater_days": 486,
+      "worst_year_pct": -9.55,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 0.9,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 120.59,
+      "maxdd_pct": -24.57,
+      "underwater_days": 486,
+      "worst_year_pct": -11.07,
+      "neg_years": 1,
+      "total_years": 13
+    },
+    {
+      "f": 1.0,
+      "rf": 7.936507936507937e-05,
+      "cagr_pct": 138.13,
+      "maxdd_pct": -26.98,
+      "underwater_days": 486,
+      "worst_year_pct": -12.61,
+      "neg_years": 1,
+      "total_years": 13
+    }
+  ],
+  "full_strategy": {
+    "f": 1.0,
+    "rf": 0.0,
+    "cagr_pct": 138.13,
+    "maxdd_pct": -26.98,
+    "underwater_days": 486,
+    "worst_year_pct": -12.61,
+    "neg_years": 1,
+    "total_years": 13
+  }
+}
