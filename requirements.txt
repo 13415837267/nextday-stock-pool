@@ -1,7 +1,7 @@
 # zzshare 未发布到 PyPI, 从 GitHub 源码安装
-git+https://github.com/zzquant/zzshare.git
+git+https://github.com/zzquant/zzshare.git@89cc9833cd97c5333106a88af75a6f324c27d6a8
 pandas>=2.0
 numpy>=1.24
 PyYAML>=6.0
 # 择时层数据源(第四十轮): 两融账户统计/期指基差, 免凭据
-akshare>=1.19
+akshare==1.20.65

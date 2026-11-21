@@ -1,5 +1,24 @@
 # 更新日志
 
+## 第二百六十五轮: 工程稳健性收紧 —— 三处最小改动(2026-11-21)
+
+> 用户: 「继续」→ 项目负责人决策「策略研究收口, 转向工程/实盘稳定性审计」
+
+**只读审计生产链路(daily_run/backtest/data_api/workflow/policy/requirements)后, 落地三处最小改动, 不改任何策略参数与选股/结算语义**:
+
+- **面板趋势窗口硬闸**(`src/daily_run.py`): 原"面板缺日仅告警继续跑"会让 MA20/bias20 在残缺窗口上
+  静默算出错误信号。现在最近 `PANEL_TREND_WINDOW=20` 个交易日缺任何一天即 `raise`, 触发既有
+  failure→Issue; 远窗口缺日仍只告警(仅影响补位腿 dh60/dh360 长窗口)。
+- **数据质量致命异常告警**(`src/daily_run.py` + `.github/workflows/daily.yml`): `latest.json` 的
+  `data_quality` 新增 `errors` 字段(真实异常/收盘价缺失/代码重复等不含"正常"标记的条目),
+  daily.yml 在每日选股后新增"数据质量硬闸"步: 有 errors 即 exit 1 触发失败告警, 防静默脏数据进站点。
+- **依赖 pin**(`requirements.txt`): zzshare 从 `git+...zzshare.git`(浮动) 固定到提交
+  `89cc9833`; akshare 从 `>=1.19` 固定到 `==1.20.65`, 消除上游破坏性变更炸每日任务的回滚风险。
+
+**审计结论**: 幂等/时区日历/自进化护栏均健康; 其余发现(risk:auto 自动改 config、`_month_gain_state`
+死代码)仅登记待后续拍板, 本轮不动。`config.yaml`/`plan_ver`/`src` 业务语义零变更。
+
+
 ## 第二百六十四轮: 单吊策略该拿多少钱 —— 答案是满仓(2026-11-21)
 
 > 用户: 「你是项目负责人, 你来决定优化方向, 但是要单吊策略」

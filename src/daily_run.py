@@ -31,6 +31,8 @@ from .backtest import fetch_panel
 
 DISCLAIMER = "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
 
+PANEL_TREND_WINDOW = 20  # 主策略趋势窗口(MA20/bias20): 最近20个交易日缺日会污染信号, 故硬闸
+
 
 def _fmt(d: str) -> str:
     return f"{d[:4]}-{d[4:6]}-{d[6:]}"
@@ -998,10 +1000,17 @@ def main():
         raise RuntimeError("面板抓取为空, 指标无法计算, 终止(请检查数据源)")
     got = set(panel["trade_date"].astype(str))
     miss = [d for d in panel_dates if str(d) not in got]
+    recent = panel_dates[-PANEL_TREND_WINDOW:]
+    recent_miss = [d for d in recent if str(d) not in got]
+    if recent_miss:
+        raise RuntimeError(
+            f"面板信号趋势窗口(最近{PANEL_TREND_WINDOW}个交易日)缺日 {len(recent_miss)} 天: "
+            + ", ".join(recent_miss[:5]) + (" ..." if len(recent_miss) > 5 else "")
+            + " —— 缺日会污染 MA20/bias20, 终止(请用 backfill 回填或核查数据源)")
     if miss:
-        print(f"⚠ 面板缺日 {len(miss)}/{len(panel_dates)} 天: {', '.join(miss[:5])}"
+        print(f"⚠ 面板远窗口缺日 {len(miss)}/{len(panel_dates)} 天: {', '.join(miss[:5])}"
               + (" ..." if len(miss) > 5 else "")
-              + " —— 指标与风控基于实际可得日期计算, 请核查数据源")
+              + " —— 仅影响补位腿 dh60/dh360 等长窗口指标, 主策略趋势窗口完整")
     # ★ 补位指数必须在 build_indicators 之前算(它会把 pre_close<=0 的 pct 置 NaN)
     fill_idx = fillin.market_dist(panel) if fp["enabled"] else None
     fill_idx60 = fillin.market_dist(panel, 60) if fp["enabled"] else None   # 258
@@ -1788,7 +1797,9 @@ def main():
         # auction.json 自 2026-11-01 起已停止更新(生成器不在仓库内), 该对账永远返回
         # checked=False, 属"永不执行却天天写一条 note"的僵尸路径; 前端 au.checked
         # 判空后不渲染, 删除字段对页面无影响。
-        "data_quality": {"anomalies": anomalies, "rows": int(len(day_df))},
+        "data_quality": {"anomalies": anomalies,
+                         "errors": [a for a in anomalies if "正常" not in a],
+                         "rows": int(len(day_df))},
         "disclaimer": DISCLAIMER,
     }
     (out_dir / "latest.json").write_text(

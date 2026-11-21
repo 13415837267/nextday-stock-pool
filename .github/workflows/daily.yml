@@ -91,6 +91,21 @@ jobs:
           ZZSHARE_TOKEN: ${{ secrets.ZZSHARE_TOKEN }}   # 可选, 提升访问频率
         run: python -m src.daily_run
 
+      - name: 数据质量硬闸(致命异常则失败告警, 防静默脏数据)
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("output/latest.json", encoding="utf-8"))
+          errs = (d.get("data_quality") or {}).get("errors") or []
+          if errs:
+              print("数据质量致命异常:")
+              for x in errs:
+                  print(" -", x)
+              sys.exit(1)
+          print("数据质量校验通过")
+          PY
+
       - name: 每日回测刷新网页绩效(复用当日增量数据)
         if: steps.guard.outputs.skip != 'true'
         env:
