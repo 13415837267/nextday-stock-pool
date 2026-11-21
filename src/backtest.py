@@ -48,6 +48,9 @@ from .rule_text import rules_line
 from .selector import apply_regime, build_indicators, regime_base, select_stocks, split_by_date
 
 
+PANEL_TREND_WINDOW = 20  # 主策略趋势窗口(MA20/bias20): 最近20个交易日缺日会污染信号, 故硬闸
+
+
 # ----------------------------------------------------------------------
 def _downcast_float(df: pd.DataFrame) -> pd.DataFrame:
     """数值列 float64->float32(就地): 价格数据7位有效数字足够, 内存减半。"""
@@ -251,6 +254,14 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
         raise RuntimeError(f"交易日不足: 需要{n_days + warmup}日, 仅获取{len(all_days)}日")
     panel_dates = all_days[-(n_days + warmup):]
     panel = fetch_panel(client, panel_dates, float32=True)
+    got = set(panel["trade_date"].astype(str))
+    recent = panel_dates[-PANEL_TREND_WINDOW:]
+    recent_miss = [d for d in recent if str(d) not in got]
+    if recent_miss:
+        raise RuntimeError(
+            f"面板信号趋势窗口(最近{PANEL_TREND_WINDOW}个交易日)缺日 {len(recent_miss)} 天: "
+            + ", ".join(recent_miss[:5]) + (" ..." if len(recent_miss) > 5 else "")
+            + " —— 缺日会污染 MA20/bias20, 终止(请用 backfill 回填或核查数据源)")
     _fp0 = fillin.params(cfg)
     # ★ 必须在 build_indicators 之前算: 它会把 pre_close<=0 的 pct 置 NaN(数据卫生),
     #   而补位的 -3.51% 阈值是在"未清洗"口径下扫出来的(feat234/backfill_daily 都没清洗)。

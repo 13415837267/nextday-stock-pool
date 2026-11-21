@@ -1,5 +1,24 @@
 # 更新日志
 
+## 第二百六十七轮: 回测绩效链路同样补面板硬闸(2026-11-21)
+
+> 用户: 「继续」→ 继续工程审计, 发现 backtest.py 与 daily_run.py 同一类缺口
+
+**回测绩效刷新(站点展示的 backtest.json 绩效数字)原来也有"面板缺日静默降级"**:
+
+- `src/backtest.py`: `PANEL_TREND_WINDOW` 常量下沉到 backtest.py(数据层, fetch_panel 所在),
+  `prepare_context` 在 `fetch_panel` 后新增与 daily_run 一致的趋势窗口硬闸: 最近 20 个交易日
+  缺任何一天即 `raise`, 触发 failure→Issue。站点绩效数字不再会被残缺面板悄悄污染。
+- `src/daily_run.py`: 原本地 `PANEL_TREND_WINDOW` 常量删除, 改为 `from .backtest import PANEL_TREND_WINDOW`,
+  单一数据源, 避免两处 20 漂移。
+
+**登记未动(低优先级)**: `tools/paper_tape.py` 单条回填 `except Exception` 会写 `rec["note"]`
+(错误有留痕、非静默, 但不会触发告警); `src/backtest.py` `stock_names` 失败 `except: pass`
+(仅影响名称显示, 不影响数值)。均待后续拍板。
+
+**`config.yaml`/`plan_ver`/策略语义零变更**。
+
+
 ## 第二百六十六轮: 自进化治理收紧 —— risk 从 auto 改 review(2026-11-21)
 
 > 用户: 「继续」→ 落实第265轮审计登记的第 1 项(risk:auto 自动改 config 通道)

@@ -27,11 +27,9 @@ from .monitor import compute_monitor
 from .rule_text import sell_rule_text
 from . import fillin
 from .selector import STRATEGY_CN, build_indicators, regime_series, select_stocks, split_by_date
-from .backtest import fetch_panel
+from .backtest import PANEL_TREND_WINDOW, fetch_panel
 
 DISCLAIMER = "本候选池为量化模型自动生成, 仅供研究参考, 不构成任何投资建议。股市有风险, 入市需谨慎。"
-
-PANEL_TREND_WINDOW = 20  # 主策略趋势窗口(MA20/bias20): 最近20个交易日缺日会污染信号, 故硬闸
 
 
 def _fmt(d: str) -> str:
