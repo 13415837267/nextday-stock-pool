@@ -302,10 +302,19 @@ async function load() {
       dqWarn = `<div class="err" style="margin:10px 0 0">数据质量异常 ${dqErrs.length} 项：`
              + `${esc(dqErrs.join("；"))}，可能污染信号，勿据此下单。</div>`;
     }
+    const mon = d.monitor || null;
+    let monWarn = "";
+    if (mon && mon.level && (mon.level.indexOf("黄") === 0 || mon.level.indexOf("红") === 0 || mon.level.indexOf("深红") === 0)) {
+      const cls = mon.level.indexOf("红") !== -1 ? "err" : "warn";
+      const drift = (typeof mon.drift_pct === "number")
+        ? `，vs 回测基准 ${mon.benchmark_mean_pct}% 漂移 ${mon.drift_pct >= 0 ? "+" : ""}${mon.drift_pct}pp` : "";
+      monWarn = `<div class="${cls}" style="margin:10px 0 0">失效监测[${esc(mon.level)}] 近${mon.window}笔均值 ${mon.mean_pct}%${drift}。${esc(mon.note)}</div>`;
+    }
     meta.innerHTML = `数据获取时间 <b>${esc(t)}</b> · 信号日 <b>${esc(sd)}</b>`
       + (d.fillin && d.fillin.params ? `<div style="margin-top:6px">当前口径：` + ruleSummary(d.fillin.params) + `</div>` : "")
       + stale
-      + dqWarn;
+      + dqWarn
+      + monWarn;
 
     const m = d.plans && d.plans.main;
     const f = (d.fillin && d.fillin.enabled && !d.fillin.error
