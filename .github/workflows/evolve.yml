@@ -141,31 +141,12 @@ jobs:
             echo "本次没有裁决结果（可能全部被账本去重）"; exit 0
           fi
 
-          # kind=risk 且 policy.autonomy.risk=auto 的候选直接进 main；其余一律走 PR。
-          AUTO_IDS=$(python3 tools/evolve.py passes --kind risk)
-          REVIEW_IDS=$(python3 tools/evolve.py passes --exclude-kind risk)
+          # 第二百六十五轮收紧: policy.autonomy 已无 auto 类(risk 也改为 review),
+          # 所有 PASS 候选一律走 PR, 不再自动改 config 直进 main。
+          REVIEW_IDS=$(python3 tools/evolve.py passes)
 
-          if [ -z "$AUTO_IDS" ] && [ -z "$REVIEW_IDS" ]; then
+          if [ -z "$REVIEW_IDS" ]; then
             echo "本次无 PASS 候选, 不需要改动 config"; exit 0
-          fi
-
-          if [ -n "$AUTO_IDS" ]; then
-            for id in $AUTO_IDS; do
-              python tools/evolve.py apply --id "$id"
-            done
-            git add config.yaml evolution
-            if git diff --cached --quiet; then
-              echo "自动类无实际变更"
-            else
-              git commit -m "自进化(自动类): $AUTO_IDS 通过全部闸门 [skip ci]"
-              BR=$(git rev-parse --abbrev-ref HEAD)
-              for i in 1 2 3 4 5; do
-                git pull --rebase --autostash origin "$BR" >/dev/null 2>&1 || true
-                if git push origin "HEAD:$BR"; then break; fi
-                echo "push 被拒, 第 $i 次重试"; sleep $((i * 5))
-                if [ $i -eq 5 ]; then echo "自动类推送失败"; exit 1; fi
-              done
-            fi
           fi
 
           if [ -n "$REVIEW_IDS" ]; then

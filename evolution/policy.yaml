@@ -6,7 +6,7 @@
 # 引擎只读它，不写它。
 # =====================================================================
 version: 1
-updated: "2026-11-02"
+updated: "2026-11-21"
 
 windows:
   # 封存区起点：此日及之后的行情在 fast / extended 两段中**不可见**。
@@ -66,6 +66,8 @@ autonomy:
   # bias20_max W=0.058(chi2=3.03, df=4, 临界 9.49)、dip_vol_ratio_max W=0.008，
   # 即参数排名在年份之间与抛硬币无异。参数层已经不可辨识，
   # 任何"自动搜参数"的机制都只是在批量生产过拟合，必须从治理层禁掉。
+  # 为什么 risk 是 review（第二百六十五轮收紧）：满仓单吊的 config 已冻结，risk 类候选
+  # 通过全闸门后也不许自动改 config 直进 main，与 structure 一致走 PR，堵死唯一自动通道。
   structure: review
-  risk: auto
+  risk: review
   parameter: never

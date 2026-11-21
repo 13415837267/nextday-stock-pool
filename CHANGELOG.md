@@ -1,5 +1,22 @@
 # 更新日志
 
+## 第二百六十六轮: 自进化治理收紧 —— risk 从 auto 改 review(2026-11-21)
+
+> 用户: 「继续」→ 落实第265轮审计登记的第 1 项(risk:auto 自动改 config 通道)
+
+**堵死"唯一无需人工评审就能自动改 config.yaml"的通道**:
+
+- `evolution/policy.yaml`: `autonomy.risk: auto → review`(与 structure 一致), 满仓单吊的
+  config 已冻结, risk 类候选通过全闸门后也只开 PR, 人工合并才生效。
+- `.github/workflows/evolve.yml`: 原 `passes --kind risk` 直进 main 的自动应用分支删除,
+  所有 PASS 候选一律 `passes`(全类型)走 PR。原 `AUTO_IDS`/自动类提交逻辑随同移除。
+
+**理由**: 这是唯一一个"候选通过全部门后无需人看就改 config 并 push main"的路径, 与"参数冻结、
+config 零变更"的收口纪律冲突。收紧后自进化只剩 structure/risk 两条 review 通道 + parameter 硬禁。
+
+**`config.yaml`/`plan_ver`/`src/` 业务语义零变更**(只改治理策略与工作流路由)。
+
+
 ## 第二百六十五轮: 工程稳健性收紧 —— 三处最小改动(2026-11-21)
 
 > 用户: 「继续」→ 项目负责人决策「策略研究收口, 转向工程/实盘稳定性审计」
