@@ -300,6 +300,7 @@ def main() -> None:
     panel = fetch_panel(client, days, float32=False)
     by_date = split_by_date(panel)
 
+    fill_errs = 0
     for rec in tape["records"]:
         try:
             if rec.get("state") == "planned" and rec.get("buy_date") in by_date:
@@ -308,6 +309,7 @@ def main() -> None:
                 fill_sell(rec, by_date, ex)
         except Exception as e:      # 单条记录失败不应中断整份台账
             rec["note"] = (rec.get("note") or "") + f" | 回填异常: {type(e).__name__}: {e}"
+            fill_errs += 1
 
     tape["stats"] = compute_stats(tape)
     tape["meta"]["updated"] = datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S")
@@ -334,6 +336,8 @@ def main() -> None:
                   f"均价高于开盘的笔数占比 {e.get('vwap_prem_pos_share')}%")
     if st.get("void_reasons"):
         print("  未成交原因:", st["void_reasons"])
+    if fill_errs:
+        raise SystemExit(f"台账回填异常 {fill_errs} 条(已写入 note), 请核查数据源/交易日历")
 
 
 if __name__ == "__main__":
