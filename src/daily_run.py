@@ -997,9 +997,15 @@ def main():
     if not len(panel):
         raise RuntimeError("面板抓取为空, 指标无法计算, 终止(请检查数据源)")
     got = set(panel["trade_date"].astype(str))
-    miss = [d for d in panel_dates if str(d) not in got]
     recent = panel_dates[-PANEL_TREND_WINDOW:]
     recent_miss = [d for d in recent if str(d) not in got]
+    if recent_miss:
+        refill = [df for df in (client.market_day(d) for d in recent_miss) if len(df)]
+        if refill:
+            panel = pd.concat([panel] + refill, ignore_index=True)
+            got = set(panel["trade_date"].astype(str))
+            recent_miss = [d for d in recent if str(d) not in got]
+    miss = [d for d in panel_dates if str(d) not in got]
     if recent_miss:
         raise RuntimeError(
             f"面板信号趋势窗口(最近{PANEL_TREND_WINDOW}个交易日)缺日 {len(recent_miss)} 天: "
