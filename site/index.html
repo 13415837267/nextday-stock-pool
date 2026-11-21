@@ -84,6 +84,8 @@
   .ctable tr.top td { color: var(--gold); }
   .warn { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px;
           background: rgba(212,160,23,.1); border: 1px solid rgba(212,160,23,.35); color: var(--gold); }
+  .err { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px;
+         background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.4); color: var(--red); }
 
   footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);
            color: var(--muted); font-size: 12px; }
@@ -294,9 +296,16 @@ async function load() {
               + `（最近一次 ${esc(d.update_time)}），可能定时任务中断，勿据此下单。</div>`;
       }
     }
+    const dqErrs = (d.data_quality && Array.isArray(d.data_quality.errors)) ? d.data_quality.errors : [];
+    let dqWarn = "";
+    if (dqErrs.length) {
+      dqWarn = `<div class="err" style="margin:10px 0 0">数据质量异常 ${dqErrs.length} 项：`
+             + `${esc(dqErrs.join("；"))}，可能污染信号，勿据此下单。</div>`;
+    }
     meta.innerHTML = `数据获取时间 <b>${esc(t)}</b> · 信号日 <b>${esc(sd)}</b>`
       + (d.fillin && d.fillin.params ? `<div style="margin-top:6px">当前口径：` + ruleSummary(d.fillin.params) + `</div>` : "")
-      + stale;
+      + stale
+      + dqWarn;
 
     const m = d.plans && d.plans.main;
     const f = (d.fillin && d.fillin.enabled && !d.fillin.error
