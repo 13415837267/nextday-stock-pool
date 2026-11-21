@@ -1,5 +1,20 @@
 # 更新日志
 
+## 第二百七十二轮: 面板缺日自愈补齐回测侧(2026-11-21)
+
+> 用户: 「继续」→ 补齐第271轮面板缺日自愈的回测对称侧
+
+**背景**: 第271轮只给 daily_run 实盘链路硬闸加了"缺日补拉一次", backtest prepare_context 硬闸
+当时标注 float32 路径 dtype 复杂暂不动。本轮确认 backtest 已有 `_downcast_float`, 补拉的 float64
+降为 float32 后即可与面板 concat, 障碍不存在。
+
+**改动(零策略语义变更)**: `src/backtest.py` prepare_context 硬闸前, 对最近 20 交易日缺的天重新
+`market_day` 补拉一次, 补到的 df 经 `_downcast_float` 后 `pd.concat` 并入 panel 并重算缺日集合,
+补不上仍走原 raise。两处硬闸(daily_run/backtest)行为现已一致, 回测绩效数字不再因偶发空返回误报失败。
+
+**未动**: config 参数、选股/结算语义、paper_tape 台账。
+
+
 ## 第二百七十一轮: 面板缺日自愈 —— 硬闸前补拉一次(2026-11-21)
 
 > 用户: 「继续」→ 实盘可靠性方向(c)面板缺日自愈

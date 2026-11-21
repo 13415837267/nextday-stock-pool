@@ -258,6 +258,12 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
     recent = panel_dates[-PANEL_TREND_WINDOW:]
     recent_miss = [d for d in recent if str(d) not in got]
     if recent_miss:
+        refill = [_downcast_float(df) for df in (client.market_day(d) for d in recent_miss) if len(df)]
+        if refill:
+            panel = pd.concat([panel] + refill, ignore_index=True)
+            got = set(panel["trade_date"].astype(str))
+            recent_miss = [d for d in recent if str(d) not in got]
+    if recent_miss:
         raise RuntimeError(
             f"面板信号趋势窗口(最近{PANEL_TREND_WINDOW}个交易日)缺日 {len(recent_miss)} 天: "
             + ", ".join(recent_miss[:5]) + (" ..." if len(recent_miss) > 5 else "")
