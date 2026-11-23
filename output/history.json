@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-23",
+   "buy_date": "2026-11-24",
+   "sell_date": "2026-11-25",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "601107.SH",
+     "name": "四川成渝",
+     "close": 7.0,
+     "pct": -3.85,
+     "reasons": "回调-3.8%、量比3.12(缩量)、20日动量13%、乖离0.4%、换手2.1%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "6ae8f589500f"
+  },
+  {
    "publish_date": "2026-11-20",
    "buy_date": "2026-11-23",
    "sell_date": "2026-11-24",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "6ae8f589500f"
+   "config_fp": "6ae8f589500f",
+   "skip_chain": [
+    "第1名 模塑科技: 缺口-1.9%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-19",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "6ae8f589500f",
    "skip_chain": [
     "第1名 永创智能: 缺口-2.5%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "603901.SH"
    ]
   },
   {
