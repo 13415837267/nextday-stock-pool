@@ -264,6 +264,9 @@ def prepare_context(cfg: dict, days: int | None = None) -> dict:
             got = set(panel["trade_date"].astype(str))
             recent_miss = [d for d in recent if str(d) not in got]
     if recent_miss:
+        max_got = max((str(d) for d in recent if str(d) in got), default=None)
+        recent_miss = [d for d in recent_miss if max_got is None or str(d) <= max_got]
+    if recent_miss:
         raise RuntimeError(
             f"面板信号趋势窗口(最近{PANEL_TREND_WINDOW}个交易日)缺日 {len(recent_miss)} 天: "
             + ", ".join(recent_miss[:5]) + (" ..." if len(recent_miss) > 5 else "")
