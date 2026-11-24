@@ -117,7 +117,8 @@ def _config_fp(cfg: dict) -> str:
         #     字段就必须重算一次, 否则页面上永远看不到它。
         # 26: 260b 容量块补卖端（收盘前 5 分钟可卖 / 100 万需提前多少分钟）。
         # 27: 273 新增 track（候选跟踪卡，每日首选信号日→最新涨跌）—— latest 多一个字段必须重算。
-        "plan_ver": 27,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
+        # 28: 275 track 排序改为新到旧（latest 顺序变，必须重算）。
+        "plan_ver": 28,         # 227b: 卖出端滑点归零(收盘集合竞价), 挂单卡补 sell_rule, 合计 20.9pp
     }
     raw = json.dumps(key, sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
@@ -1805,7 +1806,6 @@ def main():
         })
         if len(track) >= track_keep:
             break
-    track.reverse()
 
     latest = {
         "update_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
