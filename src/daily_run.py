@@ -1767,6 +1767,43 @@ def main():
     except Exception as _e:      # noqa: BLE001  容量提示失败不能拖垮主流程
         _cap = {"error": f"{type(_e).__name__}: {_e}"}
 
+    track_keep = int(cfg["pages"].get("track_keep_days", 20))
+    track = []
+    if verified:
+        _p0 = verified[0]
+        if _p0.get("code") and _p0.get("close"):
+            _c1 = close_of.get(_p0["code"])
+            if _c1:
+                track.append({
+                    "signal_date": _fmt(signal_date),
+                    "code": _p0["code"],
+                    "name": _p0.get("name", ""),
+                    "close": round(float(_p0["close"]), 2),
+                    "latest_close": round(float(_c1), 2),
+                    "chg_pct": round((float(_c1) / float(_p0["close"]) - 1) * 100, 2),
+                })
+    for _r in history:
+        _picks = _r.get("picks") or []
+        if not _picks:
+            continue
+        _p1 = _picks[0]
+        if not (_p1.get("code") and _p1.get("close")):
+            continue
+        _c1 = close_of.get(_p1["code"])
+        if not _c1:
+            continue
+        track.append({
+            "signal_date": _r.get("publish_date", ""),
+            "code": _p1["code"],
+            "name": _p1.get("name", ""),
+            "close": round(float(_p1["close"]), 2),
+            "latest_close": round(float(_c1), 2),
+            "chg_pct": round((float(_c1) / float(_p1["close"]) - 1) * 100, 2),
+        })
+        if len(track) >= track_keep:
+            break
+    track.reverse()
+
     latest = {
         "update_time": datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S"),
         "signal_date": _fmt(signal_date),
@@ -1797,6 +1834,7 @@ def main():
         "t1_decision": t1_decision,
         "monitor": monitor_info,
         "observe": observe_info,
+        "track": track,
         # 第一百二十五轮: 移除 "audit"(9:26 竞价确认 vs 晚间 panel 对账)。
         # auction.json 自 2026-11-01 起已停止更新(生成器不在仓库内), 该对账永远返回
         # checked=False, 属"永不执行却天天写一条 note"的僵尸路径; 前端 au.checked

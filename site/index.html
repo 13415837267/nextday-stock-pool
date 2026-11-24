@@ -275,6 +275,27 @@ function fillCard(f, d) {
   </div>`;
 }
 
+function trackCard(track) {
+  if (!Array.isArray(track) || !track.length) return "";
+  const rows = track.map(t => `
+    <tr>
+      <td>${fmtDate(t.signal_date)}</td>
+      <td>${esc(t.name || "")} <span style="color:var(--muted)">${esc(t.code || "")}</span></td>
+      <td>${numStr(t.close)}</td>
+      <td>${numStr(t.latest_close)}</td>
+      <td class="${pctCls(t.chg_pct)}">${pctStr(t.chg_pct)}</td>
+    </tr>`).join("");
+  return `
+  <div class="card">
+    <div class="block-title" style="margin-top:0">候选跟踪 · 每日首选</div>
+    <table class="ctable">
+      <thead><tr><th>信号日</th><th>股票</th><th>信号收盘</th><th>最新收盘</th><th>涨跌</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="color:var(--muted);font-size:12px;margin-top:8px">信号日收盘 → 最新收盘（不复权）</div>
+  </div>`;
+}
+
 async function load() {
   const el = document.getElementById("main");
   const meta = document.getElementById("meta");
@@ -334,6 +355,7 @@ async function load() {
     } else if (m && !f && fErr && d.fillin && d.fillin.enabled) {
       html += `<div class="warn" style="margin-top:0">补位名单计算失败：${esc(fErr)}（主计划不受影响）</div>`;
     }
+    if (Array.isArray(d.track) && d.track.length) html += trackCard(d.track);
     el.innerHTML = html;
 
     foot.innerHTML = esc(d.disclaimer || "本候选池为量化模型自动生成，仅供研究参考，不构成任何投资建议。股市有风险，入市需谨慎。");
