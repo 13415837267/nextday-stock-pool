@@ -1784,6 +1784,8 @@ def main():
                     "chg_pct": round((float(_c1) / float(_p0["close"]) - 1) * 100, 2),
                 })
     for _r in history:
+        if _r.get("publish_date") == _fmt(signal_date):
+            continue
         _picks = _r.get("picks") or []
         if not _picks:
             continue
