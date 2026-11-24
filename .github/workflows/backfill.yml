@@ -2,6 +2,8 @@
 name: 历史数据回填
 
 on:
+  schedule:
+    - cron: "27 14 * * *"      # 每日 22:27 北京时间（当日最后一个每日槽之后）
   workflow_dispatch:
     inputs:
       start_date:
