@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-24",
+   "buy_date": "2026-11-25",
+   "sell_date": "2026-11-26",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "002867.SZ",
+     "name": "周大生",
+     "close": 11.17,
+     "pct": -3.04,
+     "reasons": "回调-3.0%、量比1.79(缩量)、20日动量9%、乖离-1.8%、换手2.0%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "b1d25d5836fd"
+  },
+  {
    "publish_date": "2026-11-23",
    "buy_date": "2026-11-24",
    "sell_date": "2026-11-25",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "6ae8f589500f"
+   "config_fp": "6ae8f589500f",
+   "skip_chain": [
+    "第1名 四川成渝: 缺口-1.0%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-20",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "6ae8f589500f",
    "skip_chain": [
     "第1名 模塑科技: 缺口-1.9%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "000700.SZ"
    ]
   },
   {
