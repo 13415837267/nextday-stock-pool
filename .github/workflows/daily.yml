@@ -196,6 +196,10 @@ jobs:
         with:
           path: deploy
 
+      - name: 等待 Pages 制品就绪
+        if: steps.guard.outputs.skip != 'true'
+        run: sleep 30
+
       - name: 部署 GitHub Pages
         if: steps.guard.outputs.skip != 'true'
         uses: actions/deploy-pages@v4
