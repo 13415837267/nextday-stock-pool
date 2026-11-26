@@ -6,6 +6,25 @@
  },
  "records": [
   {
+   "publish_date": "2026-11-26",
+   "buy_date": "2026-11-27",
+   "sell_date": "2026-11-30",
+   "regime_ok": false,
+   "picks": [
+    {
+     "code": "603345.SH",
+     "name": "安井食品",
+     "close": 90.81,
+     "pct": -3.19,
+     "reasons": "回调-3.2%、量比1.17(缩量)、20日动量15%、乖离2.9%、换手2.1%、次日竞价深低开承接",
+     "pool": "main",
+     "strategy_cn": "主力·趋势缩量回调"
+    }
+   ],
+   "status": "待结算",
+   "config_fp": "24579d30fbef"
+  },
+  {
    "publish_date": "2026-11-25",
    "buy_date": "2026-11-26",
    "sell_date": "2026-11-27",
@@ -22,7 +41,10 @@
     }
    ],
    "status": "待结算",
-   "config_fp": "24579d30fbef"
+   "config_fp": "24579d30fbef",
+   "skip_chain": [
+    "第1名 黑牡丹: 缺口0.2%未达承接线-2.5%"
+   ]
   },
   {
    "publish_date": "2026-11-24",
@@ -40,10 +62,13 @@
      "strategy_cn": "主力·趋势缩量回调"
     }
    ],
-   "status": "待结算",
+   "status": "无成交",
    "config_fp": "24579d30fbef",
    "skip_chain": [
     "第1名 周大生: 缺口-0.6%未达承接线-2.5%"
+   ],
+   "skipped_codes": [
+    "002867.SZ"
    ]
   },
   {

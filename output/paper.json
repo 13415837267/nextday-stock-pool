@@ -2,8 +2,8 @@
  "meta": {
   "created": "2026-11-02",
   "version": 1,
-  "updated": "2026-11-26 12:10:38",
-  "n": 18
+  "updated": "2026-11-27 02:29:09",
+  "n": 19
  },
  "records": [
   {
@@ -474,8 +474,34 @@
    "floor_pct": -2.5,
    "condition": "风控中(连续第9日): 只接恐慌深跌 —— 开盘缺口≤-2.5%才买, 仓位按40%执行; 缺口不够深则当日空仓; 若竞价缺口 ≥0.5%→60% 则按该比例减仓(照常成交, 不弃单); 达标8只→当日不做(池窄=孤立回调); 若竞价缺口 ≤-1% 且达标≥5只 → 撤销池深折价、回100%仓; 全市场下跌(中位数-3",
    "fallbacks": [],
-   "state": "planned",
+   "state": "void",
    "recorded_at": "2026-11-26 02:44:27",
+   "buy_px": null,
+   "sell_px": null,
+   "gap_pct": 0.15,
+   "ret_gross_pct": null,
+   "ret_net_pct": null,
+   "weighted_pct": null,
+   "exec": null,
+   "note": "风控未触发(缺口 +0.15% 未达 -2.5%), 按规则空仓"
+  },
+  {
+   "signal_date": "20261126",
+   "buy_date": "20261127",
+   "sell_date": "20261130",
+   "code": "603345.SH",
+   "name": "安井食品",
+   "rank": 1,
+   "score": 0.0,
+   "strategy": "dip",
+   "regime_ok": false,
+   "allow_buy": false,
+   "plan_pos_pct": 0.0,
+   "floor_pct": null,
+   "condition": "当日主力池仅 1 只达标, 横截面 z 分无参照(标准差为 0, 按 0 计) < 门槛 1: 当日无横截面可比, 空仓不参与(与回测 min_top1_score 同口径)",
+   "fallbacks": [],
+   "state": "planned",
+   "recorded_at": "2026-11-27 02:29:08",
    "buy_px": null,
    "sell_px": null,
    "gap_pct": null,
@@ -487,13 +513,13 @@
   }
  ],
  "stats": {
-  "n_signal": 18,
+  "n_signal": 19,
   "n_closed": 0,
   "n_holding": 0,
   "n_planned": 1,
-  "n_void": 17,
+  "n_void": 18,
   "void_reasons": {
-   "风控未触发": 17
+   "风控未触发": 18
   }
  }
 }
